@@ -1,0 +1,339 @@
+#ifndef __LUAEXT__
+#define __LUAEXT__
+
+#include <iostream>
+#include <stdlib.h>
+#include <cstdio>
+#include <fstream>
+#include <sstream>
+#include <streambuf>
+#include <string>
+#include <vector>
+#include <map>
+#include <queue>
+#include <random>
+#include <type_traits>
+#include <cxxabi.h>
+#include <pthread.h>
+#include <dirent.h>
+#include <utility>
+#include <tuple>
+#include <array>
+#include <chrono>
+#include <ctime>
+#include <sys/time.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <stdio.h>
+#include <math.h>
+#include <ctype.h>
+#include <list>
+#include <functional>
+#include <cassert>
+#include <algorithm>
+
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+
+using namespace std;
+
+extern lua_State* lua;
+extern int lastCallNReturn;
+
+void InitLuaEnv(string pathToGDAQ_ = "");
+
+void LoadLuaFile ( string fname, string modname = "" );
+
+void TryGetGlobalField ( lua_State* L, string gfield );
+bool TrySetGlobalField ( lua_State* L, string gfield );
+
+void DoForEach ( lua_State* L, int index, function<bool ( lua_State* L_ ) > dofn );
+
+template<typename T> T* GetLuaField ( lua_State* L, int index = -1, string field = "" )
+{
+    void* ret_hack;
+
+    if ( field.empty() ) lua_pushvalue ( L, index );
+    else lua_getfield ( L, index, field.c_str() );
+
+    if ( lua_type ( L,-1 ) != LUA_TNIL )
+    {
+        if ( is_same<T,int>::value && lua_type ( L, -1 ) == LUA_TNUMBER )
+        {
+            int* ret_int = new int ( lua_tointeger ( L, -1 ) );
+            ret_hack = ( void* ) ret_int;
+        }
+        else if ( ( is_same<T,float>::value || is_same<T,double>::value ) && lua_type ( L, -1 ) == LUA_TNUMBER )
+        {
+            float* ret_float = new float ( lua_tonumber ( L, -1 ) );
+            ret_hack = ( void* ) ret_float;
+        }
+        else if ( is_same<T,string>::value && lua_type ( L, -1 ) == LUA_TSTRING )
+        {
+            string* ret_str = new string ( lua_tostring ( L, -1 ) );
+            ret_hack = ( void* ) ret_str;
+        }
+        else if ( is_same<T,bool>::value && lua_type ( L, -1 ) == LUA_TBOOLEAN )
+        {
+            bool* ret_bool = new bool ( lua_toboolean ( L, -1 ) );
+            ret_hack = ( void* ) ret_bool;
+        }
+
+        lua_pop ( L, 1 );
+    }
+
+    return ( ( T* ) ( ret_hack ) );
+}
+
+template<typename T> bool TryFindLuaTableValue ( lua_State* L, int index, T value_ )
+{
+    if ( index < 0 ) index = lua_gettop ( L ) + index + 1;
+
+    if ( lua_type ( L, index ) != LUA_TTABLE )
+    {
+        cerr << "Called TryFindLuaTableValue on a " << lua_typename ( L, lua_type ( L, index ) ) << endl;
+        return false;
+    }
+
+    int prevStackSize = lua_gettop ( L );
+
+    DoForEach ( L, index,
+                [=] ( lua_State* L_ )
+    {
+        T* val = GetLuaField<T> ( L_, -1 );
+
+        if ( val != nullptr && *val == value_ )
+        {
+            lua_pushvalue ( L_, -2 );
+            lua_pushvalue ( L_, -2 );
+            return true;
+        }
+        else return false;
+    } );
+
+    int newStackSize = lua_gettop ( L );
+
+    if ( newStackSize != prevStackSize && newStackSize != prevStackSize+2 )
+    {
+        cerr << "Something went wrong while looking for a value in the lua table! Stack balance is " << newStackSize-prevStackSize << endl;
+    }
+
+    return newStackSize == prevStackSize+2;
+}
+
+inline void PushToLuaStack ( lua_State* L )
+{
+    ( void ) L;
+    return;
+}
+
+inline void PushToLuaStack ( lua_State* L, char val )
+{
+    char* c = new char;
+    *c = val;
+    lua_pushstring ( L, c );
+}
+
+inline void PushToLuaStack ( lua_State* L, const char* val )
+{
+    lua_pushstring ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, char* val )
+{
+    lua_pushstring ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, int val )
+{
+    lua_pushinteger ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, int* val )
+{
+    lua_pushinteger ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, unsigned int val )
+{
+    lua_pushnumber ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, unsigned int* val )
+{
+    lua_pushnumber ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, long int val )
+{
+    lua_pushnumber ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, long int* val )
+{
+    lua_pushnumber ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, unsigned long int val )
+{
+    lua_pushnumber ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, unsigned long int* val )
+{
+    lua_pushnumber ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, long long int val )
+{
+    lua_pushnumber ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, long long int* val )
+{
+    lua_pushnumber ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, unsigned long long int val )
+{
+    lua_pushnumber ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, unsigned long long int* val )
+{
+    lua_pushnumber ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, float val )
+{
+    lua_pushnumber ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, float* val )
+{
+    lua_pushnumber ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, double val )
+{
+    lua_pushnumber ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, double* val )
+{
+    lua_pushnumber ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, bool val )
+{
+    lua_pushboolean ( L, val );
+}
+
+inline void PushToLuaStack ( lua_State* L, bool* val )
+{
+    lua_pushboolean ( L, *val );
+}
+
+inline void PushToLuaStack ( lua_State* L, string val )
+{
+    lua_pushstring ( L, val.c_str() );
+}
+
+inline void PushToLuaStack ( lua_State* L, string* val )
+{
+    lua_pushstring ( L, ( *val ).c_str() );
+}
+
+inline void PushToLuaStack ( lua_State* L, nullptr_t val )
+{
+    ( void ) val;
+    lua_pushnil ( L );
+}
+
+template<typename T> void PushToLuaStack ( lua_State* L, T val )
+{
+    void* v_val;
+    v_val = ( void* ) ( &val );
+
+    T* udata = reinterpret_cast<T*> ( lua_newuserdata ( L, sizeof ( T ) ) );
+    *udata = val;
+}
+
+template<typename First, typename... Rest> void PushToLuaStack ( lua_State* L, First fst, Rest... rest )
+{
+    PushToLuaStack ( L, fst );
+    PushToLuaStack ( L, rest... );
+}
+
+inline void CallLuaFunction ( lua_State* L, string funcname )
+{
+    if ( L == nullptr ) return;
+
+    int stack_before = lua_gettop ( L );
+
+    TryGetGlobalField ( L, funcname );
+
+    if ( lua_type ( L, -1 ) != LUA_TFUNCTION )
+    {
+        lua_pop ( L, 1 );
+        cerr << "Function specified does not exists..." << endl;
+        return;
+    }
+
+    lua_call ( L, 0, LUA_MULTRET );
+
+    lastCallNReturn = lua_gettop ( L ) - stack_before;
+}
+
+inline void CallLuaFunction ( string funcname )
+{
+    if ( lua == nullptr ) InitLuaEnv();
+
+    CallLuaFunction ( lua, funcname );
+}
+
+template<typename First, typename... Rest> void CallLuaFunction ( lua_State* L, string funcname, First fst, Rest... rest )
+{
+    if ( L == nullptr ) return;
+
+    int stack_before = lua_gettop ( L );
+
+    TryGetGlobalField ( L, funcname );
+
+    if ( lua_type ( L, -1 ) != LUA_TFUNCTION )
+    {
+        lua_pop ( L, 1 );
+        cerr << "Function specified does not exists..." << endl;
+        return;
+    }
+
+    PushToLuaStack ( L, fst, rest... );
+
+    int stack_after = lua_gettop ( L );
+
+    int nargs = stack_after-stack_before-1;
+
+    lua_call ( L, nargs, LUA_MULTRET );
+
+    lastCallNReturn = lua_gettop ( L ) - stack_before;
+}
+
+template<typename First, typename... Rest> void CallLuaFunction ( string funcname, First fst, Rest... rest )
+{
+    if ( lua == nullptr ) InitLuaEnv();
+
+    CallLuaFunction ( lua, funcname, fst, rest... );
+}
+
+void* GetCallResult ( lua_State* L, int index );
+
+inline void* GetCallResult ( int index )
+{
+    return GetCallResult ( lua, index );
+}
+
+int LuaListDirContent ( lua_State* L );
+
+#endif
+
