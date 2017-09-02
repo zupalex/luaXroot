@@ -6,7 +6,7 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-export LUA_PATH="${DIR}/?.lua;${DIR}/?;${DIR}/lua_modules/?.lua;${DIR}/lua_modules/?"
+export LUA_PATH="${DIR}/?.lua;${DIR}/?;${DIR}/lua_modules/?.lua;${DIR}/lua_modules/?;${DIR}/../user/?.lua;${DIR}/../user/?"
 
 LUAXROOTLIBPATH=$( cd $DIR/../exec/ > /dev/null; pwd)
 export LUAXROOTLIBPATH

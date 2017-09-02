@@ -12,25 +12,15 @@ function exit()
   theApp:Terminate() 
 end
 
--- Add here the modules you want to be loaded upon launching a session of lua_rint --
--- The modules by default should probably not be removed from that list -------------
+-- Here are the modules which wil lbe loaded upon starting a session of luaXroot --
 
--- *****************************
--- ** Recommended modules ** 
--- *****************************
-
-require("lua_helper") -- this one is named helper but it should have been named "core". Do not remove
+require("lua_helper")
 require("lua_tree")
 
--- If you want to add modules which are not where you found built-in modules, you ---
--- will need to set the search path to include the location of such scripts ---------
--- To do this:  "package.path = package.path .. ";<path/to/add>/?.lua" --------------
+pcall(require, 'userlogon') -- this line attempt to load additional user/userlogon.lua. If it doesnt't exist it does nothing. 
+			    -- If the user wants to load additional modules, it should be done in this file. Create it if needed. The directory user might need to be created as well.
 
-package.path = package.path .. ";/mnt/hgfs/Dropbox/ORNL/goddess_daq/goddess_daq/user/lua_scripts/?.lua;/mnt/hgfs/Dropbox/ORNL/goddess_daq/goddess_daq/user/lua_scripts/?"
-
--- **************************
--- ** Optional modules **
--- **************************
-
--- require("MIDAS_reader")
-require("LDF_reader")
+-- If you want to add modules which are not where you found built-in modules, you ----------------
+-- will need to set the search path to include the location of such scripts ----------------------
+-- To do this add "package.path = package.path .. ";<path/to/add>/?.lua"  in user/userlogon.lua --
+-- e.g.: package.path = package.path .. ";/mnt/hgfs/Dropbox/ORNL/goddess_daq/goddess_daq/user/lua_scripts/?.lua;/mnt/hgfs/Dropbox/ORNL/goddess_daq/goddess_daq/user/lua_scripts/?"
