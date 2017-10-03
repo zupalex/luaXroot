@@ -1,2 +1,2 @@
 # luaXroot
-A binder to use root classes in Lua and mering root application and lua interpreter
+A binder to use ROOT classes in Lua and merging ROOT TApplication with the Lua interpreter
