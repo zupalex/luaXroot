@@ -1,5 +1,7 @@
 # luaXroot
-A binder to use ROOT classes in Lua and merging ROOT TApplication with the Lua interpreter.
+A binder to use ROOT classes in Lua and merging ROOT TApplication with the Lua interpreter (unix only).
+
+CMake and Readline libraries are required.
 
 To install it:
 
