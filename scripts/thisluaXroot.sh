@@ -11,4 +11,4 @@ export LUA_PATH="${DIR}/?.lua;${DIR}/?;${DIR}/lua_modules/?.lua;${DIR}/lua_modul
 LUAXROOTLIBPATH=$( cd $DIR/../exec/ > /dev/null; pwd)
 export LUAXROOTLIBPATH
 
-alias luaXroot="rlwrap ${LUAXROOTLIBPATH}/lua -i -e \"_G.LUAXROOTLIBPATH = \\\"${LUAXROOTLIBPATH}\\\"\" -l luaXrootlogon"
+alias luaXroot="${LUAXROOTLIBPATH}/lua -i -e \"_G.LUAXROOTLIBPATH = \\\"${LUAXROOTLIBPATH}\\\"\" -l luaXrootlogon"

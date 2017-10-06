@@ -2,23 +2,17 @@
 #include <llex.h>
 
 lua_State* lua = 0;
-int lastCallNReturn = 0;
 
-void InitLuaEnv ( string pathToGDAQ_ )
+lua_State* InitLuaEnv ( )
 {
-    lua = luaL_newstate();
-    luaL_openlibs ( lua );
+    lua_State* L = luaL_newstate();
+    luaL_openlibs ( L );
 
     lua_register ( lua, "ls", LuaListDirContent );
 
     string lua_path = "";
 
     lua_path += "?;?.lua";
-    if ( !pathToGDAQ_.empty() )
-    {
-        lua_path += ";" + pathToGDAQ_ + "/scripts/lua_modules/?;" + pathToGDAQ_ + "/scripts/lua_modules/?.lua;";
-        lua_path += pathToGDAQ_ + "/user/lua_scripts/?;" + pathToGDAQ_ + "/user/lua_scripts/?.lua";
-    }
 
     lua_getglobal ( lua, "package" );
     lua_getfield ( lua, -1, "path" );
@@ -32,60 +26,8 @@ void InitLuaEnv ( string pathToGDAQ_ )
     lua_pop ( lua, 1 );
 
     cout << "Lua Env initialized..." << endl;
-}
 
-void LoadLuaFile ( string fname, string modname )
-{
-    if ( lua == nullptr ) InitLuaEnv();
-
-    int stack_before = lua_gettop ( lua );
-
-    int ret = luaL_loadfile ( lua, fname.c_str() );
-
-    if ( ret != 0 )
-    {
-        cerr << "ERROR while loading " << fname << endl;
-        cerr << lua_tostring ( lua, -1 ) << endl;
-        return;
-    }
-
-    if ( !modname.empty() )
-    {
-        lua_newtable ( lua );
-        lua_newtable ( lua );
-        lua_getglobal ( lua, "_G" );
-        lua_setfield ( lua, -2, "__index" );
-        lua_setmetatable ( lua, -2 );
-        lua_setglobal ( lua, modname.c_str() );
-
-        lua_getglobal ( lua, modname.c_str() );
-
-        lua_setupvalue ( lua, -2, 1 );
-    }
-
-    ret = lua_pcall ( lua, 0, LUA_MULTRET, 0 );
-
-    if ( ret != 0 )
-    {
-        cerr << "ERROR while calling " << fname << endl;
-        cerr << lua_tostring ( lua, -1 ) << endl;
-        return;
-    }
-
-    if ( lua_gettop ( lua ) == stack_before +1 )
-    {
-        if ( !modname.empty() ) lua_setglobal ( lua, modname.c_str() );
-        else
-        {
-            cerr << "ERROR: if lua script has a return statement, a module name has to be specified..." << endl;
-            return;
-        }
-    }
-    else if ( lua_gettop ( lua ) >= stack_before +1 )
-    {
-        cerr << "ERROR: multiple returns not supported for LoadLuaFile function..." << endl;
-        return;
-    }
+    return L;
 }
 
 void TryGetGlobalField ( lua_State *L, string gfield )
@@ -229,52 +171,6 @@ void DoForEach ( lua_State *L, int index, function<bool ( lua_State *L_ ) > dofn
     }
 }
 
-void* GetCallResult ( lua_State* L, int index )
-{
-    index = lua_gettop ( L ) - lastCallNReturn + index;
-
-    if ( index > lua_gettop ( L ) )
-    {
-        cerr << "Index required (" << index << ") bigger than stack size (" << lua_gettop ( L ) << ")" << endl;
-        return nullptr;
-    }
-
-    void* result;
-
-    if ( lua_type ( L, index ) == LUA_TUSERDATA ) result = * ( reinterpret_cast<void**> ( lua_touserdata ( L, index ) ) );
-    else if ( lua_type ( L, index ) == LUA_TNUMBER && lua_isinteger ( L, index ) )
-    {
-        int* res = new int;
-        *res = lua_tointeger ( L, index );
-        result = ( void* ) res;
-    }
-    else if ( lua_type ( L, index ) == LUA_TNUMBER )
-    {
-        double* res = new double;
-        *res = lua_tonumber ( L, index );
-        result = ( void* ) res;
-    }
-    else if ( lua_type ( L, index ) == LUA_TBOOLEAN )
-    {
-        bool* res = new bool;
-        *res = lua_toboolean ( L, index );
-        result = ( void* ) res;
-    }
-    else if ( lua_type ( L, index ) == LUA_TSTRING )
-    {
-        char* res = new char[1024];
-        sprintf ( res, "%s", lua_tostring ( L, index ) );
-        result = ( void* ) res;
-    }
-    else
-    {
-        cerr << "Cannot trivialy convert the requested result to C-type variable" << endl;
-        return nullptr;
-    }
-
-    return result;
-}
-
 int LuaListDirContent ( lua_State* L )
 {
     DIR* dir;
@@ -346,4 +242,87 @@ int LuaListDirContent ( lua_State* L )
     closedir ( dir );
 
     return 1;
+}
+
+void* NewTaskFn ( void* arg )
+{
+//     cout << "Test task setup..." << endl;
+
+    TryGetGlobalField ( lua, "NextTaskToStart" );
+
+    if ( lua_type ( lua, -1 ) != LUA_TSTRING )
+    {
+        cerr << "Next task to schedule is undetermined..." << endl;
+        return nullptr;
+    }
+
+    string nextTask = lua_tostring ( lua, -1 );
+    lua_pop ( lua, 1 );
+
+    cout << "Will start the following task: " << nextTask << endl;
+
+    TryGetGlobalField ( lua, ( string ) ( "RootTasks."+nextTask ) );
+
+    if ( lua_type ( lua, -1 ) != LUA_TTABLE )
+    {
+        cerr << "This task does not exists or has an invalid format..." << endl;
+        return nullptr;
+    }
+
+    lua_getfield ( lua, -1, "task" );
+
+    if ( lua_type ( lua, -1 ) != LUA_TTABLE )
+    {
+        cerr << "This task has an invalid format..." << endl;
+        return nullptr;
+    }
+
+    lua_remove ( lua, -2 );
+
+    int taskStackPos = lua_gettop ( lua );
+
+    int nargs = lua_rawlen ( lua, -1 ) - 1;
+
+    lua_geti ( lua, taskStackPos, 1 );
+
+    for ( int i = 0; i < nargs; i++ )
+    {
+        lua_geti ( lua, taskStackPos, i+2 );
+    }
+
+    lua_remove ( lua, taskStackPos );
+
+    lua_pushnil ( lua );
+    TrySetGlobalField ( lua, "NextTaskToStart" );
+
+    lua_pcall ( lua, nargs, LUA_MULTRET, 0 );
+
+    return nullptr;
+}
+
+int SetupNewTask_C ( lua_State* L )
+{
+    if ( !CheckLuaArgs ( L, 1, true, "SetupNewTask_C", LUA_TFUNCTION ) ) return 0;
+
+    int nvals = lua_gettop ( L );
+
+    lua_newtable ( L );
+
+    for ( int i = 0; i < nvals; i++ )
+    {
+        lua_pushvalue ( L, 1 );
+        lua_remove ( L, 1 );
+        lua_seti ( L, -2, i+1 );
+    }
+
+    return 1;
+}
+
+int StartNewTask_C ( lua_State* L )
+{
+    pthread_t newTask;
+
+    pthread_create ( &newTask, nullptr, NewTaskFn, nullptr );
+
+    return 0;
 }

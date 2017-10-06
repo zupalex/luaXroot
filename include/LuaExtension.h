@@ -36,19 +36,120 @@
 #include "lualib.h"
 #include "lauxlib.h"
 
+#include <readline/history.h>
+
 using namespace std;
 
 extern lua_State* lua;
-extern int lastCallNReturn;
 
-void InitLuaEnv(string pathToGDAQ_ = "");
+inline int saveprompthistory ( lua_State* L )
+{
+    const char* homeDir = getenv ( "HOME" );
+    char* histDir = new char[1024];
+    sprintf ( histDir, "%s/.luaXrootHist", homeDir );
+    write_history ( histDir );
+    return 0;
+}
 
-void LoadLuaFile ( string fname, string modname = "" );
+inline int wipeprompthistory ( lua_State* L )
+{
+    const char* homeDir = getenv ( "HOME" );
+    char* histDir = new char[1024];
+    sprintf ( histDir, "%s/.luaXrootHist", homeDir );
+    history_truncate_file ( histDir, 0 );
+    clear_history();
+    return 0;
+}
+
+inline string GetLuaTypename ( int type_ )
+{
+    if ( type_ == LUA_TNUMBER ) return "number";
+    else if ( type_ == LUA_TFUNCTION ) return "function";
+    else if ( type_ == LUA_TBOOLEAN ) return "boolean";
+    else if ( type_ == LUA_TSTRING ) return "string";
+    else if ( type_ == LUA_TUSERDATA ) return "userdata";
+    else if ( type_ == LUA_TLIGHTUSERDATA ) return "light userdata";
+    else if ( type_ == LUA_TTHREAD ) return "thread";
+    else if ( type_ == LUA_TTABLE ) return "table";
+    else return "unknown";
+}
+
+inline bool CheckLuaArgs ( lua_State* L, int argIdx, bool abortIfError, string funcName )
+{
+    ( void ) L;
+    ( void ) argIdx;
+    ( void ) abortIfError;
+    ( void ) funcName;
+    return true;
+}
+
+inline bool CheckLuaArgs ( lua_State* L, int argIdx, bool abortIfError, string funcName, int arg )
+{
+    if ( lua_type ( L, argIdx ) != arg )
+    {
+        if ( abortIfError )
+        {
+            if ( argIdx > 0 )
+            {
+                cerr << "ERROR in " << funcName << " : argument #" << argIdx << " => " << GetLuaTypename ( arg ) << " expected, got " << lua_typename ( L, lua_type ( L, argIdx ) ) << endl;
+            }
+            else
+            {
+                cerr << "ERROR in " << funcName << " => " << GetLuaTypename ( arg ) << " expected, got " << lua_typename ( L, lua_type ( L, argIdx ) ) << endl;
+            }
+            lua_settop ( L, 0 );
+        }
+        return false;
+    }
+    return true;
+}
+
+template<typename... Rest> bool CheckLuaArgs ( lua_State* L, int argIdx, bool abortIfError, string funcName, int arg1, Rest... argRest )
+{
+    if ( lua_type ( L, argIdx ) != arg1 )
+    {
+        if ( abortIfError )
+        {
+            if ( argIdx > 0 )
+            {
+                cerr << "ERROR in " << funcName << " : argument #" << argIdx << " => " << GetLuaTypename ( arg1 ) << " expected, got " << lua_typename ( L, lua_type ( L, argIdx ) ) << endl;
+            }
+            else
+            {
+                cerr << "ERROR in " << funcName << " => " << GetLuaTypename ( arg1 ) << " expected, got " << lua_typename ( L, lua_type ( L, argIdx ) ) << endl;
+            }
+            lua_settop ( L, 0 );
+        }
+        return false;
+    }
+    else return CheckLuaArgs ( L, argIdx+1, abortIfError, funcName, argRest... );
+}
+
+inline bool lua_checkfield ( lua_State* L, int idx, string field, int type )
+{
+    lua_getfield ( L, idx, field.c_str() );
+
+    if ( CheckLuaArgs ( L, -1, false, "", type ) )
+    {
+        return true;
+    }
+    else
+    {
+        lua_pop ( L, 1 );
+        return false;
+    }
+
+}
+
+lua_State* InitLuaEnv ( );
 
 void TryGetGlobalField ( lua_State* L, string gfield );
 bool TrySetGlobalField ( lua_State* L, string gfield );
 
 void DoForEach ( lua_State* L, int index, function<bool ( lua_State* L_ ) > dofn );
+
+int SetupNewTask_C ( lua_State* L );
+int StartNewTask_C ( lua_State* L );
 
 template<typename T> T* GetLuaField ( lua_State* L, int index = -1, string field = "" )
 {
@@ -264,73 +365,6 @@ template<typename First, typename... Rest> void PushToLuaStack ( lua_State* L, F
 {
     PushToLuaStack ( L, fst );
     PushToLuaStack ( L, rest... );
-}
-
-inline void CallLuaFunction ( lua_State* L, string funcname )
-{
-    if ( L == nullptr ) return;
-
-    int stack_before = lua_gettop ( L );
-
-    TryGetGlobalField ( L, funcname );
-
-    if ( lua_type ( L, -1 ) != LUA_TFUNCTION )
-    {
-        lua_pop ( L, 1 );
-        cerr << "Function specified does not exists..." << endl;
-        return;
-    }
-
-    lua_call ( L, 0, LUA_MULTRET );
-
-    lastCallNReturn = lua_gettop ( L ) - stack_before;
-}
-
-inline void CallLuaFunction ( string funcname )
-{
-    if ( lua == nullptr ) InitLuaEnv();
-
-    CallLuaFunction ( lua, funcname );
-}
-
-template<typename First, typename... Rest> void CallLuaFunction ( lua_State* L, string funcname, First fst, Rest... rest )
-{
-    if ( L == nullptr ) return;
-
-    int stack_before = lua_gettop ( L );
-
-    TryGetGlobalField ( L, funcname );
-
-    if ( lua_type ( L, -1 ) != LUA_TFUNCTION )
-    {
-        lua_pop ( L, 1 );
-        cerr << "Function specified does not exists..." << endl;
-        return;
-    }
-
-    PushToLuaStack ( L, fst, rest... );
-
-    int stack_after = lua_gettop ( L );
-
-    int nargs = stack_after-stack_before-1;
-
-    lua_call ( L, nargs, LUA_MULTRET );
-
-    lastCallNReturn = lua_gettop ( L ) - stack_before;
-}
-
-template<typename First, typename... Rest> void CallLuaFunction ( string funcname, First fst, Rest... rest )
-{
-    if ( lua == nullptr ) InitLuaEnv();
-
-    CallLuaFunction ( lua, funcname, fst, rest... );
-}
-
-void* GetCallResult ( lua_State* L, int index );
-
-inline void* GetCallResult ( int index )
-{
-    return GetCallResult ( lua, index );
 }
 
 int LuaListDirContent ( lua_State* L );

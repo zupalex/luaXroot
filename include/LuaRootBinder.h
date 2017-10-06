@@ -1,5 +1,5 @@
-#ifndef __GODDESSLUA__
-#define __GODDESSLUA__
+#ifndef __LUAROOTBINDER__
+#define __LUAROOTBINDER__
 
 #include <iostream>
 #include <cstdio>
@@ -41,89 +41,12 @@
 #include "TGraphErrors.h"
 #include "TCutG.h"
 #include "TFile.h"
+#include "TTree.h"
 
 #include "LuaExtension.h"
 #include <llimits.h>
 
-inline string GetLuaTypename ( int type_ )
-{
-    if ( type_ == LUA_TNUMBER ) return "number";
-    else if ( type_ == LUA_TFUNCTION ) return "function";
-    else if ( type_ == LUA_TBOOLEAN ) return "boolean";
-    else if ( type_ == LUA_TSTRING ) return "string";
-    else if ( type_ == LUA_TUSERDATA ) return "userdata";
-    else if ( type_ == LUA_TLIGHTUSERDATA ) return "light userdata";
-    else if ( type_ == LUA_TTHREAD ) return "thread";
-    else if ( type_ == LUA_TTABLE ) return "table";
-    else return "unknown";
-}
-
-inline bool CheckLuaArgs ( lua_State* L, int argIdx, bool abortIfError, string funcName )
-{
-    ( void ) L;
-    ( void ) argIdx;
-    ( void ) abortIfError;
-    ( void ) funcName;
-    return true;
-}
-
-inline bool CheckLuaArgs ( lua_State* L, int argIdx, bool abortIfError, string funcName, int arg )
-{
-    if ( lua_type ( L, argIdx ) != arg )
-    {
-        if ( abortIfError )
-        {
-            if ( argIdx > 0 )
-            {
-                cerr << "ERROR in " << funcName << " : argument #" << argIdx << " => " << GetLuaTypename ( arg ) << " expected, got " << lua_typename ( L, lua_type ( L, argIdx ) ) << endl;
-            }
-            else
-            {
-                cerr << "ERROR in " << funcName << " => " << GetLuaTypename ( arg ) << " expected, got " << lua_typename ( L, lua_type ( L, argIdx ) ) << endl;
-            }
-            lua_settop ( L, 0 );
-        }
-        return false;
-    }
-    return true;
-}
-
-template<typename... Rest> bool CheckLuaArgs ( lua_State* L, int argIdx, bool abortIfError, string funcName, int arg1, Rest... argRest )
-{
-    if ( lua_type ( L, argIdx ) != arg1 )
-    {
-        if ( abortIfError )
-        {
-            if ( argIdx > 0 )
-            {
-                cerr << "ERROR in " << funcName << " : argument #" << argIdx << " => " << GetLuaTypename ( arg1 ) << " expected, got " << lua_typename ( L, lua_type ( L, argIdx ) ) << endl;
-            }
-            else
-            {
-                cerr << "ERROR in " << funcName << " => " << GetLuaTypename ( arg1 ) << " expected, got " << lua_typename ( L, lua_type ( L, argIdx ) ) << endl;
-            }
-            lua_settop ( L, 0 );
-        }
-        return false;
-    }
-    else return CheckLuaArgs ( L, argIdx+1, abortIfError, funcName, argRest... );
-}
-
-inline bool lua_checkfield ( lua_State* L, int idx, string field, int type )
-{
-    lua_getfield ( L, idx, field.c_str() );
-
-    if ( CheckLuaArgs ( L, -1, false, "", type ) )
-    {
-        return true;
-    }
-    else
-    {
-        lua_pop ( L, 1 );
-        return false;
-    }
-
-}
+extern map<TObject*, TCanvas*> canvasTracker;
 
 // ---------------------------------------------------- TApplication Binder ------------------------------------------------------ //
 
@@ -136,6 +59,7 @@ int luaExt_TApplication_Terminate ( lua_State* L );
 
 int luaExt_NewTObject ( lua_State* L );
 int luaExt_TObject_Draw ( lua_State* L );
+int luaExt_TObject_Update ( lua_State* L );
 
 // ------------------------------------------------------ TF1 Binder -------------------------------------------------------------- //
 
@@ -154,6 +78,7 @@ int luaExt_THist_Add ( lua_State* L );
 int luaExt_THist_Scale ( lua_State* L );
 int luaExt_THist_SetRangeUser ( lua_State* L );
 int luaExt_THist_Fit ( lua_State* L );
+int luaExt_THist_Reset ( lua_State* L );
 
 // -------------------------------------------------- TGraphErrors Binder -------------------------------------------------------- //
 
@@ -177,6 +102,7 @@ int luaExt_TFile_Close ( lua_State* L );
 
 int luaExt_NewTCutG ( lua_State* L );
 int luaExt_TCutG_IsInside ( lua_State* L );
+
 
 // --------------------------------------------------- Lua Library export -------------------------------------------------------- //
 
@@ -223,6 +149,9 @@ public:
 
 static const luaL_Reg luaXroot_lib [] =
 {
+    {"SetupNewTask_C", SetupNewTask_C},
+    {"StartNewTask_C", StartNewTask_C},
+
     {"TApplication", luaExt_NewTApplication},
 
     {"TObject", luaExt_NewTObject},
@@ -234,6 +163,9 @@ static const luaL_Reg luaXroot_lib [] =
     {"TGraph", luaExt_NewTGraph},
     {"TCutG", luaExt_NewTCutG},
 
+    {"saveprompthistory", saveprompthistory},
+    {"wipeprompthistory", wipeprompthistory},
+    
     {NULL, NULL}
 };
 

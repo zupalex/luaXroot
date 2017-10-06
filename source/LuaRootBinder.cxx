@@ -2,6 +2,125 @@
 #include "TPad.h"
 #include <llimits.h>
 #include <mutex>
+#include <readline/readline.h>
+
+map<TObject*, TCanvas*> canvasTracker;
+
+vector<string> getpossiblefields ( string field )
+{
+    vector<string> autocompletes;
+
+    if ( field.empty() )
+    {
+        return autocompletes;
+    }
+
+    bool searchFn = false;
+    string rootfield = "";
+
+    size_t functionSep = field.find ( ":" );
+
+    if ( functionSep != string::npos )
+    {
+        rootfield = field.substr ( 0, functionSep );
+        TryGetGlobalField ( lua, rootfield );
+        rootfield += ":";
+        searchFn = true;
+    }
+    else
+    {
+        size_t lastDot = field.find_last_of ( "." );
+
+        if ( lastDot != string::npos )
+        {
+            rootfield = field.substr ( 0, lastDot );
+//         cout << "Checking field " << rootfield  << endl;
+
+            TryGetGlobalField ( lua, rootfield );
+
+            rootfield += ".";
+        }
+        else lua_getglobal ( lua, "_G" );
+    }
+
+    if ( lua_type ( lua, -1 ) != LUA_TTABLE )
+    {
+        if ( lua_type ( lua, -1 ) != LUA_TNIL )
+        {
+            lua_getmetatable ( lua, -1 );
+            lua_remove ( lua, -2 );
+        }
+
+        if ( lua_type ( lua, -1 ) != LUA_TTABLE )
+        {
+            lua_pop ( lua, 1 );
+            return autocompletes;
+        }
+    }
+
+//     cout << "**********************************Trying to check all the possibilities*****************************" << endl;
+
+    lua_pushnil ( lua );
+
+    while ( lua_next ( lua, -2 ) != 0 )
+    {
+        if ( lua_type ( lua, -2 ) == LUA_TSTRING )
+        {
+            if ( !searchFn || lua_type ( lua, -1 ) == LUA_TFUNCTION )
+            {
+//             cout << "Possibility: " << lua_tostring ( lua, -2 ) << endl;
+                autocompletes.push_back ( rootfield + ( ( string ) lua_tostring ( lua, -2 ) ) );
+            }
+        }
+
+        lua_pop ( lua, 1 );
+    }
+
+    lua_pop ( lua, 1 );
+
+    return autocompletes;
+}
+
+char* possibilities_generator ( const char *text, int state )
+{
+    static int list_index, len;
+    char *name;
+
+    if ( !state )
+    {
+        list_index = 0;
+        len = strlen ( text );
+    }
+
+    vector<string> autocompletes = getpossiblefields ( text );
+
+    char** possibilities = new char*[autocompletes.size() +1];
+
+    for ( unsigned int i = 0; i < autocompletes.size(); i++ )
+    {
+        possibilities[i] = new char[1024];
+        sprintf ( possibilities[i], "%s", autocompletes[i].c_str() );
+    }
+
+    possibilities[autocompletes.size()] = NULL;
+
+    while ( ( name = possibilities[list_index++] ) )
+    {
+        if ( strncmp ( name, text, len ) == 0 )
+        {
+//             cout << "Possibility: " << name << endl;
+            return strdup ( name );
+        }
+    }
+
+    return NULL;
+}
+
+char** input_completion ( const char *text, int start, int end )
+{
+    rl_completion_append_character = '\0';
+    return rl_completion_matches ( text, possibilities_generator );
+}
 
 mutex rootProcessLoopLock;
 
@@ -45,13 +164,18 @@ restartruntask:
     rootProcessLoopLock.lock();
 
     goto restartruntask;
+
+    return nullptr;
 }
 
 int luaExt_NewTApplication ( lua_State* L )
 {
     if ( theApp == nullptr )
     {
-//         cout << "theApp == nullptr, initializing it..." << endl;
+        //         cout << "theApp == nullptr, initializing it..." << endl;
+        lua = L;
+        rl_attempted_completion_function = input_completion;
+
         RootAppThreadManager** tApp = reinterpret_cast<RootAppThreadManager**> ( lua_newuserdata ( L, sizeof ( RootAppThreadManager* ) ) );
         *tApp = new RootAppThreadManager ( "tapp", nullptr, nullptr );
 
@@ -124,7 +248,7 @@ int luaExt_TApplication_Terminate ( lua_State* L )
 
 int luaExt_NewTObject ( lua_State* L )
 {
-//     cout << "Tree name / title : " << treeName << " / " << treeTitle << endl;
+    //     cout << "Tree name / title : " << treeName << " / " << treeTitle << endl;
 
     TObject** obj = reinterpret_cast<TObject**> ( lua_newuserdata ( L, sizeof ( TObject* ) ) );
     *obj = new TObject ();
@@ -142,6 +266,9 @@ int luaExt_NewTObject ( lua_State* L )
     lua_pushcfunction ( L, luaExt_TObject_Draw );
     lua_setfield ( L, -2, "Draw" );
 
+    lua_pushcfunction ( L, luaExt_TObject_Update );
+    lua_setfield ( L, -2, "Update" );
+
     return 1;
 }
 
@@ -151,7 +278,7 @@ int luaExt_TObject_Draw ( lua_State* L )
 
     if ( lua_gettop ( L ) == 2 && !CheckLuaArgs ( L, 1, true, "luaExt_TObject_Draw", LUA_TSTRING ) ) return 0;
 
-//     cout << "Executing luaExt_TObject_Draw" << endl;
+    //     cout << "Executing luaExt_TObject_Draw" << endl;
 
     TObject* obj = * ( static_cast<TObject**> ( lua_touserdata ( L, 1 ) ) );
 
@@ -162,7 +289,7 @@ int luaExt_TObject_Draw ( lua_State* L )
     rootProcessLoopLock.lock();
 
     theApp->shouldStop = true;
-//     cout << "asked to stop" << endl;
+    //     cout << "asked to stop" << endl;
 
     if ( opts.find ( "same" ) == string::npos && opts.find ( "SAME" ) == string::npos )
     {
@@ -170,6 +297,26 @@ int luaExt_TObject_Draw ( lua_State* L )
         disp->cd();
     }
     obj->Draw ( opts.c_str() );
+    canvasTracker[obj] = gPad->GetCanvas();
+
+    rootProcessLoopLock.unlock();
+
+    return 0;
+}
+
+int luaExt_TObject_Update ( lua_State* L )
+{
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_TObject_Update", LUA_TUSERDATA ) ) return 0;
+
+    TObject* obj = * ( static_cast<TObject**> ( lua_touserdata ( L, 1 ) ) );
+
+    rootProcessLoopLock.lock();
+
+    theApp->shouldStop = true;
+    //     cout << "asked to stop" << endl;
+
+    canvasTracker[obj]->Modified();
+    canvasTracker[obj]->Update();
 
     rootProcessLoopLock.unlock();
 
@@ -236,7 +383,7 @@ int luaExt_NewTF1 ( lua_State* L )
         lua_getfield ( L, 1, "fn" );
         if ( lua_type ( L, -1 ) == LUA_TFUNCTION )
         {
-//             cout << "We got a function instead of a formula" << endl;
+            //             cout << "We got a function instead of a formula" << endl;
             string fn_gfield = ( "TF1fns."+fname );
             bool success = TrySetGlobalField ( L, fn_gfield );
 
@@ -246,13 +393,13 @@ int luaExt_NewTF1 ( lua_State* L )
                 lua_settop ( L, 0 );
                 return 0;
             }
-//             lua_setglobal ( L, fn_gfield.c_str() );
+            //             lua_setglobal ( L, fn_gfield.c_str() );
             cout << "Fn set to global field " << fn_gfield << endl;
 
-//             lua_newtable ( L );
-// 	    lua_insert(L, -2);
-// 	    lua_setfield(L, -2, fname.c_str());
-//             lua_setglobal ( L, "TF1fns" );
+            //             lua_newtable ( L );
+            // 	    lua_insert(L, -2);
+            // 	    lua_setfield(L, -2, fname.c_str());
+            //             lua_setglobal ( L, "TF1fns" );
 
             fn = [=] ( double* x, double* p )
             {
@@ -265,7 +412,7 @@ int luaExt_NewTF1 ( lua_State* L )
                     return 0.0;
                 }
 
-//                 lua_getglobal ( L, fn_gfield.c_str() );
+                //                 lua_getglobal ( L, fn_gfield.c_str() );
                 lua_pushnumber ( L, x[0] );
 
                 for ( int i = 0; i < npars; i++ )
@@ -304,6 +451,9 @@ int luaExt_NewTF1 ( lua_State* L )
     lua_pushcfunction ( L, luaExt_TObject_Draw );
     lua_setfield ( L, -2, "Draw" );
 
+    lua_pushcfunction ( L, luaExt_TObject_Update );
+    lua_setfield ( L, -2, "Update" );
+
     lua_pushcfunction ( L, luaExt_TF1_GetPars );
     lua_setfield ( L, -2, "GetParameters" );
 
@@ -338,7 +488,7 @@ int luaExt_TF1_SetParameters ( lua_State* L )
             int parIdx = lua_tointeger ( L_, -2 );
             double parVal = lua_tonumber ( L_, -1 );
             func->SetParameter ( parIdx, parVal );
-	    return false;
+            return false;
         } );
     }
     else
@@ -394,7 +544,7 @@ int luaExt_TF1_GetPars ( lua_State* L )
     else
     {
         lua_newtable ( L );
-        DoForEach ( L, 2, [&](lua_State* L_)
+        DoForEach ( L, 2, [&] ( lua_State* L_ )
         {
             if ( !CheckLuaArgs ( L_, -2, true, "luaExt_TF1_GetPars: parameters list ", LUA_TNUMBER, LUA_TNUMBER ) ) return true;
 
@@ -403,10 +553,10 @@ int luaExt_TF1_GetPars ( lua_State* L )
             lua_pushnumber ( L_, fpar );
 
             lua_setfield ( L_, -4, to_string ( parnum ).c_str() );
-	    return false;
+            return false;
         } );
-	
-	nres = 1;
+
+        nres = 1;
     }
 
     return nres;
@@ -434,27 +584,27 @@ int luaExt_NewTHist ( lua_State* L )
 
 
     lua_getfield ( L, 1, "name" );
-    if ( !CheckLuaArgs ( L, -1, true, "luaExt_TF1_Eval argument table: name", LUA_TTABLE ) ) return 0;
+    if ( !CheckLuaArgs ( L, -1, true, "luaExt_NewTHist argument table: name", LUA_TSTRING ) ) return 0;
     name = lua_tostring ( L, -1 );
     lua_pop ( L, 1 );
 
     lua_getfield ( L, 1, "title" );
-    if ( !CheckLuaArgs ( L, -1, true, "luaExt_TF1_Eval argument table: title", LUA_TTABLE ) ) return 0;
+    if ( !CheckLuaArgs ( L, -1, true, "luaExt_NewTHist argument table: title", LUA_TSTRING ) ) return 0;
     title = lua_tostring ( L, -1 );
     lua_pop ( L, 1 );
 
     lua_getfield ( L, 1, "xmin" );
-    if ( !CheckLuaArgs ( L, -1, true, "luaExt_TF1_Eval argument table: xmin", LUA_TNUMBER ) ) return 0;
+    if ( !CheckLuaArgs ( L, -1, true, "luaExt_NewTHist argument table: xmin", LUA_TNUMBER ) ) return 0;
     xmin = lua_tonumber ( L, -1 );
     lua_pop ( L, 1 );
 
     lua_getfield ( L, 1, "xmax" );
-    if ( !CheckLuaArgs ( L, -1, true, "luaExt_TF1_Eval argument table: xmax", LUA_TNUMBER ) ) return 0;
+    if ( !CheckLuaArgs ( L, -1, true, "luaExt_NewTHist argument table: xmax", LUA_TNUMBER ) ) return 0;
     xmax = lua_tonumber ( L, -1 );
     lua_pop ( L, 1 );
 
     lua_getfield ( L, 1, "nbinsx" );
-    if ( !CheckLuaArgs ( L, -1, true, "luaExt_TF1_Eval argument table: nbinsx", LUA_TNUMBER ) ) return 0;
+    if ( !CheckLuaArgs ( L, -1, true, "luaExt_NewTHist argument table: nbinsx", LUA_TNUMBER ) ) return 0;
     nbinsx = lua_tointeger ( L, -1 );
     lua_pop ( L, 1 );
 
@@ -512,6 +662,9 @@ int luaExt_NewTHist ( lua_State* L )
     lua_pushcfunction ( L, luaExt_TObject_Draw );
     lua_setfield ( L, -2, "Draw" );
 
+    lua_pushcfunction ( L, luaExt_TObject_Update );
+    lua_setfield ( L, -2, "Update" );
+
     lua_pushcfunction ( L, luaExt_THist_Add );
     lua_setfield ( L, -2, "Add" );
 
@@ -554,7 +707,7 @@ int luaExt_THist_Clone ( lua_State* L )
 
 int luaExt_THist_Fill ( lua_State* L )
 {
-    if ( !CheckLuaArgs ( L, -1, true, "luaExt_THist_Fill", LUA_TUSERDATA, LUA_TTABLE ) ) return 0;
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_THist_Fill", LUA_TUSERDATA, LUA_TTABLE ) ) return 0;
 
     TH1* hist = * ( reinterpret_cast<TH1**> ( lua_touserdata ( L, 1 ) ) );
 
@@ -673,7 +826,7 @@ int luaExt_THist_SetRangeUser ( lua_State* L )
 
 int luaExt_THist_Fit ( lua_State* L )
 {
-    if ( !CheckLuaArgs ( L, -1, true, "luaExt_THist_Fit", LUA_TUSERDATA, LUA_TTABLE ) ) return 0;
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_THist_Fit", LUA_TUSERDATA, LUA_TTABLE ) ) return 0;
 
     TH1* hist = * ( reinterpret_cast<TH1**> ( lua_touserdata ( L, 1 ) ) );
 
@@ -714,6 +867,26 @@ int luaExt_THist_Fit ( lua_State* L )
 
     hist->Fit ( fitfunc, opts.c_str(), "", xmin, xmax );
     if ( gPad != nullptr ) gPad->Update();
+
+    return 1;
+}
+
+int luaExt_THist_Reset ( lua_State* L )
+{
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_THist_Reset", LUA_TUSERDATA ) ) return 0;
+
+    TH1* hist = * ( reinterpret_cast<TH1**> ( lua_touserdata ( L, 1 ) ) );
+
+    rootProcessLoopLock.lock();
+
+    theApp->shouldStop = true;
+    //     cout << "asked to stop" << endl;
+
+    hist->Reset();
+    canvasTracker[ ( TObject* ) hist]->Modified();
+    canvasTracker[ ( TObject* ) hist]->Update();
+
+    rootProcessLoopLock.unlock();
 
     return 1;
 }
@@ -913,6 +1086,9 @@ int luaExt_NewTGraph ( lua_State* L )
 
     lua_pushcfunction ( L, luaExt_TObject_Draw );
     lua_setfield ( L, -2, "Draw" );
+
+    lua_pushcfunction ( L, luaExt_TObject_Update );
+    lua_setfield ( L, -2, "Update" );
 
     lua_pushcfunction ( L, luaExt_TGraph_Fit );
     lua_setfield ( L, -2, "Fit" );
@@ -1177,7 +1353,6 @@ int luaExt_TFile_Close ( lua_State* L )
 int luaExt_NewTCutG ( lua_State* L )
 {
     if ( !CheckLuaArgs ( L, 1, true, "luaExt_NewTCutG", LUA_TTABLE ) ) return 0;
-    if ( lua_gettop ( L ) == 4 && !CheckLuaArgs ( L, 3, true, "luaExt_NewTCutG", LUA_TTABLE, LUA_TTABLE ) ) return 0;
 
     lua_getfield ( L, 1, "name" );
     if ( !CheckLuaArgs ( L, -1, true, "luaExt_NewTCutG argument table: name ", LUA_TSTRING ) ) return 0;
@@ -1255,3 +1430,4 @@ int luaExt_TCutG_IsInside ( lua_State* L )
 {
     return 1;
 }
+
