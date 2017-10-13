@@ -396,6 +396,7 @@ int LuaSocketBind(lua_State* L)
     int sockfd = lua_tointeger(L, -1);
 
     int sock_domain = socketsList[sockfd].domain;
+    int sock_type = socketsList[sockfd].type;
 
     if(sock_domain == AF_UNIX)
     {
@@ -418,17 +419,21 @@ int LuaSocketBind(lua_State* L)
     }
     else if(sock_domain == AF_INET)
     {
-        sockaddr_in addr;
-        addr.sin_addr.s_addr = INADDR_ANY;
+        addrinfo hints, *res;
+
+        memset(&hints, 0, sizeof hints);
+
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = sock_type;
+        hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
 
         lua_getfield(L, 1, "port");
-        if(!CheckLuaArgs(L, -1, true, "LuaSocketBind arguments", LUA_TNUMBER)) return 0;
-        int portno = lua_tointeger(L, -1);
+        if(!CheckLuaArgs(L, -1, true, "LuaSocketBind arguments", LUA_TSTRING)) return 0;
+        const char* portno = lua_tostring(L, -1);
 
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(portno);
+        getaddrinfo(NULL, portno, &hints, &res);
 
-        if(bind(sockfd, (sockaddr*)&addr, sizeof(addr)) < 0)
+        if(bind(sockfd, res->ai_addr, res->ai_addrlen) < 0)
         {
             lua_pushboolean(L, 0);
             return 1;
@@ -454,6 +459,7 @@ int LuaSocketConnect(lua_State* L)
     int sockfd = lua_tointeger(L, -1);
 
     int sock_domain = socketsList[sockfd].domain;
+    int sock_type = socketsList[sockfd].type;
 
     if(sock_domain == AF_UNIX)
     {
@@ -463,7 +469,6 @@ int LuaSocketConnect(lua_State* L)
 
         lua_getfield(L, 1, "name");
         if(!CheckLuaArgs(L, -1, true, "LuaSocketConnect arguments", LUA_TSTRING)) return 0;
-
         const char* name = lua_tostring(L, -1);
 
         strcpy(addr.sun_path, name);
@@ -477,6 +482,38 @@ int LuaSocketConnect(lua_State* L)
             lua_pushstring(L, err_msg);
             return 2;
         }
+    }
+    else if(sock_domain == AF_INET)
+    {
+        addrinfo hints, *res;
+
+        memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = sock_type;
+
+        lua_getfield(L, 1, "address");
+        if(!CheckLuaArgs(L, -1, true, "LuaSocketConnect arguments", LUA_TSTRING)) return 0;
+        const char* address = lua_tostring(L, -1);
+
+        lua_getfield(L, 1, "port");
+        if(!CheckLuaArgs(L, -1, true, "LuaSocketConnect arguments", LUA_TSTRING)) return 0;
+        const char* portno = lua_tostring(L, -1);
+
+        getaddrinfo(address, portno, &hints, &res);
+
+        if(connect(sockfd, res->ai_addr, res->ai_addrlen) < 0)
+        {
+            char err_msg[100];
+            sprintf(err_msg, "Failed to connect to %s:%s", address, portno);
+            perror(err_msg);
+            lua_pushboolean(L, 0);
+            lua_pushstring(L, err_msg);
+            return 2;
+        }
+    }
+    else if(sock_domain == AF_INET6)
+    {
+
     }
 
     lua_pushboolean(L, 1);
@@ -677,4 +714,5 @@ int LuaSocketSend(lua_State* L)
 
     return 1;
 }
+
 
