@@ -148,7 +148,7 @@ luaClasses = {}
 classPostInits = {}
 
 function RegisterLuaClass(class)
-	print("Registering " .. class.classname)
+--	print("Registering " .. class.classname)
 	luaClasses[class.classname] = class
 end
 

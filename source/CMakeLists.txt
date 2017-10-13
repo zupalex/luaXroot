@@ -4,7 +4,7 @@ set (LUAXROOT_SRCS LuaExtension.cxx LuaRootBinder.cxx LuaRootBinderDictionnary.c
 
 add_library(LUAXROOT_OBJECT OBJECT ${LUAXROOT_SRCS})
 add_library(LuaXRootlib SHARED $<TARGET_OBJECTS:LUAXROOT_OBJECT>)
-target_link_libraries(LuaXRootlib ${ROOT_LIBRARIES} lualib)
+target_link_libraries(LuaXRootlib ${ROOT_LIBRARIES})
 
 install(TARGETS LuaXRootlib DESTINATION ${CMAKE_INSTALL_PREFIX})
 

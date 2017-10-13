@@ -244,85 +244,437 @@ int LuaListDirContent ( lua_State* L )
     return 1;
 }
 
-void* NewTaskFn ( void* arg )
+// ************************************************************************************************ //
+// ***************************************** Sockets Binder *************************************** //
+// ************************************************************************************************ //
+
+int LuaRegisterSocketConsts(lua_State* L)
 {
-//     cout << "Test task setup..." << endl;
+    lua_pushinteger(L, AF_UNIX);
+    lua_setglobal(L, "AF_UNIX");
 
-    TryGetGlobalField ( lua, "NextTaskToStart" );
+    lua_pushinteger(L, AF_INET);
+    lua_setglobal(L, "AF_INET");
 
-    if ( lua_type ( lua, -1 ) != LUA_TSTRING )
-    {
-        cerr << "Next task to schedule is undetermined..." << endl;
-        return nullptr;
-    }
+    lua_pushinteger(L, AF_INET6);
+    lua_setglobal(L, "AF_INET6");
 
-    string nextTask = lua_tostring ( lua, -1 );
-    lua_pop ( lua, 1 );
+    lua_pushinteger(L, AF_IPX);
+    lua_setglobal(L, "AF_IPX");
 
-    cout << "Will start the following task: " << nextTask << endl;
+    lua_pushinteger(L, AF_NETLINK);
+    lua_setglobal(L, "AF_NETLINK");
 
-    TryGetGlobalField ( lua, ( string ) ( "RootTasks."+nextTask ) );
+    lua_pushinteger(L, AF_X25);
+    lua_setglobal(L, "AF_X25");
 
-    if ( lua_type ( lua, -1 ) != LUA_TTABLE )
-    {
-        cerr << "This task does not exists or has an invalid format..." << endl;
-        return nullptr;
-    }
+    lua_pushinteger(L, AF_AX25);
+    lua_setglobal(L, "AF_AX25");
 
-    lua_getfield ( lua, -1, "task" );
+    lua_pushinteger(L, AF_ATMPVC);
+    lua_setglobal(L, "AF_ATMPVC");
 
-    if ( lua_type ( lua, -1 ) != LUA_TTABLE )
-    {
-        cerr << "This task has an invalid format..." << endl;
-        return nullptr;
-    }
+    lua_pushinteger(L, AF_APPLETALK);
+    lua_setglobal(L, "AF_APPLETALK");
 
-    lua_remove ( lua, -2 );
+    lua_pushinteger(L, AF_PACKET);
+    lua_setglobal(L, "AF_PACKET");
 
-    int taskStackPos = lua_gettop ( lua );
 
-    int nargs = lua_rawlen ( lua, -1 ) - 1;
+    lua_pushinteger(L, SOCK_STREAM);
+    lua_setglobal(L, "SOCK_STREAM");
 
-    lua_geti ( lua, taskStackPos, 1 );
+    lua_pushinteger(L, SOCK_DGRAM);
+    lua_setglobal(L, "SOCK_DGRAM");
 
-    for ( int i = 0; i < nargs; i++ )
-    {
-        lua_geti ( lua, taskStackPos, i+2 );
-    }
+    lua_pushinteger(L, SOCK_SEQPACKET);
+    lua_setglobal(L, "SOCK_SEQPACKET");
 
-    lua_remove ( lua, taskStackPos );
+    lua_pushinteger(L, SOCK_RAW);
+    lua_setglobal(L, "SOCK_RAW");
 
-    lua_pushnil ( lua );
-    TrySetGlobalField ( lua, "NextTaskToStart" );
+    lua_pushinteger(L, SOCK_RDM);
+    lua_setglobal(L, "SOCK_RDM");
 
-    lua_pcall ( lua, nargs, LUA_MULTRET, 0 );
+    lua_pushinteger(L, SOCK_PACKET);
+    lua_setglobal(L, "SOCK_PACKET");
 
-    return nullptr;
+    lua_pushinteger(L, SOCK_NONBLOCK);
+    lua_setglobal(L, "SOCK_NONBLOCK");
+
+    lua_pushinteger(L, SOCK_CLOEXEC);
+    lua_setglobal(L, "SOCK_CLOEXEC");
+
+    return 0;
 }
 
-int SetupNewTask_C ( lua_State* L )
+map<int, SocketInfos> socketsList;
+int maxSockFd = -1;
+
+int LuaSysClose(lua_State* L)
 {
-    if ( !CheckLuaArgs ( L, 1, true, "SetupNewTask_C", LUA_TFUNCTION ) ) return 0;
-
-    int nvals = lua_gettop ( L );
-
-    lua_newtable ( L );
-
-    for ( int i = 0; i < nvals; i++ )
+    if(!CheckLuaArgs(L, 1, true, "LuaSysClose", LUA_TSTRING))
     {
-        lua_pushvalue ( L, 1 );
-        lua_remove ( L, 1 );
-        lua_seti ( L, -2, i+1 );
+        return 0;
     }
+
+    const char* name = lua_tostring(L, 1);
+
+
+    return 0;
+}
+
+int LuaSysUnlink(lua_State* L)
+{
+    if(!CheckLuaArgs(L, 1, true, "LuaSysUnlink", LUA_TSTRING))
+    {
+        return 0;
+    }
+
+    const char* name = lua_tostring(L, 1);
+
+    unlink(name);
+
+    return 0;
+}
+
+int LuaSysRead(lua_State* L)
+{
+    lua_pushstring(L, "");
 
     return 1;
 }
 
-int StartNewTask_C ( lua_State* L )
+int LuaSysWrite(lua_State* L)
 {
-    pthread_t newTask;
+    lua_pushboolean(L, 1);
 
-    pthread_create ( &newTask, nullptr, NewTaskFn, nullptr );
-
-    return 0;
+    return 1;
 }
+
+int LuaNewSocket(lua_State* L)
+{
+    if(!CheckLuaArgs(L, 1, true, "LuaNewSocket", LUA_TTABLE))
+    {
+        return 0;
+    }
+
+    lua_getfield(L, 1, "domain");
+    lua_getfield(L, 1, "type");
+    lua_getfield(L, 1, "protocol");
+
+    if(lua_type(L, -3) != LUA_TNUMBER || lua_type(L, -2) != LUA_TNUMBER)
+    {
+        cerr << "Missing or invalid fields: required { domain='d' , type='t' [, protocol='p'] }" << endl;
+        return 0;
+    }
+
+    int sock_domain = lua_tointeger(L, -3);
+    int sock_type = lua_tointeger(L, -2);
+    int sock_protocol = 0;
+
+    if(lua_type(L, -1) == LUA_TNUMBER) sock_protocol = lua_tointeger(L, -1);
+
+    lua_pop(L, 3);
+
+    int sd = socket(sock_domain, sock_type, sock_protocol);
+    if(sd > maxSockFd) maxSockFd = sd;
+
+    socketsList[sd] = SocketInfos(sock_domain, sock_type);
+
+    lua_pushinteger(L, sd);
+
+    return 1;
+}
+
+int LuaSocketBind(lua_State* L)
+{
+    if(!CheckLuaArgs(L, 1, true, "LuaSocketBind", LUA_TTABLE)) return 0;
+
+    lua_getfield(L, 1, "sockfd");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketBind arguments", LUA_TNUMBER)) return 0;
+    int sockfd = lua_tointeger(L, -1);
+
+    int sock_domain = socketsList[sockfd].domain;
+
+    if(sock_domain == AF_UNIX)
+    {
+        sockaddr_un addr;
+
+        addr.sun_family = AF_UNIX;
+
+        lua_getfield(L, 1, "name");
+        if(!CheckLuaArgs(L, -1, true, "LuaSocketBind arguments", LUA_TSTRING)) return 0;
+
+        const char* name = lua_tostring(L, -1);
+
+        strcpy(addr.sun_path, name);
+
+        if(bind(sockfd, (sockaddr*)&addr, sizeof(addr)) < 0)
+        {
+            lua_pushboolean(L, 0);
+            return 1;
+        }
+    }
+    else if(sock_domain == AF_INET)
+    {
+        sockaddr_in addr;
+        addr.sin_addr.s_addr = INADDR_ANY;
+
+        lua_getfield(L, 1, "port");
+        if(!CheckLuaArgs(L, -1, true, "LuaSocketBind arguments", LUA_TNUMBER)) return 0;
+        int portno = lua_tointeger(L, -1);
+
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(portno);
+
+        if(bind(sockfd, (sockaddr*)&addr, sizeof(addr)) < 0)
+        {
+            lua_pushboolean(L, 0);
+            return 1;
+        }
+    }
+    else if(sock_domain == AF_INET6)
+    {
+        sockaddr_in6 addr;
+
+        addr.sin6_family = AF_INET6;
+    }
+
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+int LuaSocketConnect(lua_State* L)
+{
+    if(!CheckLuaArgs(L, 1, true, "LuaSocketConnect", LUA_TTABLE)) return 0;
+
+    lua_getfield(L, 1, "sockfd");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketConnect arguments", LUA_TNUMBER)) return 0;
+    int sockfd = lua_tointeger(L, -1);
+
+    int sock_domain = socketsList[sockfd].domain;
+
+    if(sock_domain == AF_UNIX)
+    {
+        sockaddr_un addr;
+
+        addr.sun_family = AF_UNIX;
+
+        lua_getfield(L, 1, "name");
+        if(!CheckLuaArgs(L, -1, true, "LuaSocketConnect arguments", LUA_TSTRING)) return 0;
+
+        const char* name = lua_tostring(L, -1);
+
+        strcpy(addr.sun_path, name);
+
+        if(connect(sockfd, (sockaddr*)&addr, sizeof(sockaddr_un)) < 0)
+        {
+            char err_msg[100];
+            sprintf(err_msg, "Failed to connect to %s", name);
+            perror(err_msg);
+            lua_pushboolean(L, 0);
+            lua_pushstring(L, err_msg);
+            return 2;
+        }
+    }
+
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+int LuaSocketSelect(lua_State* L)
+{
+    if(!CheckLuaArgs(L, 1, true, "LuaSocketSelect", LUA_TTABLE)) return 0;
+
+    lua_getfield(L, 1, "sockfd");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketSelect arguments", LUA_TNUMBER)) return 0;
+    int sockfd = lua_tointeger(L, -1);
+
+    timeval timer;
+    fd_set readfds, writefds, exceptsfds;
+    bool doread = false, dowrite = false, doexcepts = false;
+
+    timer.tv_sec = 10;
+    timer.tv_usec = 0;
+
+    if(lua_checkfield(L, 1, "timeout", LUA_TNUMBER))
+    {
+        timer.tv_sec = floor(lua_tonumber(L, -1));
+        timer.tv_usec = (lua_tonumber(L, -1) - timer.tv_sec)*1e6;
+    }
+
+    if(lua_checkfield(L, 1, "read", LUA_TBOOLEAN))
+    {
+        doread = true;
+        if(lua_toboolean(L, -1)) FD_SET(sockfd, &readfds);
+    }
+
+    if(lua_checkfield(L, 1, "write", LUA_TBOOLEAN))
+    {
+        dowrite = true;
+        if(lua_toboolean(L, -1)) FD_SET(sockfd, &writefds);
+    }
+
+    if(lua_checkfield(L, 1, "exception", LUA_TBOOLEAN))
+    {
+        doexcepts = true;
+        if(lua_toboolean(L, -1)) FD_SET(sockfd, &exceptsfds);
+    }
+
+    int sel = select(maxSockFd+1, &readfds, &writefds, &exceptsfds, &timer);
+
+    // == -1 means an error occured during the select()
+    // == 0 means it timed out
+    if(sel == -1)
+    {
+        lua_pushnil(L);
+        return 1;
+    }
+    else if(sel == 0)
+    {
+        lua_pushnumber(L, 0);
+        return 1;
+    }
+    else
+    {
+        if(doread)
+        {
+            lua_newtable(L);
+
+            if(FD_ISSET(sockfd, &readfds))
+            {
+                lua_pushnumber(L, sockfd);
+                lua_seti(L, -2, 1);
+            }
+        }
+        else lua_pushnil(L);
+
+        if(dowrite)
+        {
+            lua_newtable(L);
+
+            if(FD_ISSET(sockfd, &writefds))
+            {
+                lua_pushnumber(L, sockfd);
+                lua_seti(L, -2, 1);
+            }
+        }
+        else lua_pushnil(L);
+
+        if(doexcepts)
+        {
+            lua_newtable(L);
+
+            if(FD_ISSET(sockfd, &exceptsfds))
+            {
+                lua_pushnumber(L, sockfd);
+                lua_seti(L, -2, 1);
+            }
+        }
+        else lua_pushnil(L);
+
+        return 3;
+    }
+}
+
+int LuaSocketListen(lua_State* L)
+{
+    if(!CheckLuaArgs(L, 1, true, "LuaSocketListen", LUA_TTABLE)) return 0;
+
+    lua_getfield(L, 1, "sockfd");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketListen arguments", LUA_TNUMBER)) return 0;
+    int sockfd = lua_tointeger(L, -1);
+
+    int maxQueue = 1;
+
+    if(lua_checkfield(L, 1, "maxqueue", LUA_TNUMBER)) maxQueue = lua_tointeger(L, -1);
+
+    int success = listen(sockfd, maxQueue);
+
+    if(success == -1)
+    {
+        lua_pushnil(L);
+        lua_pushinteger(L, errno);
+        return 2;
+    }
+
+    lua_pushinteger(L, success);
+    return 1;
+}
+
+
+int LuaSocketAccept(lua_State* L)
+{
+    if(!CheckLuaArgs(L, 1, true, "LuaSocketAccept", LUA_TTABLE)) return 0;
+
+    lua_getfield(L, 1, "sockfd");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketAccept arguments", LUA_TNUMBER)) return 0;
+    int sockfd = lua_tointeger(L, -1);
+
+    sockaddr_storage clients_addr;
+    socklen_t addr_size;
+
+    int new_fd = accept(sockfd, (sockaddr*) &clients_addr, &addr_size);
+
+    if(new_fd < 0)
+    {
+        lua_pushnil(L);
+        lua_pushinteger(L, errno);
+        return 2;
+    }
+
+    lua_pushinteger(L, new_fd);
+    return 1;
+}
+
+int LuaSocketReceive(lua_State* L)
+{
+    if(!CheckLuaArgs(L, 1, true, "LuaSocketReceive", LUA_TTABLE)) return 0;
+
+    lua_getfield(L, 1, "sockfd");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketReceive arguments", LUA_TNUMBER)) return 0;
+    int sockfd = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "size");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketReceive arguments", LUA_TNUMBER)) return 0;
+    int data_length = lua_tointeger(L, -1);
+
+    int flags = 0;
+    if(lua_checkfield(L, 1, "flags", LUA_TNUMBER)) flags = lua_tointeger(L, -1);
+
+    char* buffer = new char[data_length];
+
+    int bytes_received = recv(sockfd, (void*) buffer, data_length, flags);
+
+    lua_pushinteger(L, bytes_received);
+    lua_pushstring(L, buffer);
+
+    return 2;
+}
+
+int LuaSocketSend(lua_State* L)
+{
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketSend", LUA_TTABLE)) return 0;
+
+    lua_getfield(L, 1, "sockfd");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketSend arguments", LUA_TNUMBER)) return 0;
+    int sockfd = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "data");
+    if(!CheckLuaArgs(L, -1, true, "LuaSocketSend arguments", LUA_TSTRING)) return 0;
+    const char* data = lua_tostring(L, -1);
+
+    int data_length = strlen(data);
+    if(lua_checkfield(L, 1, "size", LUA_TNUMBER)) data_length = lua_tointeger(L, -1);
+
+    int flags = 0;
+    if(lua_checkfield(L, 1, "flags", LUA_TNUMBER)) flags = lua_tointeger(L, -1);
+
+    int bytes_sent = send(sockfd, (void*) data, data_length, flags);
+
+    lua_pushinteger(L, bytes_sent);
+
+    return 1;
+}
+

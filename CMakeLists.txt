@@ -48,8 +48,8 @@ link_directories(${ROOT_LIBRARY_DIR})
 
 add_definitions(-DLINUX -D_FILE_OFFSET_BITS=64)
 
-include_directories(lua)
-add_subdirectory(lua)
+include_directories(Lua)
+add_subdirectory(Lua)
 
 include_directories(include)
 add_subdirectory(source)

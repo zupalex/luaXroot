@@ -30,6 +30,7 @@
 #include <cassert>
 #include <algorithm>
 #include <type_traits>
+#include <mutex>
 
 #include "TSystem.h"
 #include "TApplication.h"
@@ -42,11 +43,15 @@
 #include "TCutG.h"
 #include "TFile.h"
 #include "TTree.h"
+#include "TTimer.h"
 
 #include "LuaExtension.h"
 #include <llimits.h>
 
 extern map<TObject*, TCanvas*> canvasTracker;
+
+extern mutex syncSafeGuard;
+extern int updateRequestPending;
 
 // ---------------------------------------------------- TApplication Binder ------------------------------------------------------ //
 
@@ -121,6 +126,7 @@ public:
     }
 
     bool shouldStop = false;
+    bool safeSync = false;
 
     ClassDef ( RootAppThreadManager, 1 )
 };
@@ -147,10 +153,39 @@ public:
     ClassDef ( LuaEmbeddedCanvas, 1 )
 };
 
+extern map<string, lua_State*> tasksStates;
+extern map<lua_State*, string> tasksNames;
+extern map<string, string> tasksStatus;
+extern map<string, mutex> tasksMutexes;
+
+extern map<lua_State*, vector<string>> tasksPendingSignals;
+
+struct NewTaskArgs {
+    string task;
+    string packages;
+};
+
+int StartNewTask_C ( lua_State* L );
+
+int LockTaskMutex ( lua_State* L );
+int ReleaseTaskMutex ( lua_State* L );
+
+int MakeSyncSafe ( lua_State* L );
+
+int GetTaskStatus(lua_State* L);
+
+int SendSignal_C(lua_State* L);
+int CheckSignals_C(lua_State* L);
+
 static const luaL_Reg luaXroot_lib [] =
 {
-    {"SetupNewTask_C", SetupNewTask_C},
     {"StartNewTask_C", StartNewTask_C},
+    {"MakeSyncSafe", MakeSyncSafe},
+    {"LockTaskMutex", LockTaskMutex},
+    {"ReleaseTaskMutex", ReleaseTaskMutex},
+    {"GetTaskStatus", GetTaskStatus},
+    {"SendSignal_C", SendSignal_C},
+    {"CheckSignals_C", CheckSignals_C},
 
     {"TApplication", luaExt_NewTApplication},
 
@@ -165,6 +200,26 @@ static const luaL_Reg luaXroot_lib [] =
 
     {"saveprompthistory", saveprompthistory},
     {"wipeprompthistory", wipeprompthistory},
+
+    // SOCKETS BINDING //
+
+    {"SysUnlink", LuaSysUnlink},
+    {"SysRead", LuaSysRead},
+    {"SysWrite", LuaSysWrite},
+
+    {"NewSocket", LuaNewSocket},
+
+    {"SocketBind", LuaSocketBind},
+    {"SocketConnect", LuaSocketConnect},
+
+    {"SocketSelect", LuaSocketSelect},
+
+    {"SocketListen", LuaSocketListen},
+    {"SocketAccept", LuaSocketAccept},
+
+
+    {"SocketReceive", LuaSocketReceive},
+    {"SocketSend", LuaSocketSend},
     
     {NULL, NULL}
 };

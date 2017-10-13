@@ -1,7 +1,14 @@
 # luaXroot
 A binder to use ROOT classes in Lua and merging ROOT TApplication with the Lua interpreter (unix only).
 
-CMake and Readline libraries are required.
+REQUIREMENTS:
+CMake and Readline development libraries are required.
+
+example for Ubuntu:
+apt-get install cmake; apt-get install readline-devel
+
+example for Fedora 24:
+dnf install cmake; dnf install readline-devel
 
 To install it:
 

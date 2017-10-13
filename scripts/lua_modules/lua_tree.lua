@@ -1,5 +1,4 @@
 require("lua_helper")
-local binreader = require("binaryreader")
 
 local size_table = 
 {

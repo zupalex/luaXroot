@@ -32,6 +32,13 @@
 #include <cassert>
 #include <algorithm>
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <netinet/in.h>
+#include <netdb.h>
+
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
@@ -147,9 +154,6 @@ void TryGetGlobalField ( lua_State* L, string gfield );
 bool TrySetGlobalField ( lua_State* L, string gfield );
 
 void DoForEach ( lua_State* L, int index, function<bool ( lua_State* L_ ) > dofn );
-
-int SetupNewTask_C ( lua_State* L );
-int StartNewTask_C ( lua_State* L );
 
 template<typename T> T* GetLuaField ( lua_State* L, int index = -1, string field = "" )
 {
@@ -368,6 +372,52 @@ template<typename First, typename... Rest> void PushToLuaStack ( lua_State* L, F
 }
 
 int LuaListDirContent ( lua_State* L );
+
+// ************************************************************************************************ //
+// ***************************************** Sockets Binder *************************************** //
+// ************************************************************************************************ //
+
+int LuaRegisterSocketConsts(lua_State* L);
+
+struct SocketInfos
+{
+    int domain;
+    int type;
+
+    SocketInfos(int dom_, int typ_)
+    {
+        domain = dom_;
+        type = typ_;
+    }
+
+    SocketInfos()
+    {
+        domain = AF_UNIX;
+        type = SOCK_STREAM;
+    }
+};
+
+extern map<int, SocketInfos> socketsList;
+extern int maxSockFd;
+
+int LuaSysClose(lua_State* L);
+
+int LuaSysUnlink(lua_State* L);
+int LuaSysRead(lua_State* L);
+int LuaSysWrite(lua_State* L);
+
+int LuaNewSocket(lua_State* L);
+
+int LuaSocketBind(lua_State* L);
+int LuaSocketConnect(lua_State* L);
+
+int LuaSocketSelect(lua_State* L);
+
+int LuaSocketListen(lua_State* L);
+int LuaSocketAccept(lua_State* L);
+
+int LuaSocketSend(lua_State* L);
+int LuaSocketReceive(lua_State* L);
 
 #endif
 
