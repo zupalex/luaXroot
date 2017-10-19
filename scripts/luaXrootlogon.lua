@@ -1,8 +1,26 @@
 -- Do not touch this except if you exactly know what you are doing --
 
+local defaultPackages = {}
+
 -- Loading the wrapper between ROOT objects and lua
 local rootbindpckg = assert(package.loadlib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib"))
 rootbindpckg()
+
+_require = _G.require
+function require(pckg)
+  local luaExt = pckg:find(".lua")
+  if luaExt then
+    local pckg_adjust = pckg:sub(1, luaExt-1)
+
+    local required = _require(pckg_adjust)
+
+    if required then
+      return required
+    end
+  end
+
+  return _require(pckg)
+end
 
 if IsMasterState then
 -- Initialize the ROOT interaction application (event processing in TCanvas, etc...)
@@ -14,10 +32,12 @@ if IsMasterState then
     local packaddons = {}
 
     for k, v in pairs(package.loaded) do
-      local packpath = package.searchpath(k, package.path)
+      if not defaultPackages[k] and k ~= "luaXrootlogon" then
+        local packpath = package.searchpath(k, package.path)
 
-      if packpath ~= nil then
-        packaddons[k] = packpath
+        if packpath ~= nil then
+          packaddons[k] = packpath
+        end
       end
     end
 
@@ -49,6 +69,30 @@ if IsMasterState then
       local sig_str = serpent.dump(sig)
       SendSignal_C(taskname, sig_str)
     end
+  end
+
+  function TasksList(doprint)
+    local tasks = TasksList_C()
+
+    if doprint then
+      for k, v in pairs(tasks) do
+        print("*", k, ": status =", v)
+      end
+    end
+
+    return tasks
+  end
+
+  function PauseTask(taskname)
+    SendSignal(taskname, "wait")
+  end
+
+  function ResumeTask(taskname)
+    SendSignal(taskname, "resume")
+  end
+
+  function StopTask(taskname)
+    SendSignal(taskname, "stop")
   end
 
 -- Make a function to exit the program nicely without getting a bucket load of seg faults
@@ -88,13 +132,6 @@ function ProcessSignal(sig_str)
   sigfn()
 end
 
-function CheckSuspend()
-  ReleaseTaskMutex()
-  LockTaskMutex()
-end
-
-TaskComplete = ReleaseTaskMutex
-
 -- Here are the modules which wil lbe loaded upon starting a session of luaXroot --
 
 require("lua_helper")
@@ -107,3 +144,5 @@ pcall(require, 'userlogon') -- this line attempt to load additional user/userlog
 -- will need to set the search path to include the location of such scripts ----------------------
 -- To do this add "package.path = package.path .. ";<path/to/add>/?.lua"  in user/userlogon.lua --
 -- e.g.: package.path = package.path .. ";/home/awesomescripts/?.lua;/home/awesomescripts/lua_scripts/?"
+
+defaultPackages = shallowcopy(package.loaded)

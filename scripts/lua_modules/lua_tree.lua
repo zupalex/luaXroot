@@ -1,22 +1,13 @@
 require("lua_helper")
 
-local size_table = 
-{
-  boolean = 1,
-  integer = 4,
-  number = 8,
-  string = 0,
-  table = 0,
-  array = 0,
-}
-
 local type_table = {
   boolean = { id = 1, size = 1 },
   integer = { id = 2, size = 4 },
-  number = { id = 3, size = 8 },
-  string = { id = 4, size = 0 },
-  table = { id = 5, size = 0 },
-  userclass = { id = 6, size = math.huge },
+  long = { id = 3, size = 4 },
+  number = { id = 4, size = 8 },
+  string = { id = 5, size = 0 },
+  table = { id = 6, size = 0 },
+  userclass = { id = 7, size = 0 },
 }
 
 local invert_type_table = {}
@@ -738,13 +729,16 @@ function LuaTree:SerializeTable(tbl, src, dest)
 
         -- print("|-" .. tabulation_ .. "> Writing value(s) of " .. v.name .. " ( " .. ((v.is_array and "") or "not an ") .. "array ) => " .. tostring(data))
 
-        if v.typeid == 1 then
+        if v.typeid == type_table.boolean.id then
           serialized_data = string.pack("B", data and 1 or 0)
           table_size = table_size+1
-        elseif v.typeid == 2 then
+        elseif v.typeid == type_table.integer.id then
           serialized_data = string.pack("<i", data)
           table_size = table_size+4
-        elseif v.typeid == 3 then
+        elseif v.typeid == type_table.long.id then
+          serialized_data = string.pack("<j", data)
+          table_size = table_size+8
+        elseif v.typeid == type_table.number.id then
           serialized_data = string.pack("<d", data) 
           table_size = table_size+8
         else
@@ -885,32 +879,9 @@ local function ReadEntry(tree, src, dest)
     local value
 
     for i=1,arraysize do
-      if v.typeid == 1 then
-        buffer = tree.inputfile:read(1)
-        value = string.unpack("B", buffer)
-        if v.is_array then
-          dest[v.name][i] = value
-        else
-          dest[v.name] = value
-        end
-      elseif v.typeid == 2 then
-        buffer = tree.inputfile:read(4)
-        value = string.unpack("<i", buffer)
-        if v.is_array then
-          dest[v.name][i] = value
-        else
-          dest[v.name] = value
-        end
-      elseif v.typeid == 3 then
-        buffer = tree.inputfile:read(8)
-        value = string.unpack("<d", buffer)
+      local r_size, pack_fmt
 
-        if v.is_array then
-          dest[v.name][i] = value
-        else
-          dest[v.name] = value
-        end
-      elseif v.typeid == 5 then
+      if v.typeid == type_table.table.id then
         -- print("Streamer is a table. Filling next level...")
         -- printtable(v.streamer, true, nil, nil, 10)
 
@@ -923,6 +894,29 @@ local function ReadEntry(tree, src, dest)
         end
 
         ReadEntry(tree, v.streamer, v.is_array and dest[v.name][i] or dest[v.name])
+      else
+        if v.typeid == type_table.boolean.id then
+          r_size = 1
+          pack_fmt = "B"
+        elseif v.typeid == type_table.integer.id then
+          r_size = 4
+          pack_fmt = "<i"
+        elseif v.typeid == type_table.long.id then
+          r_size = 8
+          pack_fmt = "<j"
+        elseif v.typeid == type_table.number.id then
+          r_size = 8
+          pack_fmt = "<d"        
+        end
+
+        buffer = tree.inputfile:read(r_size)
+        value = string.unpack(pack_fmt, buffer)
+
+        if v.is_array then
+          dest[v.name][i] = value
+        else
+          dest[v.name] = value
+        end
       end
 
       -- if value ~= nil then print("Read value: " .. tostring(value)) end

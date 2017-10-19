@@ -53,6 +53,9 @@ extern map<TObject*, TCanvas*> canvasTracker;
 extern mutex syncSafeGuard;
 extern int updateRequestPending;
 
+void singtstp_handler_stop(int signal);
+void singtstp_handler_pause(int signal);
+
 // ---------------------------------------------------- TApplication Binder ------------------------------------------------------ //
 
 int luaExt_NewTApplication ( lua_State* L );
@@ -165,6 +168,8 @@ struct NewTaskArgs {
     string packages;
 };
 
+int TasksList_C(lua_State* L);
+
 int StartNewTask_C ( lua_State* L );
 
 int LockTaskMutex ( lua_State* L );
@@ -174,11 +179,14 @@ int MakeSyncSafe ( lua_State* L );
 
 int GetTaskStatus(lua_State* L);
 
+void PushSignal(string taskname, string signal);
+
 int SendSignal_C(lua_State* L);
 int CheckSignals_C(lua_State* L);
 
 static const luaL_Reg luaXroot_lib [] =
 {
+    {"TasksList_C", TasksList_C},
     {"StartNewTask_C", StartNewTask_C},
     {"MakeSyncSafe", MakeSyncSafe},
     {"LockTaskMutex", LockTaskMutex},
@@ -220,7 +228,7 @@ static const luaL_Reg luaXroot_lib [] =
 
     {"SocketReceive", LuaSocketReceive},
     {"SocketSend", LuaSocketSend},
-    
+
     {NULL, NULL}
 };
 

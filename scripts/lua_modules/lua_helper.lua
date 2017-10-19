@@ -9,7 +9,7 @@ function shallowcopy(orig, copyNested, ignores, trackCopy)
     if orig_type == 'table' then
         copy = {}
         for orig_key, orig_value in pairs(orig) do
-			if not ignores[orig_key] then 
+			if ignores == nil or not ignores[orig_key] then 
 				local key_copy
 			
 				if type(orig_key) == "table" and copyNested then

@@ -587,7 +587,6 @@ static int handle_luainit ( lua_State *L )
         return dostring ( L, init, name );
 }
 
-
 /*
 ** Main body of stand-alone interpreter (to be called in protected mode).
 ** Reads the options and handles them all.

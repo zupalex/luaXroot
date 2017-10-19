@@ -8,6 +8,32 @@ map<TObject*, TCanvas*> canvasTracker;
 mutex syncSafeGuard;
 int updateRequestPending;
 
+void singtstp_handler_stop(int i)
+{
+    if(i == SIGTSTP)
+    {
+        signal(SIGTSTP, singtstp_handler_pause);
+
+        for(auto itr = tasksNames.begin(); itr != tasksNames.end(); itr++)
+        {
+            PushSignal(itr->second, "stop");
+        }
+    }
+}
+
+void singtstp_handler_pause(int i)
+{
+    if(i == SIGTSTP)
+    {
+        signal(SIGTSTP, singtstp_handler_stop);
+
+        for(auto itr = tasksNames.begin(); itr != tasksNames.end(); itr++)
+        {
+            PushSignal(itr->second, "wait");
+        }
+    }
+}
+
 vector<string> getpossiblefields ( string field )
 {
     vector<string> autocompletes;
@@ -162,6 +188,20 @@ map<string, mutex> tasksMutexes;
 
 map<lua_State*, vector<string>> tasksPendingSignals;
 
+int TasksList_C(lua_State* L)
+{
+    lua_newtable(L);
+
+    for(auto itr = tasksNames.begin(); itr != tasksNames.end(); itr++)
+    {
+        string taskname = itr->second;
+        lua_pushstring(L, tasksStatus[taskname].c_str());
+        lua_setfield(L, -2, taskname.c_str());
+    }
+
+    return 1;
+}
+
 int LockTaskMutex ( lua_State* L )
 {
     string mutexName;
@@ -225,6 +265,8 @@ void* NewTaskFn ( void* arg )
 //     luaopen_libLuaXRootlib ( L );
     if(!args->packages.empty())
     {
+//         cout << "Some additional packages need to be loaded" << endl;
+
         lua_getglobal(L, "LoadAdditionnalPackages");
 
         luaL_loadstring ( L, (args->packages).c_str() );
@@ -238,6 +280,8 @@ void* NewTaskFn ( void* arg )
 
         lua_pcall(L, 1, LUA_MULTRET, 0);
     }
+
+//     cout << "Will retrieve arguments..." << endl;
 
     luaL_loadstring ( L, (args->task).c_str() );
 
@@ -261,10 +305,20 @@ void* NewTaskFn ( void* arg )
 
     lua_getfield ( L, -1, "taskfn" );
 
+    if(lua_type(L, -1) == LUA_TSTRING)
+    {
+        const char* taskfn_name = lua_tostring(L, -1);
+        lua_pop(L, 1);
+//         cout << "Task given as string: " << taskfn_name << endl;
+        TryGetGlobalField(L, taskfn_name);
+    }
+
     if ( !CheckLuaArgs ( L, -1, true, "NewTaskFn", LUA_TFUNCTION ) )
     {
         return 0;
     }
+
+//     cout << "Task is valid. Getting arguments..." << endl;
 
     lua_getfield ( L, -2, "args" );
 
@@ -340,7 +394,7 @@ int MakeSyncSafe(lua_State* L)
     if(!apply)
     {
         updateRequestPending = 0;
-        cout << "Reset updateRequestpending: " << updateRequestPending << endl;
+//         cout << "Reset updateRequestpending: " << updateRequestPending << endl;
     }
 
     if(theApp->safeSync) syncSafeGuard.unlock();
@@ -350,7 +404,7 @@ int MakeSyncSafe(lua_State* L)
         theApp->shouldStop = true;
         syncSafeGuard.lock();
         theApp->safeSync = true;
-        cout << "Setting up sync safetey mutex..." << endl;
+//         cout << "Setting up sync safetey mutex..." << endl;
     }
 
     return 0;
@@ -370,6 +424,17 @@ int GetTaskStatus(lua_State* L)
     return 1;
 }
 
+void PushSignal(string taskname, string signal)
+{
+    vector<string>* sigs = &tasksPendingSignals[tasksStates[taskname]];
+
+//     cout << "Sending signal " << signal << " to " << taskname << endl;
+
+    if(signal == "stop" || signal == "wait" || signal == "resume") sigs->clear();
+
+    sigs->push_back(signal);
+}
+
 int SendSignal_C(lua_State* L)
 {
     if ( !CheckLuaArgs ( L, 1, true, "SendSignal_C", LUA_TSTRING, LUA_TSTRING ) )
@@ -380,11 +445,7 @@ int SendSignal_C(lua_State* L)
     string taskname = lua_tostring ( L, 1 );
     string signal = lua_tostring ( L, 2 );
 
-    vector<string>* sigs = &tasksPendingSignals[tasksStates[taskname]];
-
-    if(signal == "stop" || signal == "wait") sigs->clear();
-
-    sigs->push_back(signal);
+    PushSignal(taskname, signal);
 
     lua_pushboolean(L, true);
 
@@ -398,30 +459,47 @@ int CheckSignals_C(lua_State* L)
 
     if(nsigs > 0)
     {
-//         cout << nsigs << " pending signals..." << endl;
+//         cout << nsigs << " pending signals for " << tasksNames[L] <<" ..." << endl;
         for(unsigned int i = 0; i < nsigs; i++)
         {
 //             cout << "Treating signal ";
             if(i == 0 && sigs->at(i) == "stop")
             {
 //                 cout << "stop" << endl;
+                sigs->clear();
                 return 0;
             }
-            if(sigs->at(i) == "wait")
+            if(i == 0 && sigs->at(i) == "wait")
             {
 //                 cout << "wait" << endl;
-                return 0;
+                tasksStatus[tasksNames[L]] = "suspended";
+
+                while(sigs->at(i) == "wait")
+                {
+                    sleep(1);
+                }
+
+                return CheckSignals_C(L);
+            }
+            if(i == 0 && sigs->at(i) == "resume")
+            {
+                tasksStatus[tasksNames[L]] = "running";
+                sigs->clear();
+                signal(SIGTSTP, singtstp_handler_pause);
+                return 1;
             }
             else
             {
 //                 cout << sigs->at(i) << endl;
                 lua_getglobal(L, "ProcessSignal");
                 lua_pushstring(L, sigs->at(i).c_str());
+                lua_pcall(L, 1, LUA_MULTRET, 0);
             }
         }
     }
 //     else cout << "No pending signals" << endl;
 
+    sigs->clear();
     lua_pushboolean(L, 1);
 
     return 1;
@@ -438,41 +516,40 @@ restartruntask:
     if(theApp->shouldStop)
     {
         rootProcessLoopLock.unlock();
-        cout << "Restarting InnerLoop" << endl;
+//         cout << "Restarting InnerLoop" << endl;
     }
 
     theApp->shouldStop = false;
 
     if(theApp->safeSync)
     {
-        cout << "trying to acquire lock on sync mutex" << endl;
+//         cout << "trying to acquire lock on sync mutex" << endl;
         syncSafeGuard.lock();
-        cout << "lock acquired and now releasing it..." << endl;
+//         cout << "lock acquired and now releasing it..." << endl;
         syncSafeGuard.unlock();
         theApp->safeSync = false;
     }
 
     while ( !theApp->shouldStop )
     {
-//         rootProcessLoopLock.unlock();
         theApp->StartIdleing();
         gSystem->InnerLoop();
         theApp->StopIdleing();
-//         rootProcessLoopLock.lock();
     }
 
-    cout << "Exiting main loop..." << endl;
+//     cout << "Exiting main loop..." << endl;
 
     while(updateRequestPending > 0)
     {
 //         cout << "Waiting for updates: " << updateRequestPending << endl;
+        gSystem->Sleep ( 50 );
     }
 
-    cout << "All Updates have been treated" << endl;
+//     cout << "All Updates have been treated" << endl;
 
     rootProcessLoopLock.lock();
 
-    cout << "theApp acquired master lock" << endl;
+//     cout << "theApp acquired master lock" << endl;
 
     gSystem->Sleep ( 50 );
 
@@ -486,6 +563,9 @@ int luaExt_NewTApplication ( lua_State* L )
     if ( theApp == nullptr )
     {
         //         cout << "theApp == nullptr, initializing it..." << endl;
+
+        signal(SIGTSTP, singtstp_handler_pause);
+
         lua = L;
         rl_attempted_completion_function = input_completion;
 
@@ -550,6 +630,12 @@ int luaExt_TApplication_Update ( lua_State* L )
     }
 
     TApplication* tApp = * ( reinterpret_cast<TApplication**> ( lua_touserdata ( L, 1 ) ) );
+
+    while(updateRequestPending > 0)
+    {
+//         cout << "Waiting for updates: " << updateRequestPending << endl;
+        gSystem->Sleep ( 50 );
+    }
 
 //     cout << "theApp Update try get master lock..." << endl;
     rootProcessLoopLock.lock();
@@ -2036,6 +2122,7 @@ int luaExt_TCutG_IsInside ( lua_State* L )
 {
     return 1;
 }
+
 
 
 
