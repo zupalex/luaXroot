@@ -33,6 +33,7 @@
 #include <mutex>
 
 #include "TSystem.h"
+#include "TROOT.h"
 #include "TApplication.h"
 #include "TCanvas.h"
 #include "TQObject.h"
@@ -46,15 +47,17 @@
 #include "TTimer.h"
 
 #include "LuaExtension.h"
+#include "LuaSocketBinder.h"
 #include <llimits.h>
 
 extern map<TObject*, TCanvas*> canvasTracker;
 
+extern mutex rootProcessLoopLock;
 extern mutex syncSafeGuard;
 extern int updateRequestPending;
 
-void singtstp_handler_stop(int signal);
-void singtstp_handler_pause(int signal);
+void singtstp_handler_stop ( int signal );
+void singtstp_handler_pause ( int signal );
 
 // ---------------------------------------------------- TApplication Binder ------------------------------------------------------ //
 
@@ -68,6 +71,8 @@ int luaExt_TApplication_Terminate ( lua_State* L );
 int luaExt_NewTObject ( lua_State* L );
 int luaExt_TObject_Draw ( lua_State* L );
 int luaExt_TObject_Update ( lua_State* L );
+int luaExt_TObject_GetName ( lua_State* L );
+int luaExt_TObject_GetTitle ( lua_State* L );
 
 // ------------------------------------------------------ TF1 Binder -------------------------------------------------------------- //
 
@@ -92,7 +97,6 @@ int luaExt_THist_Reset ( lua_State* L );
 
 int luaExt_NewTGraph ( lua_State* L );
 int luaExt_TGraph_SetTitle ( lua_State* L );
-int luaExt_TGraph_Draw ( lua_State* L );
 int luaExt_TGraph_Fit ( lua_State* L );
 int luaExt_TGraph_SetPoint ( lua_State* L );
 int luaExt_TGraph_GetPoint ( lua_State* L );
@@ -111,6 +115,37 @@ int luaExt_TFile_Close ( lua_State* L );
 int luaExt_NewTCutG ( lua_State* L );
 int luaExt_TCutG_IsInside ( lua_State* L );
 
+// ------------------------------------------------------ TTree Binder ----------------------------------------------------------- //
+
+extern map<string, function<void ( lua_State*, TTree*, const char*, int ) >> newBranchFns;
+
+int luaExt_NewTTree ( lua_State* L );
+int luaExt_TTree_Fill ( lua_State* L );
+int luaExt_TTree_GetEntries ( lua_State* L );
+int luaExt_TTree_Draw ( lua_State* L );
+
+int luaExt_TTree_NewBranch_Interface ( lua_State* L );
+
+void InitializeBranchesFuncs();
+
+static const luaL_Reg luaTTreeBranchFns [] =
+{
+    {"NewBranchInterface", luaExt_TTree_NewBranch_Interface},
+
+    {NULL, NULL}
+};
+
+// --------------------------------------------- ROOT Object API Helper Functions ------------------------------------------------ //
+
+inline void SetupTObjectMetatable ( lua_State* L )
+{
+    SetupMetatable ( L );
+
+    AddMethod ( L, luaExt_TObject_GetName, "GetName" );
+    AddMethod ( L, luaExt_TObject_GetTitle, "GetTitle" );
+    AddMethod ( L, luaExt_TObject_Draw, "Draw" );
+    AddMethod ( L, luaExt_TObject_Update, "Update" );
+}
 
 // --------------------------------------------------- Lua Library export -------------------------------------------------------- //
 
@@ -122,19 +157,108 @@ public:
     RootAppThreadManager ( const char *appClassName, Int_t *argc, char **argv, void *options=0, Int_t numOptions=0 );
     virtual ~RootAppThreadManager() {}
 
+    void SetupRootAppMetatable ( lua_State* L )
+    {
+        SetupMetatable ( L );
+
+        lua_pushcfunction ( L, luaExt_TApplication_Run );
+        lua_setfield ( L, -2, "Run" );
+
+        lua_pushcfunction ( L, luaExt_TApplication_Update );
+        lua_setfield ( L, -2, "Update" );
+
+        lua_pushcfunction ( L, luaExt_TApplication_Terminate );
+        lua_setfield ( L, -2, "Terminate" );
+    }
+
     void KillApp()
     {
         cout << "Received signal to kill the app" << endl;
         gSystem->ExitLoop();
     }
 
+    void OnCanvasKilled()
+    {
+        cout << "A Canvas Has Been KILLED!" << endl;
+        this->shouldStop = true;
+    }
+
+    void SetupUpdateSignalSender()
+    {
+        msg_fd = socket ( AF_UNIX, SOCK_STREAM, 0 );
+
+        remove ( "/tmp/.luaXroot_msgqueue" );
+
+        sockaddr_un addr;
+        addr.sun_family = AF_UNIX;
+        strcpy ( addr.sun_path, "/tmp/.luaXroot_msgqueue" );
+
+        if ( bind ( msg_fd, ( sockaddr* ) &addr, sizeof ( addr ) ) < 0 )
+        {
+            cerr << "Error opening socket" << endl;
+        }
+
+        listen ( msg_fd, 1 );
+    }
+
+    void WaitForUpdateReceiver()
+    {
+
+        sockaddr_storage clients_addr;
+        socklen_t addr_size;
+
+        msg_fd = accept ( msg_fd, ( sockaddr* ) &clients_addr, &addr_size );
+    }
+
+    void SetupUpdateSignalReceiver()
+    {
+        rcv_fd = socket ( AF_UNIX, SOCK_STREAM, 0 );
+
+        sockaddr_un addr;
+        addr.sun_family = AF_UNIX;
+        strcpy ( addr.sun_path, "/tmp/.luaXroot_msgqueue" );
+
+        connect ( rcv_fd, ( sockaddr* ) &addr, sizeof ( sockaddr_un ) );
+
+        gSystem->AddFileHandler ( new TFileHandler ( rcv_fd, 1 ) );
+    }
+
+    void NotifyUpdatePending()
+    {
+        updateRequestPending++;
+        shouldStop = true;
+        const char* msg = "update";
+        if ( send ( msg_fd, ( void* ) msg, 6, 0 ) == -1 ) cerr << "Failed to send update message:" << errno << endl;
+        rootProcessLoopLock.lock();
+    }
+
+    void NotifyUpdateDone()
+    {
+        updateRequestPending--;
+        char* buffer = new char[6];
+        if ( recv ( rcv_fd, buffer, 6, 0 ) == -1 ) cerr << "Failed to receive update message" << errno << endl;
+        rootProcessLoopLock.unlock();
+    }
+
     bool shouldStop = false;
     bool safeSync = false;
+
+    int msg_fd;
+    int rcv_fd;
 
     ClassDef ( RootAppThreadManager, 1 )
 };
 
 extern RootAppThreadManager* theApp;
+
+inline int GetTheApp ( lua_State* L )
+{
+    RootAppThreadManager** root_app = NewUserData<RootAppThreadManager> ( L, theApp );
+
+    ( *root_app )->SetupRootAppMetatable ( L );
+
+    return 1;
+}
 
 class LuaEmbeddedCanvas : public TCanvas
 {
@@ -144,13 +268,27 @@ public:
     LuaEmbeddedCanvas();
     virtual ~LuaEmbeddedCanvas()
     {
-        KillRootApp();
+        HasBeenKilled();
+
+        for ( auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++ )
+        {
+            if ( itr->second == this )
+            {
+                canvasTracker.erase ( itr );
+                break;
+            }
+        }
     }
 
-    void KillRootApp()
+    void HasBeenKilled()
     {
 //         cout << "Emitting signal to kill the app" << endl;
-        Emit ( "KillRootApp()" );
+        Emit ( "HasBeenKilled()" );
+    }
+
+    void RequestMasterUpdate()
+    {
+        Emit ( "RequestMasterUpdate()" );
     }
 
     ClassDef ( LuaEmbeddedCanvas, 1 )
@@ -163,12 +301,13 @@ extern map<string, mutex> tasksMutexes;
 
 extern map<lua_State*, vector<string>> tasksPendingSignals;
 
-struct NewTaskArgs {
+struct NewTaskArgs
+{
     string task;
     string packages;
 };
 
-int TasksList_C(lua_State* L);
+int TasksList_C ( lua_State* L );
 
 int StartNewTask_C ( lua_State* L );
 
@@ -177,12 +316,14 @@ int ReleaseTaskMutex ( lua_State* L );
 
 int MakeSyncSafe ( lua_State* L );
 
-int GetTaskStatus(lua_State* L);
+int GetTaskStatus ( lua_State* L );
 
-void PushSignal(string taskname, string signal);
+void PushSignal ( string taskname, string signal );
 
-int SendSignal_C(lua_State* L);
-int CheckSignals_C(lua_State* L);
+int SendSignal_C ( lua_State* L );
+int CheckSignals_C ( lua_State* L );
+
+int CompilePostInit_C ( lua_State* L );
 
 static const luaL_Reg luaXroot_lib [] =
 {
@@ -194,8 +335,10 @@ static const luaL_Reg luaXroot_lib [] =
     {"GetTaskStatus", GetTaskStatus},
     {"SendSignal_C", SendSignal_C},
     {"CheckSignals_C", CheckSignals_C},
+    {"CompilePostInit_C", CompilePostInit_C},
 
     {"TApplication", luaExt_NewTApplication},
+    {"GetTheApp", GetTheApp},
 
     {"TObject", luaExt_NewTObject},
 
@@ -205,6 +348,8 @@ static const luaL_Reg luaXroot_lib [] =
     {"THist", luaExt_NewTHist},
     {"TGraph", luaExt_NewTGraph},
     {"TCutG", luaExt_NewTCutG},
+
+    {"TTree", luaExt_NewTTree},
 
     {"saveprompthistory", saveprompthistory},
     {"wipeprompthistory", wipeprompthistory},
@@ -235,3 +380,4 @@ static const luaL_Reg luaXroot_lib [] =
 extern "C" int luaopen_libLuaXRootlib ( lua_State* L );
 
 #endif
+

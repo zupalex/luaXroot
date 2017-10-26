@@ -1,6 +1,6 @@
-root_generate_dictionary(LuaRootBinderDictionnary LuaRootBinder.h LINKDEF LuaRootBinderLinkDef.h)
+root_generate_dictionary(LuaRootBinderDictionnary LuaRootBinder.h UserClassBase.h LINKDEF LuaRootBinderLinkDef.h)
 
-set (LUAXROOT_SRCS LuaExtension.cxx LuaRootBinder.cxx LuaRootBinderDictionnary.cxx)
+set (LUAXROOT_SRCS LuaExtension.cxx LuaRootBinder.cxx LuaSocketBinder.cxx UserClassBase.cxx LuaRootBinderDictionnary.cxx)
 
 add_library(LUAXROOT_OBJECT OBJECT ${LUAXROOT_SRCS})
 add_library(LuaXRootlib SHARED $<TARGET_OBJECTS:LUAXROOT_OBJECT>)

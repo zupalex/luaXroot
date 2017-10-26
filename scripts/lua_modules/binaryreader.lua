@@ -1,8 +1,36 @@
+function PrintHexa(data, size)
+  if data then
+    if size == 1 then
+      return string.format("0x%02x", data)
+    elseif size == 2 then
+      return string.format("0x%04x", data)
+    elseif size == 3 then
+      return string.format("0x%06x", data)
+    elseif size == 4 then
+      return string.format("0x%08x", data)
+    else
+      return string.format("0x%x", data)
+    end
+  else
+    return tostring(nil)
+  end
+end
+
+function GetPackSize(fmt)
+  if fmt:find("c") then
+    return tonumber(fmt:sub(fmt:find("c")+1))
+  elseif fmt:find("z") then
+    return
+  else
+    return string.packsize(fmt)
+  end
+end
+
 function ReadBytes(file, fmt, tohexa)
   if file then
-    if fmt:find("s") then
-      local size = tonumber(fmt:sub(fmt:find("s")+1))
+    local size = GetPackSize(fmt)
 
+    if fmt:find("c") then
 --      print("reading string of length", size, "starting at", file:seek("cur"))
 
       if size then
@@ -20,8 +48,6 @@ function ReadBytes(file, fmt, tohexa)
 
       return table.concat(str)
     else
-      local size = string.packsize(fmt)
-
 --      print("reading data of length", size, "starting at", file:seek("cur"))
 
       if size then
@@ -29,17 +55,7 @@ function ReadBytes(file, fmt, tohexa)
         local data = string.unpack(fmt, bdata)
 
         if tohexa and math.floor(data) == data then
-          if size == 1 then
-            return string.format("0x%02x", data)
-          elseif size == 2 then
-            return string.format("0x%04x", data)
-          elseif size == 3 then
-            return string.format("0x%06x", data)
-          elseif size == 4 then
-            return string.format("0x%08x", data)
-          else
-            return string.format("0x%x", data)
-          end
+          return PrintHexa(data, size)
         else
           return data
         end
@@ -56,6 +72,20 @@ function GoToByte(file, b)
       file:seek("set")
     end
   end
+end
+
+function DecodeBytes(str, fmt, first, tohexa)
+  if not str or not fmt then return end
+
+  if not first then first = 1 end
+
+  local decoded, offset = string.unpack(fmt, str:sub(first))
+
+  if tohexa then 
+    return PrintHexa(decoded, offset-first), (first+offset-1)
+  end
+
+  return decoded, (first+offset-1)
 end
 
 

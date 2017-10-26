@@ -2,4 +2,6 @@
 *.*~
 build/
 exec/
-user/*.lua
+*_cxx.d
+*_cxx.so
+*_cxx_ACLiC_dict_rdict.pcm

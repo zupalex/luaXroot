@@ -7,5 +7,6 @@
 
 #pragma link C++ class RootAppThreadManager+;
 #pragma link C++ class LuaEmbeddedCanvas+;
+#pragma link C++ class LuaUserClass+;
 
 #endif

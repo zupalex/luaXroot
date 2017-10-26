@@ -32,13 +32,6 @@
 #include <cassert>
 #include <algorithm>
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <netinet/in.h>
-#include <netdb.h>
-
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
@@ -148,6 +141,27 @@ inline bool lua_checkfield ( lua_State* L, int idx, string field, int type )
 
 }
 
+inline bool lua_unpackarguments ( lua_State* L, int index, string errmsg, vector<const char*> arg_names, vector<int> arg_types, vector<bool> arg_required )
+{
+    if ( arg_names.size() != arg_types.size() || arg_names.size() != arg_required.size() )
+    {
+        cerr << "Error in arguments vectors in lua_unpackarguments..." << endl;
+        return false;
+    }
+
+    int const_idx = index;
+
+    if ( const_idx < 0 ) const_idx = lua_gettop ( L ) + const_idx + 1;
+
+    for ( unsigned int i = 0; i < arg_names.size(); i++ )
+    {
+        lua_getfield ( L, const_idx, arg_names[i] );
+        if ( arg_required[i] && !CheckLuaArgs ( L, -1, true, errmsg, arg_types[i] ) ) return false;
+    }
+
+    return true;
+}
+
 lua_State* InitLuaEnv ( );
 
 void TryGetGlobalField ( lua_State* L, string gfield );
@@ -227,197 +241,350 @@ template<typename T> bool TryFindLuaTableValue ( lua_State* L, int index, T valu
     return newStackSize == prevStackSize+2;
 }
 
-inline void PushToLuaStack ( lua_State* L )
+inline const char* lua_tostringx ( lua_State* L, int index )
 {
-    ( void ) L;
-    return;
+    if ( lua_type ( L, index ) == LUA_TSTRING ) return lua_tostring ( L, index );
+    else return "";
 }
 
-inline void PushToLuaStack ( lua_State* L, char val )
-{
-    char* c = new char;
-    *c = val;
-    lua_pushstring ( L, c );
-}
-
-inline void PushToLuaStack ( lua_State* L, const char* val )
-{
-    lua_pushstring ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, char* val )
-{
-    lua_pushstring ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, int val )
-{
-    lua_pushinteger ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, int* val )
-{
-    lua_pushinteger ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, unsigned int val )
-{
-    lua_pushnumber ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, unsigned int* val )
-{
-    lua_pushnumber ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, long int val )
-{
-    lua_pushnumber ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, long int* val )
-{
-    lua_pushnumber ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, unsigned long int val )
-{
-    lua_pushnumber ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, unsigned long int* val )
-{
-    lua_pushnumber ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, long long int val )
-{
-    lua_pushnumber ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, long long int* val )
-{
-    lua_pushnumber ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, unsigned long long int val )
-{
-    lua_pushnumber ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, unsigned long long int* val )
-{
-    lua_pushnumber ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, float val )
-{
-    lua_pushnumber ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, float* val )
-{
-    lua_pushnumber ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, double val )
-{
-    lua_pushnumber ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, double* val )
-{
-    lua_pushnumber ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, bool val )
-{
-    lua_pushboolean ( L, val );
-}
-
-inline void PushToLuaStack ( lua_State* L, bool* val )
-{
-    lua_pushboolean ( L, *val );
-}
-
-inline void PushToLuaStack ( lua_State* L, string val )
-{
-    lua_pushstring ( L, val.c_str() );
-}
-
-inline void PushToLuaStack ( lua_State* L, string* val )
-{
-    lua_pushstring ( L, ( *val ).c_str() );
-}
-
-inline void PushToLuaStack ( lua_State* L, nullptr_t val )
-{
-    ( void ) val;
-    lua_pushnil ( L );
-}
-
-template<typename T> void PushToLuaStack ( lua_State* L, T val )
-{
-    void* v_val;
-    v_val = ( void* ) ( &val );
-
-    T* udata = reinterpret_cast<T*> ( lua_newuserdata ( L, sizeof ( T ) ) );
-    *udata = val;
-}
-
-template<typename First, typename... Rest> void PushToLuaStack ( lua_State* L, First fst, Rest... rest )
-{
-    PushToLuaStack ( L, fst );
-    PushToLuaStack ( L, rest... );
-}
+// ************************************************************************************************ //
+// *************************************** API Helper Funcs *************************************** //
+// ************************************************************************************************ //
 
 int LuaListDirContent ( lua_State* L );
 
-// ************************************************************************************************ //
-// ***************************************** Sockets Binder *************************************** //
-// ************************************************************************************************ //
-
-int LuaRegisterSocketConsts(lua_State* L);
-
-struct SocketInfos
+template<typename T> T** NewUserData ( lua_State* L )
 {
-    int domain;
-    int type;
+    T** obj = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
+    *obj = new T ();
 
-    SocketInfos(int dom_, int typ_)
+    return obj;
+}
+
+template<typename T> T** NewUserData ( lua_State* L , T* init )
+{
+    T** obj = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
+    *obj = init;
+
+    return obj;
+}
+
+template<typename>
+struct is_std_vector : std::false_type {};
+
+template<typename T, typename A>
+struct is_std_vector<vector<T,A>> : std::true_type {};
+
+template<typename T, typename Arg> typename enable_if<!is_same<T*, Arg>::value, T**>::type NewUserData ( lua_State* L , Arg initializer )
+{
+    T** obj = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
+    *obj = new T ( initializer );
+
+    return obj;
+}
+
+template<typename T, typename... Args> typename enable_if<sizeof... ( Args ) >= 2, T**>::type NewUserData ( lua_State* L , Args... initializers )
+{
+    T** obj = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
+    *obj = new T ( initializers... );
+
+    return obj;
+}
+
+template<typename T> T* GetUserData ( lua_State* L, int idx = 1, string errmsg = "Error in GetUserData:" )
+{
+    if ( !CheckLuaArgs ( L, idx, true, errmsg, LUA_TUSERDATA ) )
     {
-        domain = dom_;
-        type = typ_;
+        return nullptr;
     }
 
-    SocketInfos()
+    T* obj = * ( static_cast<T**> ( lua_touserdata ( L, idx ) ) );
+
+    return obj;
+}
+
+template<typename T> typename enable_if<is_convertible<T, bool>::value>::type lua_trygetboolean ( lua_State* L, int index, T* dest )
+{
+    *dest = lua_toboolean ( L, index );
+}
+
+template<typename T> typename enable_if<!is_convertible<T, bool>::value>::type lua_trygetboolean ( lua_State* L, int index, T* dest )
+{
+    return;
+}
+
+template<typename T> typename enable_if<is_integral<T>::value>::type lua_trygetinteger ( lua_State* L, int index, T* dest )
+{
+    *dest = lua_tointeger ( L, index );
+}
+
+template<typename T> typename enable_if<!is_integral<T>::value>::type lua_trygetinteger ( lua_State* L, int index, T* dest )
+{
+    return;
+}
+
+template<typename T> typename enable_if<is_convertible<T, double>::value>::type lua_trygetnumber ( lua_State* L, int index, T* dest )
+{
+    *dest = lua_tonumber ( L, index );
+}
+
+template<typename T> typename enable_if<!is_convertible<T, double>::value>::type lua_trygetnumber ( lua_State* L, int index, T* dest )
+{
+    return;
+}
+
+template<typename T> typename enable_if<is_convertible<T, string>::value>::type lua_trygetstring ( lua_State* L, int index, T* dest )
+{
+    *dest = lua_tostring ( L, index );
+}
+
+template<typename T> typename enable_if<!is_convertible<T, string>::value>::type lua_trygetstring ( lua_State* L, int index, T* dest )
+{
+    return;
+}
+
+template<typename T> int lua_autosetvalue ( lua_State* L, T* dest, int type = -1, int index = 2,  string errmsg = "Bad setter" )
+{
+    if ( !CheckLuaArgs ( L, 1, true, errmsg, LUA_TUSERDATA ) ) return 0;
+    if ( type >= 0 && !CheckLuaArgs ( L, index, true, errmsg, type ) ) return 0;
+
+    if ( type == LUA_TBOOLEAN ) lua_trygetboolean ( L, index, dest );
+    else if ( type == LUA_TNUMBER ) lua_trygetnumber ( L, index, dest );
+    else if ( type == LUA_TSTRING ) lua_trygetstring ( L, index, dest );
+    else if ( type == LUA_TUSERDATA )
     {
-        domain = AF_UNIX;
-        type = SOCK_STREAM;
+        dest = GetUserData<T> ( L, index );
+        return 0;
     }
-};
+    else if ( type == -1 )
+    {
+        if ( is_same<T, bool>::value ) lua_trygetnumber ( L, index, dest );
+        else if ( is_integral<T>::value ) lua_trygetinteger ( L, index, dest );
+        else if ( is_convertible<T, double>::value ) lua_trygetnumber ( L, index, dest );
+        else if ( is_convertible<T, string>::value ) lua_trygetstring ( L, index, dest );
+        else
+        {
+            dest = GetUserData<T> ( L, index );
+            return 0;
+        }
+    }
 
-extern map<int, SocketInfos> socketsList;
-extern int maxSockFd;
+    return 0;
+}
 
-int LuaSysClose(lua_State* L);
+template<typename T> int lua_autosetvector ( lua_State* L, vector<T>* src, int type = -1, int index = 2, string errmsg = "Bad getter" )
+{
+    if ( !CheckLuaArgs ( L, 1, true, errmsg, LUA_TUSERDATA ) ) return 0;
+    if ( !CheckLuaArgs ( L, index, true, errmsg, LUA_TTABLE ) ) return 0;
 
-int LuaSysUnlink(lua_State* L);
-int LuaSysRead(lua_State* L);
-int LuaSysWrite(lua_State* L);
+    int const_idx = index;
+    if ( const_idx < 0 ) const_idx = lua_gettop ( L ) + const_idx + 1;
 
-int LuaNewSocket(lua_State* L);
+    unsigned int length = lua_rawlen ( L, const_idx );
 
-int LuaSocketBind(lua_State* L);
-int LuaSocketConnect(lua_State* L);
+    T* new_elem = new T;
 
-int LuaSocketSelect(lua_State* L);
+    for ( unsigned int i = 0; i < length; i++ )
+    {
+        lua_geti ( L, const_idx, i+1 );
+        lua_autosetvalue ( L, new_elem, type, -1, errmsg );
+        src->push_back ( *new_elem );
+    }
 
-int LuaSocketListen(lua_State* L);
-int LuaSocketAccept(lua_State* L);
+    return 0;
+}
 
-int LuaSocketSend(lua_State* L);
-int LuaSocketReceive(lua_State* L);
+template<typename T> int lua_autosetarray ( lua_State* L, T* src, unsigned int size, int type = -1, int index = 2,  string errmsg = "Bad getter" )
+{
+    if ( !CheckLuaArgs ( L, 1, true, errmsg, LUA_TUSERDATA ) ) return 0;
+    if ( !CheckLuaArgs ( L, index, true, errmsg, LUA_TTABLE ) ) return 0;
+
+    int const_idx = index;
+    if ( const_idx < 0 ) const_idx = lua_gettop ( L ) + const_idx + 1;
+
+    unsigned int length = lua_rawlen ( L, const_idx );
+    T* new_elem = new T;
+
+    for ( unsigned int i = 0; i < min ( length, size ); i++ )
+    {
+        lua_geti ( L, const_idx, i+1 );
+        lua_autosetvalue ( L, new_elem, type, -1, errmsg );
+        src[i] = *new_elem;
+    }
+
+    for ( unsigned int i = min ( length, size ); i < size; i++ )
+    {
+        lua_pushinteger ( L, 0 );
+        lua_autosetvalue ( L, new_elem, type, -1, errmsg );
+        src[i] = *new_elem;
+    }
+
+    return 0;
+}
+
+template<typename T> typename enable_if<is_convertible<T, bool>::value>::type lua_trypushboolean ( lua_State* L, T src )
+{
+    lua_pushboolean ( L, ( bool ) src );
+}
+
+template<typename T> typename enable_if<!is_convertible<T, bool>::value>::type lua_trypushboolean ( lua_State* L, T src )
+{
+    return;
+}
+
+template<typename T> typename enable_if<is_integral<T>::value>::type lua_trypushnumber ( lua_State* L, T src )
+{
+    lua_pushinteger ( L, src );
+}
+
+template<typename T> typename enable_if<!is_integral<T>::value && is_convertible<T, double>::value>::type lua_trypushnumber ( lua_State* L, T src )
+{
+    lua_pushnumber ( L, src );
+}
+
+template<typename T> typename enable_if<!is_convertible<T, double>::value>::type lua_trypushnumber ( lua_State* L, T src )
+{
+    return;
+}
+
+template<typename T> typename enable_if<is_convertible<T, string>::value>::type lua_trypushstring ( lua_State* L, T src )
+{
+    string src_str = ( string ) src;
+    lua_pushstring ( L, src_str.c_str() );
+}
+
+template<typename T> typename enable_if<!is_convertible<T, string>::value>::type lua_trypushstring ( lua_State* L, T src )
+{
+    return;
+}
+
+template<typename T> typename enable_if<is_pointer<T>::value>::type lua_trypushuserdata ( lua_State* L, T src )
+{
+    T* obj = reinterpret_cast<T*> ( lua_newuserdata ( L, sizeof ( T ) ) );
+    obj = src;
+}
+
+template<typename T> typename enable_if<!is_pointer<T>::value>::type lua_trypushuserdata ( lua_State* L, T src )
+{
+    return;
+}
+
+template<typename T> int lua_autogetvalue ( lua_State* L, T src, int type = -1, string errmsg = "Bad getter" )
+{
+    if ( type == LUA_TBOOLEAN ) lua_trypushboolean ( L, src );
+    else if ( type == LUA_TNUMBER ) lua_trypushnumber ( L, src );
+    else if ( type == LUA_TSTRING ) lua_trypushstring ( L, src );
+    else if ( type == LUA_TUSERDATA ) lua_trypushuserdata ( L, src );
+    else if ( type == -1 )
+    {
+        if ( is_same<T, bool>::value ) lua_trypushboolean ( L, src );
+        else if ( is_convertible<T, double>::value ) lua_trypushnumber ( L, src );
+        else if ( is_convertible<T, string>::value ) lua_trypushstring ( L, src );
+        else lua_trypushuserdata ( L, src );
+    }
+
+    return 1;
+}
+
+template<typename T> int lua_autogetvector ( lua_State* L, vector<T> src, int type = -1, string errmsg = "Bad getter" )
+{
+    lua_newtable ( L );
+
+    for ( unsigned int i = 0; i < src.size(); i++ )
+    {
+        lua_autogetvalue ( L, src.at ( i ), type, errmsg );
+        lua_seti ( L, -2, i+1 );
+    }
+
+    return 1;
+}
+
+template<typename T> int lua_autogetarray ( lua_State* L, T* src, unsigned int size, int type = -1, string errmsg = "Bad getter" )
+{
+    lua_newtable ( L );
+
+    for ( unsigned int i = 0; i < size; i++ )
+    {
+        lua_autogetvalue ( L, src[i], type, errmsg );
+        lua_seti ( L, -2, i+1 );
+    }
+
+    return 1;
+}
+
+inline void SetupMetatable ( lua_State* L )
+{
+    lua_newtable ( L );
+
+    lua_pushvalue ( L, -1 );
+    lua_setfield ( L, -2, "__index" );
+
+    lua_pushvalue ( L, -1 );
+    lua_setfield ( L, -2, "__newindex" );
+
+    lua_setmetatable ( L, -2 );
+}
+
+inline void AddMethod ( lua_State* L, lua_CFunction func, const char* funcname )
+{
+    lua_pushcfunction ( L, func );
+    lua_setfield ( L, -2, funcname );
+}
+
+extern map<string, function<void ( lua_State* ) >> setUserDataFns;
+extern map<string, function<void ( lua_State* ) >> getUserDataFns;
+
+int luaExt_SetUserDataValue(lua_State* L);
+int luaExt_GetUserDataValue(lua_State* L);
+
+template<typename T> void MakeAccessorsUserDataFuncs ( string type )
+{
+    string finalType = type;
+
+    setUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        T* ud = GetUserData<T> ( L, 1, "setUserDataFns" );
+        lua_autosetvalue ( L, ud, -1, 2 );
+    };
+
+    getUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        T* ud = GetUserData<T> ( L, 1, "getUserDataFns" );
+        lua_autogetvalue ( L, *ud, -1 );
+    };
+
+    finalType = "vector<" + finalType + ">";
+
+    setUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        vector<T>* ud = GetUserData<vector<T>> ( L, 1, "setUserDataFns" );
+        lua_autosetvector ( L, ud, -1, 2 );
+    };
+
+    getUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        vector<T>* ud = GetUserData<vector<T>> ( L, 1, "getUserDataFns" );
+        lua_autogetvector ( L, *ud, -1 );
+    };
+
+    finalType = type + "[]";
+
+    setUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        T* ud = GetUserData<T> ( L, 1, "setUserDataFns" );
+        lua_getfield(L, 1, "array_size");
+        int array_size = lua_tointeger(L, -1);
+        lua_autosetarray ( L, ud, array_size, -1, 2 );
+    };
+
+    getUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        T* ud = GetUserData<T> ( L, 1, "getUserDataFns" );
+        lua_getfield(L, 1, "array_size");
+        int array_size = lua_tointeger(L, -1);
+        lua_autogetarray ( L, ud, array_size, -1 );
+    };
+}
 
 #endif
 

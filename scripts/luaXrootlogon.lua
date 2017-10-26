@@ -6,6 +6,11 @@ local defaultPackages = {}
 local rootbindpckg = assert(package.loadlib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib"))
 rootbindpckg()
 
+-- Modules which wil be loaded upon starting a session of luaXroot --
+require("lua_helper")
+require("lua_tree")
+require("lua_root_binder")
+
 _require = _G.require
 function require(pckg)
   local luaExt = pckg:find(".lua")
@@ -43,6 +48,8 @@ if IsMasterState then
 
     return packaddons
   end
+
+--******** Task Managing Functions ********--
 
   function StartNewTask(taskname, fn, ...)
     RootTasks[taskname] = {
@@ -95,7 +102,30 @@ if IsMasterState then
     SendSignal(taskname, "stop")
   end
 
--- Make a function to exit the program nicely without getting a bucket load of seg faults
+--******** Late Compilation Utilities ********--
+
+  function CompileC(args)
+    CompilePostInit_C({script=args.script, target=args.target})
+
+    if args.openfn then
+      local scriptExtPos = args.script:find("%.C") or args.script:find("%.c")
+      local scriptExt = args.script:sub(scriptExtPos+1)
+
+      if scriptExt then
+        local scriptBase = args.script:sub(1, scriptExtPos-1)
+
+        if not scriptBase:find("/") then
+          scriptBase = "./"..scriptBase
+        end
+
+        local new_pckg = assert(package.loadlib(scriptBase.."_"..scriptExt..".so", args.openfn))
+        new_pckg()
+      end
+    end
+  end
+
+--******** Make functions to exit the program nicely without getting a bucket load of seg faults ********--
+
   function exit() 
     saveprompthistory()
     theApp:Terminate() 
@@ -104,6 +134,8 @@ if IsMasterState then
   function q()
     exit()
   end
+else
+  theApp = GetTheApp()
 end
 
 -- Create a sleep function
@@ -131,11 +163,6 @@ function ProcessSignal(sig_str)
   local sigfn = load(sig_str)()
   sigfn()
 end
-
--- Here are the modules which wil lbe loaded upon starting a session of luaXroot --
-
-require("lua_helper")
-require("lua_tree")
 
 pcall(require, 'userlogon') -- this line attempt to load additional user/userlogon.lua. If it doesnt't exist it does nothing. 
 -- If the user wants to load additional modules, it should be done in this file. Create it if needed. The directory user might need to be created as well.
