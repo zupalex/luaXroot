@@ -244,6 +244,8 @@ int LuaListDirContent ( lua_State* L )
     return 1;
 }
 
+map<string, function<void ( lua_State* ) >> setUserDataFns;
+map<string, function<void ( lua_State* ) >> getUserDataFns;
 
 int luaExt_SetUserDataValue(lua_State* L)
 {

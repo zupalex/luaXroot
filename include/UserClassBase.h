@@ -2,8 +2,9 @@
 #define __USERCLASSBASE__
 
 #include "LuaRootBinder.h"
+#include "TObject.h"
 
-class LuaUserClass
+class LuaUserClass : public TObject
 {
 private:
 
@@ -17,6 +18,7 @@ public:
     map<string, function<void ( lua_State* ) >> setters; //!
 
     void MakeMetatable ( lua_State* L );
+    virtual void MakeAccessors () = 0;
 
     template<typename T> typename enable_if<!is_std_vector<T>::value, void>::type AddGetter ( T* src, string name )
     {
@@ -83,7 +85,7 @@ public:
             AddSetterArray ( member, name.substr(0, findIfArray), arraySize );
         }
     }
-    
+
     ClassDef(LuaUserClass, 1)
 };
 
@@ -94,27 +96,63 @@ template<typename T> void MakeTTreeFunctions(string type_name)
 {
     newBranchFns[type_name] = [=] ( lua_State* L, TTree* tree, const char* bname, int arraysize )
     {
-        T* branch_ptr = new T;
+        T* branch_ptr = *(NewUserData<T>(L));
         tree->Branch ( bname, branch_ptr );
-        T** ud = NewUserData<T>(L);
-        *ud = branch_ptr;
 
-        (*ud)->MakeMetatable(L);
+        branch_ptr->MakeMetatable(L);
     };
 
     newBranchFns["vector<" + type_name + ">"] = [=] ( lua_State* L, TTree* tree, const char* bname, int arraysize )
     {
-        vector<T>* branch_ptr = new vector<T>;
+        vector<T>* branch_ptr = *(NewUserData<vector<T>>(L));
         tree->Branch ( bname, branch_ptr );
-        vector<T>** ud = NewUserData<vector<T>>(L);
-        *ud = branch_ptr;
 
         SetupMetatable(L);
         AddMethod(L, luaExt_SetUserDataValue, "Set");
         AddMethod(L, luaExt_GetUserDataValue, "Get");
     };
 
+    newBranchFns[type_name + "[]"] = [=] ( lua_State* L, TTree* tree, const char* bname, int arraysize )
+    {
+        TClonesArray* branch_ptr = *(NewUserData<TClonesArray>(L, type_name.c_str(), arraysize));
+        tree->Branch ( bname, branch_ptr );
+
+        SetupTObjectMetatable ( L );
+        AddMethod ( L, luaExt_TClonesArray_ConstructedAt, "At" );
+    };
+
+    getBranchFns[type_name] = [=] ( lua_State* L, TTree* tree, const char* bname )
+    {
+        T** ud = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
+        *ud = (T*) tree->GetBranch ( bname )->GetAddress();
+
+        (*ud)->MakeMetatable(L);
+    };
+
+    getBranchFns["vector<" + type_name + ">"] = [=] ( lua_State* L, TTree* tree, const char* bname )
+    {
+        vector<T>** ud = reinterpret_cast<vector<T>**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
+        *ud = *((vector<T>**) tree->GetBranch ( bname )->GetAddress());
+
+        SetupMetatable(L);
+        AddMethod(L, luaExt_SetUserDataValue, "Set");
+        AddMethod(L, luaExt_GetUserDataValue, "Get");
+    };
+
+    getBranchFns[type_name + "[]"] = [=] ( lua_State* L, TTree* tree, const char* bname )
+    {
+        TClonesArray** ud = reinterpret_cast<TClonesArray**> ( lua_newuserdata ( L, sizeof ( TClonesArray* ) ) );
+        *ud = *((TClonesArray**)(tree->GetBranch(bname)->GetAddress()));
+
+        SetupTObjectMetatable ( L );
+        AddMethod ( L, luaExt_TClonesArray_ConstructedAt, "At" );
+    };
+
     MakeAccessorsUserDataFuncs<T>(type_name);
 }
 
 #endif
+
+
+
+

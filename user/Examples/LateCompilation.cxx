@@ -10,10 +10,7 @@ class MyLateClass : public LuaUserClass
 private:
 
 public:
-    MyLateClass()
-    {
-        MakeAccessors ();
-    }
+    MyLateClass() {}
     ~MyLateClass() {}
 
     int anInt;
@@ -30,11 +27,17 @@ public:
     }
 };
 
+#ifdef __CINT__
+
+#pragma link C++ class MyLateClass+;
+#pragma link C++ class vector<MyLateClass>+;
+
+#endif
+
 int MyLateClass_luactor ( lua_State* L )
 {
     MyLateClass* obj = * ( NewUserData<MyLateClass> ( L ) );
-
-    obj->MakeMetatable ( L );
+    obj->MakeMetatable(L);
 
     return 1;
 }

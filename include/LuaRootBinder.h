@@ -45,6 +45,7 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TTimer.h"
+#include "TClonesArray.h"
 
 #include "LuaExtension.h"
 #include "LuaSocketBinder.h"
@@ -115,22 +116,31 @@ int luaExt_TFile_Close ( lua_State* L );
 int luaExt_NewTCutG ( lua_State* L );
 int luaExt_TCutG_IsInside ( lua_State* L );
 
+// ------------------------------------------------------ TClonesArray Binder ----------------------------------------------------------- //
+
+int luaExt_NewTClonesArray ( lua_State* L );
+int luaExt_TClonesArray_ConstructedAt ( lua_State* L );
+
 // ------------------------------------------------------ TTree Binder ----------------------------------------------------------- //
 
 extern map<string, function<void ( lua_State*, TTree*, const char*, int ) >> newBranchFns;
+extern map<string, function<void ( lua_State*, TTree*, const char* ) >> getBranchFns;
 
 int luaExt_NewTTree ( lua_State* L );
 int luaExt_TTree_Fill ( lua_State* L );
 int luaExt_TTree_GetEntries ( lua_State* L );
 int luaExt_TTree_Draw ( lua_State* L );
+int luaExt_TTree_GetEntry ( lua_State* L );
 
 int luaExt_TTree_NewBranch_Interface ( lua_State* L );
+int luaExt_TTree_GetBranch_Interface ( lua_State* L );
 
 void InitializeBranchesFuncs();
 
 static const luaL_Reg luaTTreeBranchFns [] =
 {
     {"NewBranchInterface", luaExt_TTree_NewBranch_Interface},
+    {"GetBranchInterface", luaExt_TTree_GetBranch_Interface},
 
     {NULL, NULL}
 };
@@ -348,6 +358,7 @@ static const luaL_Reg luaXroot_lib [] =
     {"THist", luaExt_NewTHist},
     {"TGraph", luaExt_NewTGraph},
     {"TCutG", luaExt_NewTCutG},
+    {"TClonesArray", luaExt_NewTClonesArray},
 
     {"TTree", luaExt_NewTTree},
 

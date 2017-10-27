@@ -23,6 +23,15 @@ AddPostInit("TTree", function(self)
       end
     end
 
+    local _GetEntry = self.GetEntry
+    function self:GetEntry(entry, getall)
+      if type(entry) == "table" then
+        return _GetEntry(self, entry)
+      else
+        return _GetEntry(self, {entry=entry, getall=getall})
+      end
+    end
+
     local _NewBranch = self.NewBranch
     function self:NewBranch(name, var_type)
       if type(name) == "table" then
@@ -32,12 +41,12 @@ AddPostInit("TTree", function(self)
       end
     end
 
-    local _SetBranch = self.SetBranch
-    function self:SetBranch(name, value)
+    local _GetBranch = self.GetBranch
+    function self:GetBranch(name)
       if type(name) == "table" then
-        return _SetBranch(self, name)
+        return _GetBranch(self, name)
       else
-        return _SetBranch(self, {name=name, value=value})
+        return _GetBranch(self, {name=name})
       end
     end
   end)
