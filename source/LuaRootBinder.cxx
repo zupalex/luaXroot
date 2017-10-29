@@ -622,9 +622,13 @@ int luaExt_NewTApplication ( lua_State* L )
 
         theApp->SetupRootAppMetatable ( L );
 
-        gSystem->AddIncludePath(" -I$LUAXROOTLIBPATH/include ");
-        gSystem->AddIncludePath(" -I$LUAXROOTLIBPATH/exec ");
-        gSystem->Load("$LUAXROOTLIBPATH/libLuaXRootlib.so");
+        gSystem->AddDynamicPath ( "${LUAXROOTLIBPATH}" );
+        gSystem->AddIncludePath ( "-I/usr/include/readline" );
+        gSystem->AddIncludePath ( "-I$LUAXROOTLIBPATH/../include" );
+        gSystem->AddIncludePath ( "-I$LUAXROOTLIBPATH/../lua" );
+        gSystem->Load ( "libguilereadline-v-18.so" );
+        gSystem->Load ( "liblualib.so" );
+        gSystem->Load ( "libLuaXRootlib.so" );
 
         pthread_t startRootEventProcessrTask;
 
@@ -1945,9 +1949,9 @@ int luaExt_NewTClonesArray ( lua_State* L )
     return 1;
 }
 
-int luaExt_TClonesArray_ConstructedAt(lua_State* L)
+int luaExt_TClonesArray_ConstructedAt ( lua_State* L )
 {
-    TClonesArray* clones = GetUserData<TClonesArray>(L);
+    TClonesArray* clones = GetUserData<TClonesArray> ( L );
 
     lua_unpackarguments ( L, 1, "luaExt_TClonesArray_ConstructedAt argument table",
     {"idx",},
@@ -1956,7 +1960,9 @@ int luaExt_TClonesArray_ConstructedAt(lua_State* L)
 
     int idx = lua_tointeger ( L, -1 );
 
-    clones->ConstructedAt(idx);
+    clones->ConstructedAt ( idx );
+
+    return 1;
 }
 
 // ------------------------------------------------------ TTree Binder ----------------------------------------------------------- //
@@ -1991,8 +1997,8 @@ int luaExt_NewTTree ( lua_State* L )
     AddMethod ( L, luaExt_TTree_NewBranch_Interface, "NewBranch" );
     AddMethod ( L, luaExt_TTree_GetBranch_Interface, "GetBranch" );
 
-    lua_newtable(L);
-    lua_setfield(L, -2, "branches_list");
+    lua_newtable ( L );
+    lua_setfield ( L, -2, "branches_list" );
 
     return 1;
 }
@@ -2062,10 +2068,10 @@ int luaExt_TTree_GetEntry ( lua_State* L )
     {LUA_TNUMBER, LUA_TBOOLEAN},
     {true, false} );
 
-    long long int entry = lua_tointeger(L, -2);
-    int getall = lua_tointegerx(L, -1, nullptr);
+    long long int entry = lua_tointeger ( L, -2 );
+    int getall = lua_tointegerx ( L, -1, nullptr );
 
-    tree->GetEntry(entry, getall);
+    tree->GetEntry ( entry, getall );
 
     return 0;
 }
@@ -2097,45 +2103,68 @@ template<typename T> void MakeNewBranchFuncs ( string type )
 
     newBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname, int arraysize )
     {
-        T* branch_ptr = *(NewUserData<T>(L));
+        T* branch_ptr = * ( NewUserData<T> ( L ) );
         tree->Branch ( bname, branch_ptr );
 
-        SetupMetatable(L);
-        AddMethod(L, luaExt_SetUserDataValue, "Set");
-        AddMethod(L, luaExt_GetUserDataValue, "Get");
+        SetupMetatable ( L );
+        AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+        AddMethod ( L, luaExt_GetUserDataValue, "Get" );
     };
 
     getBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname )
     {
         T** ud = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
-        *ud = (T*) tree->GetBranch ( bname )->GetAddress();
+        *ud = ( T* ) tree->GetBranch ( bname )->GetAddress();
 
-        SetupMetatable(L);
-        AddMethod(L, luaExt_SetUserDataValue, "Set");
-        AddMethod(L, luaExt_GetUserDataValue, "Get");
+        SetupMetatable ( L );
+        AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+        AddMethod ( L, luaExt_GetUserDataValue, "Get" );
     };
 
-    finalType = "vector<" + finalType + ">";
+    finalType = "vector<" + type + ">";
 
     newBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname, int arraysize )
     {
-        vector<T>* branch_ptr = *(NewUserData<vector<T>>(L));
+        vector<T>* branch_ptr = * ( NewUserData<vector<T>> ( L ) );
         tree->Branch ( bname, branch_ptr );
 
-        SetupMetatable(L);
+        SetupMetatable ( L );
 
-        AddMethod(L, luaExt_SetUserDataValue, "Set");
-        AddMethod(L, luaExt_GetUserDataValue, "Get");
+        AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+        AddMethod ( L, luaExt_GetUserDataValue, "Get" );
     };
 
     getBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname )
     {
         vector<T>** ud = reinterpret_cast<vector<T>**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
-        *ud = (vector<T>*) tree->GetBranch ( bname )->GetAddress();
+        *ud = *((vector<T>**) tree->GetBranch ( bname )->GetAddress());
 
-        SetupMetatable(L);
-        AddMethod(L, luaExt_SetUserDataValue, "Set");
-        AddMethod(L, luaExt_GetUserDataValue, "Get");
+        SetupMetatable ( L );
+        AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+        AddMethod ( L, luaExt_GetUserDataValue, "Get" );
+    };
+
+    finalType = "vector<vector<" + type + ">>";
+
+    newBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname, int arraysize )
+    {
+        vector<vector<T>>* branch_ptr = * ( NewUserData<vector<vector<T>>> ( L ) );
+        tree->Branch ( bname, branch_ptr );
+
+        SetupMetatable ( L );
+
+        AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+        AddMethod ( L, luaExt_GetUserDataValue, "Get" );
+    };
+
+    getBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname )
+    {
+        vector<vector<T>>** ud = reinterpret_cast<vector<vector<T>>**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
+        *ud = *((vector<vector<T>>**) tree->GetBranch ( bname )->GetAddress());
+
+        SetupMetatable ( L );
+        AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+        AddMethod ( L, luaExt_GetUserDataValue, "Get" );
     };
 
     finalType = type + "[]";
@@ -2143,25 +2172,25 @@ template<typename T> void MakeNewBranchFuncs ( string type )
     newBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname, int arraysize )
     {
         T* branch_ptr = new T[arraysize];
-        string leafList = GetROOTLeafId(type);
-        leafList += "[" + to_string(arraysize) + "]";
+        string leafList = GetROOTLeafId ( type );
+        leafList += "[" + to_string ( arraysize ) + "]";
         tree->Branch ( bname, branch_ptr, leafList.c_str() );
         T** ud = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
         *ud = branch_ptr;
 
-        SetupMetatable(L);
-        AddMethod(L, luaExt_SetUserDataValue, "Set");
-        AddMethod(L, luaExt_GetUserDataValue, "Get");
+        SetupMetatable ( L );
+        AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+        AddMethod ( L, luaExt_GetUserDataValue, "Get" );
     };
 
     getBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname )
     {
         T** ud = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
-        *ud = (T*) tree->GetBranch ( bname )->GetAddress();
+        *ud = ( T* ) tree->GetBranch ( bname )->GetAddress();
 
-        SetupMetatable(L);
-        AddMethod(L, luaExt_SetUserDataValue, "Set");
-        AddMethod(L, luaExt_GetUserDataValue, "Get");
+        SetupMetatable ( L );
+        AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+        AddMethod ( L, luaExt_GetUserDataValue, "Get" );
     };
 }
 
@@ -2202,35 +2231,35 @@ int luaExt_TTree_NewBranch_Interface ( lua_State* L )
     size_t findIfArray = btype.find ( "[" );
     int arraySize = 0;
 
-    lua_getfield(L, 1, "branches_list");
-    lua_newtable(L);
+    lua_getfield ( L, 1, "branches_list" );
+    lua_newtable ( L );
 
     if ( findIfArray != string::npos )
     {
         size_t endArraySize = btype.find ( "]" );
         arraySize = stoi ( btype.substr ( findIfArray+1, endArraySize-findIfArray-1 ) );
-        btype = btype.substr(0, findIfArray) + "[]";
-        lua_pushinteger(L, arraySize);
-        lua_setfield(L, -2, "array_size");
+        btype = btype.substr ( 0, findIfArray ) + "[]";
+        lua_pushinteger ( L, arraySize );
+        lua_setfield ( L, -2, "array_size" );
     }
 
-    lua_pushstring(L, btype.c_str());
-    lua_setfield(L, -2, "type");
+    lua_pushstring ( L, btype.c_str() );
+    lua_setfield ( L, -2, "type" );
 
-    lua_setfield(L, -2, bname);
-    lua_pop(L, 1);
+    lua_setfield ( L, -2, bname );
+    lua_pop ( L, 1 );
 
     TTree* tree = GetUserData<TTree> ( L, 1, "luaExt_TTree_NewBranch" );
 
     newBranchFns[btype] ( L, tree, bname, arraySize );
 
-    lua_pushstring(L, btype.c_str());
-    lua_setfield(L, -2, "type");
+    lua_pushstring ( L, btype.c_str() );
+    lua_setfield ( L, -2, "type" );
 
     if ( findIfArray != string::npos )
     {
-        lua_pushinteger(L, arraySize);
-        lua_setfield(L, -2, "array_size");
+        lua_pushinteger ( L, arraySize );
+        lua_setfield ( L, -2, "array_size" );
     }
 
     return 1;
@@ -2249,28 +2278,28 @@ int luaExt_TTree_GetBranch_Interface ( lua_State* L )
 
     TTree* tree = GetUserData<TTree> ( L, 1, "luaExt_TTree_GetBranch_Interface" );
 
-    lua_getfield(L, 1, "branches_list");
-    lua_getfield(L, -1, bname);
+    lua_getfield ( L, 1, "branches_list" );
+    lua_getfield ( L, -1, bname );
 
-    if(lua_type(L, -1) == LUA_TNIL)
+    if ( lua_type ( L, -1 ) == LUA_TNIL )
     {
         cerr << "Trying to retrieve branch " << bname << " but it does not exists..." << endl;
-        lua_pushnil(L);
+        lua_pushnil ( L );
         return 1;
     }
 
-    lua_getfield(L, -1, "type");
-    lua_getfield(L, -2, "array_size");
-    const char* btype = lua_tostring(L, -2);
-    int array_size = lua_tointeger(L, -1);
+    lua_getfield ( L, -1, "type" );
+    lua_getfield ( L, -2, "array_size" );
+    const char* btype = lua_tostring ( L, -2 );
+    int array_size = lua_tointeger ( L, -1 );
 
-    getBranchFns[btype](L, tree, bname);
+    getBranchFns[btype] ( L, tree, bname );
 
-    lua_pushstring(L, btype);
-    lua_setfield(L, -2, "type");
+    lua_pushstring ( L, btype );
+    lua_setfield ( L, -2, "type" );
 
-    lua_pushinteger(L, array_size);
-    lua_setfield(L, -2, "array_size");
+    lua_pushinteger ( L, array_size );
+    lua_setfield ( L, -2, "array_size" );
 
     return 1;
 }

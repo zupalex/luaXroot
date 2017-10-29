@@ -27,13 +27,6 @@ public:
     }
 };
 
-#ifdef __CINT__
-
-#pragma link C++ class MyLateClass+;
-#pragma link C++ class vector<MyLateClass>+;
-
-#endif
-
 int MyLateClass_luactor ( lua_State* L )
 {
     MyLateClass* obj = * ( NewUserData<MyLateClass> ( L ) );
@@ -59,4 +52,11 @@ extern "C" int luaopen_late_compile ( lua_State* L )
 
     return 0;
 }
+
+#ifdef __CINT__
+
+#pragma link C++ class MyLateClass+;
+#pragma link C++ class vector<MyLateClass>+;
+
+#endif
 

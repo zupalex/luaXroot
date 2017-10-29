@@ -1,35 +1,9 @@
 #ifndef __LUAROOTBINDER__
 #define __LUAROOTBINDER__
 
-#include <iostream>
-#include <cstdio>
-#include <fstream>
-#include <sstream>
 #include <streambuf>
-#include <string>
-#include <vector>
-#include <map>
-#include <queue>
-#include <random>
-#include <type_traits>
-#include <cxxabi.h>
 #include <pthread.h>
-#include <dirent.h>
-#include <utility>
-#include <tuple>
-#include <array>
-#include <chrono>
-#include <ctime>
-#include <sys/time.h>
-#include <time.h>
 #include <stdio.h>
-#include <math.h>
-#include <ctype.h>
-#include <list>
-#include <functional>
-#include <cassert>
-#include <algorithm>
-#include <type_traits>
 #include <mutex>
 
 #include "TSystem.h"

@@ -48,7 +48,7 @@ public:
     {
         setters[name] = [=] ( lua_State* L_ )
         {
-            lua_autosetvalue ( L_, dest, -1, 3 );
+            lua_autosetvalue ( L_, dest, -1 );
         };
     }
 
@@ -56,7 +56,7 @@ public:
     {
         setters[name] = [=] ( lua_State* L_ )
         {
-            lua_autosetvector ( L_, dest, -1, 3 );
+            lua_autosetvector ( L_, dest, -1 );
         };
     }
 
@@ -64,7 +64,7 @@ public:
     {
         setters[name] = [=] ( lua_State* L_ )
         {
-            lua_autosetarray ( L_, dest, size, -1, 3 );
+            lua_autosetarray ( L_, dest, size, -1 );
         };
     }
 
@@ -112,15 +112,6 @@ template<typename T> void MakeTTreeFunctions(string type_name)
         AddMethod(L, luaExt_GetUserDataValue, "Get");
     };
 
-    newBranchFns[type_name + "[]"] = [=] ( lua_State* L, TTree* tree, const char* bname, int arraysize )
-    {
-        TClonesArray* branch_ptr = *(NewUserData<TClonesArray>(L, type_name.c_str(), arraysize));
-        tree->Branch ( bname, branch_ptr );
-
-        SetupTObjectMetatable ( L );
-        AddMethod ( L, luaExt_TClonesArray_ConstructedAt, "At" );
-    };
-
     getBranchFns[type_name] = [=] ( lua_State* L, TTree* tree, const char* bname )
     {
         T** ud = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
@@ -137,15 +128,6 @@ template<typename T> void MakeTTreeFunctions(string type_name)
         SetupMetatable(L);
         AddMethod(L, luaExt_SetUserDataValue, "Set");
         AddMethod(L, luaExt_GetUserDataValue, "Get");
-    };
-
-    getBranchFns[type_name + "[]"] = [=] ( lua_State* L, TTree* tree, const char* bname )
-    {
-        TClonesArray** ud = reinterpret_cast<TClonesArray**> ( lua_newuserdata ( L, sizeof ( TClonesArray* ) ) );
-        *ud = *((TClonesArray**)(tree->GetBranch(bname)->GetAddress()));
-
-        SetupTObjectMetatable ( L );
-        AddMethod ( L, luaExt_TClonesArray_ConstructedAt, "At" );
     };
 
     MakeAccessorsUserDataFuncs<T>(type_name);
