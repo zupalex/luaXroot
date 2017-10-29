@@ -84,6 +84,8 @@ int luaExt_TGraph_Eval ( lua_State* L );
 int luaExt_NewTFile ( lua_State* L );
 int luaExt_TFile_Write ( lua_State* L );
 int luaExt_TFile_Close ( lua_State* L );
+int luaExt_TFile_cd ( lua_State* L );
+int luaExt_TFile_ls ( lua_State* L );
 
 // ------------------------------------------------------ TCutG Binder ----------------------------------------------------------- //
 
@@ -98,7 +100,6 @@ int luaExt_TClonesArray_ConstructedAt ( lua_State* L );
 // ------------------------------------------------------ TTree Binder ----------------------------------------------------------- //
 
 extern map<string, function<void ( lua_State*, TTree*, const char*, int ) >> newBranchFns;
-extern map<string, function<void ( lua_State*, TTree*, const char* ) >> getBranchFns;
 
 int luaExt_NewTTree ( lua_State* L );
 int luaExt_TTree_Fill ( lua_State* L );
@@ -320,6 +321,7 @@ static const luaL_Reg luaXroot_lib [] =
     {"SendSignal_C", SendSignal_C},
     {"CheckSignals_C", CheckSignals_C},
     {"CompilePostInit_C", CompilePostInit_C},
+    {"New", luaExt_NewUserData},
 
     {"TApplication", luaExt_NewTApplication},
     {"GetTheApp", GetTheApp},

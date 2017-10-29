@@ -307,6 +307,7 @@ inline void AddMethod ( lua_State* L, lua_CFunction func, const char* funcname )
 
 int luaExt_SetUserDataValue ( lua_State* L );
 int luaExt_GetUserDataValue ( lua_State* L );
+int luaExt_PushBackUserDataValue ( lua_State* L );
 
 template<typename>
 struct is_std_vector : std::false_type {};
@@ -344,7 +345,8 @@ template<typename T> T* GetUserData ( lua_State* L, int idx = 1, string errmsg =
 
 template<typename T> typename enable_if<is_convertible<T, bool>::value>::type lua_trygetboolean ( lua_State* L, int index, T* dest )
 {
-    *dest = lua_toboolean ( L, index );
+    if ( lua_type ( L, -1 ) == LUA_TUSERDATA ) *dest = *GetUserData<T> ( L, index );
+    else *dest = lua_toboolean ( L, index );
     lua_remove ( L, index );
 }
 
@@ -355,7 +357,8 @@ template<typename T> typename enable_if<!is_convertible<T, bool>::value>::type l
 
 template<typename T> typename enable_if<is_integral<T>::value>::type lua_trygetinteger ( lua_State* L, int index, T* dest )
 {
-    *dest = lua_tointeger ( L, index );
+    if ( lua_type ( L, -1 ) == LUA_TUSERDATA ) *dest = *GetUserData<T> ( L, index );
+    else *dest = lua_tointeger ( L, index );
     lua_remove ( L, index );
 }
 
@@ -366,7 +369,9 @@ template<typename T> typename enable_if<!is_integral<T>::value>::type lua_tryget
 
 template<typename T> typename enable_if<is_convertible<T, double>::value>::type lua_trygetnumber ( lua_State* L, int index, T* dest )
 {
-    *dest = lua_tonumber ( L, index );
+    if ( lua_type ( L, -1 ) == LUA_TUSERDATA ) *dest = *GetUserData<T> ( L, index );
+    else *dest = lua_tonumber ( L, index );
+
     lua_remove ( L, index );
 }
 
@@ -377,7 +382,8 @@ template<typename T> typename enable_if<!is_convertible<T, double>::value>::type
 
 template<typename T> typename enable_if<is_convertible<T, string>::value>::type lua_trygetstring ( lua_State* L, int index, T* dest )
 {
-    *dest = lua_tostring ( L, index );
+    if ( lua_type ( L, -1 ) == LUA_TUSERDATA ) *dest = *GetUserData<T> ( L, index );
+    else *dest = lua_tostring ( L, index );
     lua_remove ( L, index );
 }
 
@@ -386,20 +392,16 @@ template<typename T> typename enable_if<!is_convertible<T, string>::value>::type
     return;
 }
 
-template<typename T> int lua_autosetvalue ( lua_State* L, T* dest, int type = -1, int index = 1,  string errmsg = "Bad setter value" )
+template<typename T> int lua_autosetvalue ( lua_State* L, T* dest, int type = -1,  string errmsg = "Bad setter value" )
 {
-    if ( !CheckLuaArgs ( L, index, true, errmsg, LUA_TUSERDATA ) ) return 0;
     if ( type >= 0 && !CheckLuaArgs ( L, -1, true, errmsg, type ) ) return 0;
-
-    int const_idx = index;
-    if ( const_idx < 0 ) const_idx = lua_gettop ( L ) + const_idx + 1;
 
     if ( type == LUA_TBOOLEAN ) lua_trygetboolean ( L, -1, dest );
     else if ( type == LUA_TNUMBER ) lua_trygetnumber ( L, -1, dest );
     else if ( type == LUA_TSTRING ) lua_trygetstring ( L, -1, dest );
     else if ( type == LUA_TTABLE )
     {
-        lua_autosetvector ( L, dest, type, 1 );
+        lua_autosetvector ( L, dest, type );
         lua_pop ( L, 1 );
     }
     else if ( type == LUA_TUSERDATA )
@@ -411,7 +413,7 @@ template<typename T> int lua_autosetvalue ( lua_State* L, T* dest, int type = -1
     {
         if ( lua_type ( L, -1 ) == LUA_TTABLE )
         {
-            lua_autosetvector ( L, dest, type, 1 );
+            lua_autosetvector ( L, dest, type );
             lua_pop ( L, 1 );
         }
         else if ( is_same<T, bool>::value ) lua_trygetnumber ( L, -1, dest );
@@ -428,13 +430,29 @@ template<typename T> int lua_autosetvalue ( lua_State* L, T* dest, int type = -1
     return 0;
 }
 
-template<typename T> int lua_autosetvector ( lua_State* L, vector<T>* dest, int type = -1, int index = 1, string errmsg = "Bad setter vector" )
+template<typename T> int lua_autopushback ( lua_State* L, vector<T>* dest, int type = -1, string errmsg = "Bad setter push_back vector" )
 {
-    if ( !CheckLuaArgs ( L, index, true, errmsg, LUA_TUSERDATA ) ) return 0;
-    if ( !CheckLuaArgs ( L, -1, true, errmsg, LUA_TTABLE ) ) return 0;
+    T* new_elem = new T;
 
-    int const_idx = index;
-    if ( const_idx < 0 ) const_idx = lua_gettop ( L ) + const_idx + 1;
+    lua_autosetvalue ( L, new_elem, type, errmsg );
+
+    dest->push_back ( *new_elem );
+
+    return 0;
+}
+
+template<typename T> int lua_autosetvector ( lua_State* L, vector<T>* dest, int type = -1, string errmsg = "Bad setter vector" )
+{
+    if ( CheckLuaArgs ( L, -1, false, errmsg, LUA_TNIL ) )
+    {
+        dest->clear();
+        return 0;
+    }
+
+    if ( !CheckLuaArgs ( L, -1, false, errmsg, LUA_TTABLE ) )
+    {
+        return lua_autopushback ( L, dest, type );
+    }
 
     unsigned int length = lua_rawlen ( L, -1 );
 
@@ -446,7 +464,7 @@ template<typename T> int lua_autosetvector ( lua_State* L, vector<T>* dest, int 
     {
         lua_geti ( L, -1, i+1 );
 
-        lua_autosetvalue ( L, new_elem, type, const_idx, errmsg );
+        lua_autosetvalue ( L, new_elem, type, errmsg );
 
         dest->push_back ( *new_elem );
     }
@@ -454,36 +472,51 @@ template<typename T> int lua_autosetvector ( lua_State* L, vector<T>* dest, int 
     return 0;
 }
 
-template<typename T> int lua_autosetvector ( lua_State* L, T* dest, int type = -1, int index = 1, string errmsg = "Bad setter vector" )
+template<typename T> int lua_autosetvector ( lua_State* L, T* dest, int type = -1, string errmsg = "Bad setter vector" )
 {
     return 0;
 }
 
-template<typename T> int lua_autosetarray ( lua_State* L, T* dest, unsigned int size, int type = -1, int index = 1,  string errmsg = "Bad setter array" )
+template<typename T> int lua_autosetarray ( lua_State* L, T* dest, unsigned int size, int type = -1, string errmsg = "Bad setter array" )
 {
-    if ( !CheckLuaArgs ( L, index, true, errmsg, LUA_TUSERDATA ) ) return 0;
-    if ( !CheckLuaArgs ( L, -1, true, errmsg, LUA_TTABLE ) ) return 0;
-
-    int const_idx = index;
-    if ( const_idx < 0 ) const_idx = lua_gettop ( L ) + const_idx + 1;
-
-    unsigned int length = lua_rawlen ( L, -1 );
-    T* new_elem = new T;
-
-    for ( unsigned int i = 0; i < min ( length, size ); i++ )
+    if ( !CheckLuaArgs ( L, -1, false, errmsg, LUA_TTABLE ) )
     {
-        lua_geti ( L, -1, i+1 );
-        lua_autosetvalue ( L, new_elem, type, const_idx, errmsg );
-        dest[i] = *new_elem;
-    }
+        if ( !CheckLuaArgs ( L, -1, false, errmsg, LUA_TNUMBER ) ) return 0;
 
-    for ( unsigned int i = min ( length, size ); i < size; i++ )
+        int add_at = lua_tointeger ( L, -1 );
+
+        if ( add_at > size )
+        {
+            cerr << "Trying to assign value outside of array range..." << endl;
+            return 0;
+        }
+
+        lua_pop ( L, 1 );
+
+        T* new_elem = new T;
+        lua_autosetvalue ( L, new_elem, type, errmsg );
+
+        dest[add_at] = *new_elem;
+    }
+    else
     {
-        lua_pushinteger ( L, 0 );
-        lua_autosetvalue ( L, new_elem, type, const_idx, errmsg );
-        dest[i] = *new_elem;
-    }
+        unsigned int length = lua_rawlen ( L, -1 );
+        T* new_elem = new T;
 
+        for ( unsigned int i = 0; i < min ( length, size ); i++ )
+        {
+            lua_geti ( L, -1, i+1 );
+            lua_autosetvalue ( L, new_elem, type, errmsg );
+            dest[i] = *new_elem;
+        }
+
+        for ( unsigned int i = min ( length, size ); i < size; i++ )
+        {
+            lua_pushinteger ( L, 0 );
+            lua_autosetvalue ( L, new_elem, type, errmsg );
+            dest[i] = *new_elem;
+        }
+    }
     return 0;
 }
 
@@ -617,10 +650,10 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
 {
     string finalType = type;
 
-//     newUserDataFns[finalType] = [=] ( lua_State* L )
-//     {
-//         NewUserData<T> ( L, 1, "newUserDataFns" );
-//     };
+    newUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        NewUserData<T> ( L );
+    };
 
     setUserDataFns[finalType] = [=] ( lua_State* L )
     {
@@ -636,10 +669,10 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
 
     finalType = "vector<" + type + ">";
 
-//     newUserDataFns[finalType] = [=] ( lua_State* L )
-//     {
-//         NewUserData<vector<T>> ( L, 1, "newUserDataFns" );
-//     };
+    newUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        NewUserData<vector<T>> ( L );
+    };
 
     setUserDataFns[finalType] = [=] ( lua_State* L )
     {
@@ -655,10 +688,10 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
 
     finalType = "vector<vector<" + type + ">>";
 
-//     newUserDataFns[finalType] = [=] ( lua_State* L )
-//     {
-//         NewUserData<vector<vector<T>>> ( L, 1, "newUserDataFns" );
-//     };
+    newUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        NewUserData<vector<vector<T>>> ( L );
+    };
 
     setUserDataFns[finalType] = [=] ( lua_State* L )
     {
@@ -674,17 +707,17 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
 
     finalType = type + "[]";
 
-//     newUserDataFns[finalType] = [=] ( lua_State* L )
-//     {
-//         NewUserData<T> ( L, 1, "newUserDataFns" );
-//     };
+    newUserDataFns[finalType] = [=] ( lua_State* L )
+    {
+        NewUserData<T> ( L );
+    };
 
     setUserDataFns[finalType] = [=] ( lua_State* L )
     {
         T* ud = GetUserData<T> ( L, 1, "setUserDataFns" );
         lua_getfield ( L, 1, "array_size" );
         int array_size = lua_tointeger ( L, -1 );
-	lua_pop(L, 1);
+        lua_pop ( L, 1 );
         lua_autosetarray ( L, ud, array_size, -1 );
     };
 
@@ -693,7 +726,7 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
         T* ud = GetUserData<T> ( L, 1, "getUserDataFns" );
         lua_getfield ( L, 1, "array_size" );
         int array_size = lua_tointeger ( L, -1 );
-	lua_pop(L, 1);
+        lua_pop ( L, 1 );
         lua_autogetarray ( L, ud, array_size, -1 );
     };
 }

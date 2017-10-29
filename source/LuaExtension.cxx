@@ -246,63 +246,86 @@ int LuaListDirContent ( lua_State* L )
 
 map<string, function<void ( lua_State* ) >> setUserDataFns;
 map<string, function<void ( lua_State* ) >> getUserDataFns;
+map<string, function<void ( lua_State* ) >> newUserDataFns;
 
-int luaExt_SetUserDataValue(lua_State* L)
+int luaExt_SetUserDataValue ( lua_State* L )
 {
     if ( !CheckLuaArgs ( L, 1, true, "luaExt_TTree_SetBranch_Interface", LUA_TUSERDATA ) ) return 0;
 
-    lua_getfield(L, 1, "type");
-    string ud_type = lua_tostring(L, -1);
-    lua_pop(L, 1);
+    lua_getfield ( L, 1, "type" );
+    string ud_type = lua_tostring ( L, -1 );
+    lua_pop ( L, 1 );
 
-    setUserDataFns[ud_type](L);
+    setUserDataFns[ud_type] ( L );
 
     return 0;
 }
 
-int luaExt_GetUserDataValue(lua_State* L)
+int luaExt_PushBackUserDataValue ( lua_State* L )
+{
+    if ( lua_type ( L, -1 ) == LUA_TNIL || lua_type ( L, -1 ) == LUA_TTABLE )
+    {
+        cerr << "Cannot push_back nil or table..." << endl;
+
+        return 0;
+    }
+
+    return luaExt_SetUserDataValue ( L );
+}
+
+int luaExt_GetUserDataValue ( lua_State* L )
 {
     if ( !CheckLuaArgs ( L, 1, true, "luaExt_TTree_SetBranch_Interface", LUA_TUSERDATA ) ) return 0;
 
-    lua_getfield(L, 1, "type");
-    string ud_type = lua_tostring(L, -1);
-    lua_pop(L, 1);
-    
-    getUserDataFns[ud_type](L);
+    lua_getfield ( L, 1, "type" );
+    string ud_type = lua_tostring ( L, -1 );
+    lua_pop ( L, 1 );
+
+    getUserDataFns[ud_type] ( L );
+
+    if ( lua_type ( L, 2 ) == LUA_TNUMBER )
+    {
+        lua_geti ( L, -1, lua_tonumber ( L, 2 ) );
+    }
 
     return 1;
 }
 
-int luaExt_NewUserData(lua_State* L)
+int luaExt_NewUserData ( lua_State* L )
 {
-//     if ( !CheckLuaArgs ( L, 1, true, "luaExt_NewUserData", LUA_TSTRING ) ) return 0;
-// 
-//     string btype = lua_tostring ( L, 1 );
-// 
-//     size_t findIfArray = btype.find ( "[" );
-//     int arraySize = 0;
-// 
-//     if ( findIfArray != string::npos )
-//     {
-//         size_t endArraySize = btype.find ( "]" );
-//         arraySize = stoi ( btype.substr ( findIfArray+1, endArraySize-findIfArray-1 ) );
-//         btype = btype.substr(0, findIfArray) + "[]";
-//     }
-// 
-//     newUserDataFns[btype](L);
-// 
-//     SetupMetatable(L);
-//     AddMethod(L, luaExt_SetUserDataValue, "Set");
-//     AddMethod(L, luaExt_GetUserDataValue, "Get");
-// 
-//     lua_pushstring(L, btype.c_str());
-//     lua_setfield(L, -2, "type");
-// 
-//     if ( findIfArray != string::npos )
-//     {
-//         lua_pushinteger(L, arraySize);
-//         lua_setfield(L, -2, "array_size");
-//     }
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_NewUserData", LUA_TSTRING ) ) return 0;
+
+    string btype = lua_tostring ( L, 1 );
+
+    size_t findIfArray = btype.find ( "[" );
+    int arraySize = 0;
+
+    if ( findIfArray != string::npos )
+    {
+        size_t endArraySize = btype.find ( "]" );
+        arraySize = stoi ( btype.substr ( findIfArray+1, endArraySize-findIfArray-1 ) );
+        btype = btype.substr ( 0, findIfArray ) + "[]";
+    }
+
+    newUserDataFns[btype] ( L );
+
+    SetupMetatable ( L );
+    AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+    AddMethod ( L, luaExt_GetUserDataValue, "Get" );
+
+    lua_pushstring ( L, btype.c_str() );
+    lua_setfield ( L, -2, "type" );
+
+    if ( findIfArray != string::npos )
+    {
+        lua_pushinteger ( L, arraySize );
+        lua_setfield ( L, -2, "array_size" );
+    }
+
+    if ( btype.find ( "vector" ) != string::npos )
+    {
+        AddMethod ( L, luaExt_PushBackUserDataValue, "PushBack" );
+    }
 
     return 1;
 }

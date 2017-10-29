@@ -104,10 +104,16 @@ if IsMasterState then
 
 --******** Late Compilation Utilities ********--
 
-  function CompileC(args)
+  function CompileC(args, ...)
+    if type(args) ~= "table" then
+      local other_args = table.pack(...)
+      
+      args = {script=args, openfn = (other_args[1] and (other_args[1] ~= "X" and other_args[1] ~= "x")) and other_args[1] or "luaopen_libs", target= other_args[2] and other_args[2] or nil}
+    end
+
     CompilePostInit_C({script=args.script, target=args.target})
 
-    if args.openfn then
+    if args.openfn and args.openfn ~= "L" then
       local scriptExtPos = args.script:find("%.C") or args.script:find("%.c")
       local scriptExt = args.script:sub(scriptExtPos+1)
 

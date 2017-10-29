@@ -20,10 +20,10 @@ public:
 
     void MakeAccessors ()
     {
-        AddAccessor ( &anInt, "anInt" );
-        AddAccessor ( &aDouble, "aDouble" );
-        AddAccessor ( &aVector, "aVector" );
-        AddAccessor ( anArray, "anArray[8]" );
+        AddAccessor ( &anInt, "anInt", "int" );
+        AddAccessor ( &aDouble, "aDouble", "double" );
+        AddAccessor ( &aVector, "aVector", "vector<float>" );
+        AddAccessor ( anArray, "anArray[8]", "unsigned short" );
     }
 };
 
