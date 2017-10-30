@@ -286,7 +286,17 @@ template<typename T> T** NewUserData ( lua_State* L , T* init )
     return obj;
 }
 
-inline void SetupMetatable ( lua_State* L )
+template<typename T> T** NewUserDataArray ( lua_State* L , int size )
+{
+    T** obj = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
+    *obj = new T[size];
+
+    cout << "new array: " << *obj << endl;
+
+    return obj;
+}
+
+inline void MakeMetatable ( lua_State* L )
 {
     lua_newtable ( L );
 
@@ -561,7 +571,7 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value && is
     T* obj = * ( NewUserData<T> ( L ) );
     obj = src;
 
-    obj->MakeMetatable ( L );
+    obj->SetupMetatable ( L );
     obj->MakeAccessors();
 }
 
@@ -570,7 +580,7 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value && !i
     T* obj = * ( NewUserData<T> ( L ) );
     *obj = src;
 
-    obj->MakeMetatable ( L );
+    obj->SetupMetatable ( L );
     obj->MakeAccessors();
 }
 
@@ -579,7 +589,7 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value && i
     T* obj = reinterpret_cast<T*> ( lua_newuserdata ( L, sizeof ( T ) ) );
     obj = src;
 
-    SetupMetatable ( L );
+    MakeMetatable ( L );
     AddMethod ( L, luaExt_SetUserDataValue, "Set" );
     AddMethod ( L, luaExt_GetUserDataValue, "Get" );
 }
@@ -589,7 +599,7 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value && !
     T* obj = reinterpret_cast<T*> ( lua_newuserdata ( L, sizeof ( T ) ) );
     obj = &src;
 
-    SetupMetatable ( L );
+    MakeMetatable ( L );
     AddMethod ( L, luaExt_SetUserDataValue, "Set" );
     AddMethod ( L, luaExt_GetUserDataValue, "Get" );
 }
@@ -646,6 +656,18 @@ extern map<string, function<void ( lua_State* ) >> newUserDataFns;
 extern map<string, function<void ( lua_State* ) >> setUserDataFns;
 extern map<string, function<void ( lua_State* ) >> getUserDataFns;
 
+template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::type SetupMetatable ( lua_State* L )
+{
+    T* obj = GetUserData<T> ( L, -1 );
+    obj->SetupMetatable ( L );
+}
+
+template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::type SetupMetatable ( lua_State* L )
+{
+    AddMethod ( L, luaExt_SetUserDataValue, "Set" );
+    AddMethod ( L, luaExt_GetUserDataValue, "Get" );
+}
+
 template<typename T> void MakeAccessorsUserDataFuncs ( string type )
 {
     string finalType = type;
@@ -653,6 +675,8 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
     newUserDataFns[finalType] = [=] ( lua_State* L )
     {
         NewUserData<T> ( L );
+        MakeMetatable ( L );
+        SetupMetatable<T> ( L );
     };
 
     setUserDataFns[finalType] = [=] ( lua_State* L )
@@ -672,6 +696,8 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
     newUserDataFns[finalType] = [=] ( lua_State* L )
     {
         NewUserData<vector<T>> ( L );
+        MakeMetatable ( L );
+        SetupMetatable<vector<T>> ( L );
     };
 
     setUserDataFns[finalType] = [=] ( lua_State* L )
@@ -691,6 +717,8 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
     newUserDataFns[finalType] = [=] ( lua_State* L )
     {
         NewUserData<vector<vector<T>>> ( L );
+        MakeMetatable ( L );
+        SetupMetatable<vector<vector<T>>> ( L );
     };
 
     setUserDataFns[finalType] = [=] ( lua_State* L )
@@ -709,7 +737,11 @@ template<typename T> void MakeAccessorsUserDataFuncs ( string type )
 
     newUserDataFns[finalType] = [=] ( lua_State* L )
     {
-        NewUserData<T> ( L );
+        int arraySize = lua_tointeger ( L, -1 );
+        lua_pop ( L, 1 );
+        NewUserDataArray<T> ( L, arraySize );
+        MakeMetatable ( L );
+        SetupMetatable<T*> ( L );
     };
 
     setUserDataFns[finalType] = [=] ( lua_State* L )

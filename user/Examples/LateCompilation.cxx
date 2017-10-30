@@ -23,32 +23,13 @@ public:
         AddAccessor ( &anInt, "anInt", "int" );
         AddAccessor ( &aDouble, "aDouble", "double" );
         AddAccessor ( &aVector, "aVector", "vector<float>" );
-        AddAccessor ( anArray, "anArray[8]", "unsigned short" );
+        AddAccessor ( anArray, "anArray", "unsigned short[8]" );
     }
-};
-
-int MyLateClass_luactor ( lua_State* L )
-{
-    MyLateClass* obj = * ( NewUserData<MyLateClass> ( L ) );
-    obj->MakeMetatable(L);
-
-    return 1;
-}
-
-static const luaL_Reg late_compile_funcs [] =
-{
-    {"MyLateClass", MyLateClass_luactor},
-
-    {NULL, NULL}
 };
 
 extern "C" int luaopen_late_compile ( lua_State* L )
 {
-    lua_getglobal ( L, "_G" );
-    luaL_setfuncs ( L, late_compile_funcs, 0 );
-    lua_pop ( L, 1 );
-
-    MakeTTreeFunctions<MyLateClass>("MyLateClass");
+    MakeAccessFunctions<MyLateClass> ( L, "MyLateClass" );
 
     return 0;
 }

@@ -122,7 +122,7 @@ function newtable()
   function tbl:insert(stuff)
     table.insert(tbl, stuff)
   end
-  
+
   return tbl
 end
 
@@ -153,6 +153,12 @@ function RegisterStruct(tbl, name, size)
 end
 
 ---------------------------------------- LuaClass Functions ----------------------------------------
+
+function MakeCppClassCtor(classname)
+  _G[classname] = function()
+    return New(classname)
+  end
+end
 
 luaClasses = {}
 classPostInits = {}

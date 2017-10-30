@@ -99,7 +99,7 @@ int luaExt_TClonesArray_ConstructedAt ( lua_State* L );
 
 // ------------------------------------------------------ TTree Binder ----------------------------------------------------------- //
 
-extern map<string, function<void ( lua_State*, TTree*, const char*, int ) >> newBranchFns;
+extern map<string, function<void ( lua_State*, TTree*, const char* ) >> newBranchFns;
 
 int luaExt_NewTTree ( lua_State* L );
 int luaExt_TTree_Fill ( lua_State* L );
@@ -124,7 +124,7 @@ static const luaL_Reg luaTTreeBranchFns [] =
 
 inline void SetupTObjectMetatable ( lua_State* L )
 {
-    SetupMetatable ( L );
+    MakeMetatable ( L );
 
     AddMethod ( L, luaExt_TObject_GetName, "GetName" );
     AddMethod ( L, luaExt_TObject_GetTitle, "GetTitle" );
@@ -144,7 +144,7 @@ public:
 
     void SetupRootAppMetatable ( lua_State* L )
     {
-        SetupMetatable ( L );
+        MakeMetatable ( L );
 
         lua_pushcfunction ( L, luaExt_TApplication_Run );
         lua_setfield ( L, -2, "Run" );

@@ -1,9 +1,7 @@
 #include "UserClassBase.h"
 
-void LuaUserClass::MakeMetatable ( lua_State* L )
+void LuaUserClass::SetupMetatable ( lua_State* L )
 {
-    SetupMetatable ( L );
-
     AddMethod ( L, GetMember, "Get" );
     AddMethod ( L, SetMember, "Set" );
     AddMethod ( L, GetMemberValue, "Value" );
@@ -54,6 +52,10 @@ int SetMember ( lua_State* L )
         obj->getters[member] ( L );
         lua_remove ( L, 1 );
         lua_insert ( L, 1 );
+        luaExt_SetUserDataValue ( L );
+    }
+    else
+    {
         luaExt_SetUserDataValue ( L );
     }
 

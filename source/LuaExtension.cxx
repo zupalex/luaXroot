@@ -250,7 +250,7 @@ map<string, function<void ( lua_State* ) >> newUserDataFns;
 
 int luaExt_SetUserDataValue ( lua_State* L )
 {
-    if ( !CheckLuaArgs ( L, 1, true, "luaExt_TTree_SetBranch_Interface", LUA_TUSERDATA ) ) return 0;
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_SetUserDataValue", LUA_TUSERDATA ) ) return 0;
 
     lua_getfield ( L, 1, "type" );
     string ud_type = lua_tostring ( L, -1 );
@@ -275,7 +275,9 @@ int luaExt_PushBackUserDataValue ( lua_State* L )
 
 int luaExt_GetUserDataValue ( lua_State* L )
 {
-    if ( !CheckLuaArgs ( L, 1, true, "luaExt_TTree_SetBranch_Interface", LUA_TUSERDATA ) ) return 0;
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_GetUserDataValue", LUA_TUSERDATA ) ) return 0;
+
+    int index = lua_tointegerx ( L, 2, nullptr );
 
     lua_getfield ( L, 1, "type" );
     string ud_type = lua_tostring ( L, -1 );
@@ -283,9 +285,9 @@ int luaExt_GetUserDataValue ( lua_State* L )
 
     getUserDataFns[ud_type] ( L );
 
-    if ( lua_type ( L, 2 ) == LUA_TNUMBER )
+    if ( index > 0 )
     {
-        lua_geti ( L, -1, lua_tonumber ( L, 2 ) );
+        lua_geti ( L, -1, index );
     }
 
     return 1;
@@ -305,13 +307,10 @@ int luaExt_NewUserData ( lua_State* L )
         size_t endArraySize = btype.find ( "]" );
         arraySize = stoi ( btype.substr ( findIfArray+1, endArraySize-findIfArray-1 ) );
         btype = btype.substr ( 0, findIfArray ) + "[]";
+        lua_pushinteger ( L, arraySize );
     }
 
     newUserDataFns[btype] ( L );
-
-    SetupMetatable ( L );
-    AddMethod ( L, luaExt_SetUserDataValue, "Set" );
-    AddMethod ( L, luaExt_GetUserDataValue, "Get" );
 
     lua_pushstring ( L, btype.c_str() );
     lua_setfield ( L, -2, "type" );
