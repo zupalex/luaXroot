@@ -343,16 +343,22 @@ static const luaL_Reg luaXroot_lib [] =
 
     // SOCKETS BINDING //
 
+    {"SysOpen", LuaSysOpen},
+    {"SysClose", LuaSysClose},
     {"SysUnlink", LuaSysUnlink},
     {"SysRead", LuaSysRead},
     {"SysWrite", LuaSysWrite},
+    {"SysDup", LuaSysDup},
+    {"SysDup2", LuaSysDup2},
 
+    {"MakePipe", MakePipe},
+    {"MakeFiFo", MakeFiFo},
     {"NewSocket", LuaNewSocket},
 
     {"SocketBind", LuaSocketBind},
     {"SocketConnect", LuaSocketConnect},
 
-    {"SocketSelect", LuaSocketSelect},
+    {"SysSelect", LuaSysSelect},
 
     {"SocketListen", LuaSocketListen},
     {"SocketAccept", LuaSocketAccept},

@@ -190,6 +190,7 @@ extern "C" int luaopen_libLuaXRootlib ( lua_State* L )
     InitializeBranchesFuncs();
 
     LuaRegisterSocketConsts ( L );
+    LuaRegisterSysOpenConsts ( L );
 
     return 0;
 }
