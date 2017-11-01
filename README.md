@@ -4,11 +4,11 @@ A binder to use ROOT classes in Lua and merging ROOT TApplication with the Lua i
 REQUIREMENTS:
 CMake and Readline development libraries are required.
 
-example for Ubuntu:
+example for Ubuntu:  
 sudo apt-get install cmake libreadline6 libreadline6-dev
 
-example for Fedora 24:
-dnf install cmake readline-devel
+example for Fedora 24:  
+sudo dnf install cmake readline-devel
 
 To install it:
 
