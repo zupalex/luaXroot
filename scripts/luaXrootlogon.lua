@@ -2,9 +2,32 @@
 
 local defaultPackages = {}
 
+libraries = {}
+libraries.loaded = {}
+
+function LoadLib(lib, libname, use_pristine)
+  if libname == nil then
+    print("Library name must be specified")
+    return
+  end
+
+  local open_lib
+
+  if use_pristine then
+    open_lib = assert(package.loadlib(lib, libname))
+  elseif libname ~= "*" then
+    open_lib = assert(package.loadlib(lib, "openlib_"..libname))
+  else
+    open_lib = assert(package.loadlib(lib, "*"))
+  end
+
+  open_lib()
+
+  libraries.loaded[libname] = true
+end
+
 -- Loading the wrapper between ROOT objects and lua
-local rootbindpckg = assert(package.loadlib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib"))
-rootbindpckg()
+LoadLib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib", true)
 
 -- Modules which wil be loaded upon starting a session of luaXroot --
 require("lua_helper")
@@ -50,6 +73,27 @@ if IsMasterState then
   end
 
 --******** Task Managing Functions ********--
+
+  function ForkWithRedirect(fn, ...)
+    if type(fn) ~= "function" then
+      print("Invalid arguments. Format: function, [arg1], [arg2], ...")
+      return
+    end
+
+    local fds = {}
+    local prefn = function() 
+      fds.fdin, fds.fdout = MakePipe() 
+    end
+
+    local new_fn = function(fds, ...)
+      SysDup2(fds.fdin, 1)
+      fn(...)
+    end
+
+    SysFork({fn=new_fn, args=table.pack(fds, ...), preinit=prefn})
+
+    return fds.fdout
+  end
 
   function StartNewTask(taskname, fn, ...)
     RootTasks[taskname] = {
@@ -104,16 +148,28 @@ if IsMasterState then
 
 --******** Late Compilation Utilities ********--
 
-  function CompileC(args, ...)
+  function CompileC(args, ...)    
     if type(args) ~= "table" then
       local other_args = table.pack(...)
-      
-      args = {script=args, openfn = (other_args[1] and (other_args[1] ~= "X" and other_args[1] ~= "x")) and other_args[1] or "luaopen_libs", target= other_args[2] and other_args[2] or nil}
+      args = {script=args, libname = other_args[1], target= other_args[2] and other_args[2] or nil}
+    end
+
+    if args.openfn ~= nil then
+      args.libname = args.openfn
+    end
+
+    if libraries.loaded[args.libname] then
+      print("Library "..args.libname.." has already been loaded...")
+      return
     end
 
     CompilePostInit_C({script=args.script, target=args.target})
 
-    if args.openfn and args.openfn ~= "L" then
+    if args.libname ~= "*" then
+      if args.openfn == nil then
+        args.libname = "openlib_"..args.libname
+      end
+
       local scriptExtPos = args.script:find("%.C") or args.script:find("%.c")
       local scriptExt = args.script:sub(scriptExtPos+1)
 
@@ -124,8 +180,7 @@ if IsMasterState then
           scriptBase = "./"..scriptBase
         end
 
-        local new_pckg = assert(package.loadlib(scriptBase.."_"..scriptExt..".so", args.openfn))
-        new_pckg()
+        LoadLib(scriptBase.."_"..scriptExt..".so", args.libname, true)
       end
     end
   end

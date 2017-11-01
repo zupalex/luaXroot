@@ -18,16 +18,16 @@ public:
     vector<float> aVector;
     unsigned short anArray[8];
 
-    void MakeAccessors ()
+    void MakeAccessors ( lua_State* L )
     {
-        AddAccessor ( &anInt, "anInt", "int" );
-        AddAccessor ( &aDouble, "aDouble", "double" );
-        AddAccessor ( &aVector, "aVector", "vector<float>" );
-        AddAccessor ( anArray, "anArray", "unsigned short[8]" );
+        AddAccessor ( L, &anInt, "anInt", "int" );
+        AddAccessor ( L, &aDouble, "aDouble", "double" );
+        AddAccessor ( L, &aVector, "aVector", "vector<float>" );
+        AddAccessor ( L, anArray, "anArray", "unsigned short[8]" );
     }
 };
 
-extern "C" int luaopen_late_compile ( lua_State* L )
+extern "C" int openlib_late_compile ( lua_State* L )
 {
     MakeAccessFunctions<MyLateClass> ( L, "MyLateClass" );
 

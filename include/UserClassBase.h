@@ -14,51 +14,19 @@ public:
     LuaUserClass() {}
     virtual ~LuaUserClass() {}
 
-    map<string, function<void ( lua_State* ) >> getters; //!
-    map<string, function<void ( lua_State* ) >> setters; //!
-
     void SetupMetatable ( lua_State* L );
-    virtual void MakeAccessors () = 0;
+    virtual void MakeAccessors ( lua_State* L ) = 0;
 
-    template<typename T> void AddGetter ( T* src, string name, string type, int arraySize )
+    template<typename T> void AddAccessor ( lua_State* L, T* member, string name, string type )
     {
-        getters[name] = [=] ( lua_State* L )
-        {
-            T** ud = NewUserData<T> ( L );
-            *ud = src;
+        lua_pushstring ( L, type.c_str() );
+        lua_insert ( L, 1 );
+        luaExt_NewUserData ( L );
 
-            MakeMetatable ( L );
+        T** ud = GetUserDataPtr<T> ( L, -1 );
+        *ud = member;
 
-            lua_pushfstring ( L, type.c_str() );
-            lua_setfield ( L, -2, "type" );
-
-            lua_pushinteger ( L, arraySize );
-            lua_setfield ( L, -2, "array_size" );
-
-            AddMethod ( L, luaExt_SetUserDataValue, "Set" );
-            AddMethod ( L, luaExt_GetUserDataValue, "Get" );
-
-            if ( type.find ( "vector" ) != string::npos )
-            {
-                AddMethod ( L, luaExt_SetUserDataValue, "PushBack" );
-            }
-        };
-    }
-
-    template<typename T> void AddAccessor ( T* member, string name, string type )
-    {
-        size_t findIfArray = type.find ( "[" );
-        int arraySize = 0;
-
-        if ( findIfArray != string::npos )
-        {
-            size_t endArraySize = type.find ( "]" );
-            arraySize = stoi ( type.substr ( findIfArray+1, endArraySize-findIfArray-1 ) );
-            type = type.substr ( 0, findIfArray );
-            type += "[]";
-        }
-
-        AddGetter ( member, name, type, arraySize );
+        lua_setfield ( L, -2, name.c_str() );
     }
 
     ClassDef ( LuaUserClass, 1 )
@@ -67,8 +35,6 @@ public:
 int GetMember ( lua_State* L );
 int SetMember ( lua_State* L );
 int GetMemberValue ( lua_State* L );
-
-
 
 template<typename T> void MakeAccessFunctions ( lua_State* L, string type_name )
 {

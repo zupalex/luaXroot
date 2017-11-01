@@ -719,6 +719,16 @@ int luaExt_NewTObject ( lua_State* L )
     return 1;
 }
 
+int luaExt_TObject_Write ( lua_State* L )
+{
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_TObject_Write", LUA_TUSERDATA ) ) return 0;
+
+    TObject* obj = GetUserData<TObject> ( L );
+    obj->Write();
+
+    return 0;
+}
+
 int luaExt_TObject_Draw ( lua_State* L )
 {
     if ( !CheckLuaArgs ( L, 1, true, "luaExt_TObject_Draw", LUA_TUSERDATA ) )
@@ -1767,16 +1777,11 @@ int luaExt_TGraph_Eval ( lua_State* L )
 
 int luaExt_NewTFile ( lua_State* L )
 {
-    if ( !CheckLuaArgs ( L, 1, true, "luaExt_NewTFile", LUA_TTABLE ) )
-    {
-        return 0;
-    }
+    if ( !CheckLuaArgs ( L, 1, true, "luaExt_NewTFile", LUA_TTABLE ) ) return 0;
 
     lua_getfield ( L, 1, "name" );
-    if ( !CheckLuaArgs ( L, -1, true, "luaExt_NewTFile argument table: name ", LUA_TSTRING ) )
-    {
-        return 0;
-    }
+    
+    if ( !CheckLuaArgs ( L, -1, true, "luaExt_NewTFile argument table: name ", LUA_TSTRING ) ) return 0;
 
     string fName = lua_tostring ( L, -1 );
     lua_pop ( L, 1 );
@@ -1793,25 +1798,11 @@ int luaExt_NewTFile ( lua_State* L )
 
     SetupTObjectMetatable ( L );
 
-    AddMethod ( L, luaExt_TFile_Write, "Write" );
     AddMethod ( L, luaExt_TFile_Close, "Close" );
     AddMethod ( L, luaExt_TFile_cd, "cd" );
     AddMethod ( L, luaExt_TFile_ls, "ls" );
 
     return 1;
-}
-
-int luaExt_TFile_Write ( lua_State* L )
-{
-    if ( !CheckLuaArgs ( L, 1, true, "luaExt_TFile_Write", LUA_TUSERDATA ) )
-    {
-        return 0;
-    }
-
-    TFile* file = GetUserData<TFile> ( L );
-    file->Write();
-
-    return 0;
 }
 
 int luaExt_TFile_Close ( lua_State* L )

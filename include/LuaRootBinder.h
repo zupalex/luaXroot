@@ -44,6 +44,7 @@ int luaExt_TApplication_Terminate ( lua_State* L );
 // ------------------------------------------------------- TObject Binder ------------------------------------------------------- //
 
 int luaExt_NewTObject ( lua_State* L );
+int luaExt_TObject_Write ( lua_State* L );
 int luaExt_TObject_Draw ( lua_State* L );
 int luaExt_TObject_Update ( lua_State* L );
 int luaExt_TObject_GetName ( lua_State* L );
@@ -82,7 +83,6 @@ int luaExt_TGraph_Eval ( lua_State* L );
 // ------------------------------------------------------ TFile Binder ----------------------------------------------------------- //
 
 int luaExt_NewTFile ( lua_State* L );
-int luaExt_TFile_Write ( lua_State* L );
 int luaExt_TFile_Close ( lua_State* L );
 int luaExt_TFile_cd ( lua_State* L );
 int luaExt_TFile_ls ( lua_State* L );
@@ -126,6 +126,7 @@ inline void SetupTObjectMetatable ( lua_State* L )
 {
     MakeMetatable ( L );
 
+    AddMethod ( L, luaExt_TObject_Write, "Write" );
     AddMethod ( L, luaExt_TObject_GetName, "GetName" );
     AddMethod ( L, luaExt_TObject_GetTitle, "GetTitle" );
     AddMethod ( L, luaExt_TObject_Draw, "Draw" );
@@ -350,6 +351,9 @@ static const luaL_Reg luaXroot_lib [] =
     {"SysWrite", LuaSysWrite},
     {"SysDup", LuaSysDup},
     {"SysDup2", LuaSysDup2},
+    {"SysFork", LuaSysFork},
+    {"SysExec", LuaSysExecvpe},
+    {"GetEnv", LuaGetEnv},
 
     {"MakePipe", MakePipe},
     {"MakeFiFo", MakeFiFo},

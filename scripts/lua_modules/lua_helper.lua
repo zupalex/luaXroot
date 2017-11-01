@@ -126,6 +126,18 @@ function newtable()
   return tbl
 end
 
+function SplitTableKeyValue(tbl)
+  local keys = newtable()
+  local values = newtable()
+
+  for k, v in pairs(tbl) do
+    keys:insert(k)
+    values:insert(v)
+  end
+
+  return keys, values
+end
+
 function isint(x)
   return x == math.floor(x)
 end

@@ -24,6 +24,7 @@
 #include <ctime>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
@@ -44,6 +45,11 @@ using namespace std;
 class LuaUserClass;
 
 extern lua_State* lua;
+
+int LuaGetEnv ( lua_State* L );
+
+int LuaSysFork ( lua_State* L );
+int LuaSysExecvpe ( lua_State* L );
 
 inline int saveprompthistory ( lua_State* L )
 {
@@ -291,8 +297,6 @@ template<typename T> T** NewUserDataArray ( lua_State* L , int size )
     T** obj = reinterpret_cast<T**> ( lua_newuserdata ( L, sizeof ( T* ) ) );
     *obj = new T[size];
 
-    cout << "new array: " << *obj << endl;
-
     return obj;
 }
 
@@ -349,6 +353,18 @@ template<typename T> T* GetUserData ( lua_State* L, int idx = 1, string errmsg =
     }
 
     T* obj = * ( static_cast<T**> ( lua_touserdata ( L, idx ) ) );
+
+    return obj;
+}
+
+template<typename T> T** GetUserDataPtr ( lua_State* L, int idx = 1, string errmsg = "Error in GetUserData:" )
+{
+    if ( !CheckLuaArgs ( L, idx, true, errmsg, LUA_TUSERDATA ) )
+    {
+        return nullptr;
+    }
+
+    T** obj = static_cast<T**> ( lua_touserdata ( L, idx ) );
 
     return obj;
 }
@@ -572,7 +588,7 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value && is
     obj = src;
 
     obj->SetupMetatable ( L );
-    obj->MakeAccessors();
+    obj->MakeAccessors ( L );
 }
 
 template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value && !is_pointer<T>::value>::type lua_trypushuserdata ( lua_State* L, T src )
@@ -581,7 +597,7 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value && !i
     *obj = src;
 
     obj->SetupMetatable ( L );
-    obj->MakeAccessors();
+    obj->MakeAccessors ( L );
 }
 
 template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value && is_pointer<T>::value>::type lua_trypushuserdata ( lua_State* L, T src )

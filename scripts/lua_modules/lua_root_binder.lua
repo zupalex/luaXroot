@@ -51,11 +51,6 @@ AddPostInit("TTree", function(self)
     end
 
     function self:GetBranchList()
-      local blist = {}
-      for k, v in ipairs(self.branches_list) do
-        blist[k] = v.userdata
-      end
-      
-      return blist
+      return self.branches_list
     end
   end)
