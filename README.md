@@ -5,10 +5,10 @@ REQUIREMENTS:
 CMake and Readline development libraries are required.
 
 example for Ubuntu:
-apt-get install cmake; apt-get install readline-devel
+sudo apt-get install cmake libreadline6 libreadline6-dev
 
 example for Fedora 24:
-dnf install cmake; dnf install readline-devel
+dnf install cmake readline-devel
 
 To install it:
 
