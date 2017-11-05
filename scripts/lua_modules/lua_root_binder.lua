@@ -53,4 +53,10 @@ AddPostInit("TTree", function(self)
     function self:GetBranchList()
       return self.branches_list
     end
+
+    function self:Reset()
+      for k, v in pairs(self.branches_list) do
+        v:Set()
+      end
+    end
   end)

@@ -2,6 +2,9 @@
 
 local defaultPackages = {}
 
+luaXrootParams = {}
+luaXrootParams.max_history_length = 500
+
 libraries = {}
 libraries.loaded = {}
 
@@ -165,7 +168,7 @@ if IsMasterState then
 
     CompilePostInit_C({script=args.script, target=args.target})
 
-    if args.libname ~= "*" then
+    if args.libname ~= nil and args.libname ~= "*" then
       if args.openfn == nil then
         args.libname = "openlib_"..args.libname
       end
@@ -188,7 +191,8 @@ if IsMasterState then
 --******** Make functions to exit the program nicely without getting a bucket load of seg faults ********--
 
   function exit() 
-    saveprompthistory()
+    print("")
+    saveprompthistory(luaXrootParams.max_history_length)
     theApp:Terminate() 
   end
 

@@ -152,6 +152,16 @@ function InitTable(size, default)
   return tbl
 end
 
+function MakeEasyMethodCalls(obj)
+  if obj.methods == nil or obj.Call == nil then return end
+
+  for i, v in ipairs(obj.methods) do
+    obj[v] = function(self, ...)
+      obj:Call(v, ...)
+    end
+  end
+end
+
 structs = {}
 
 function RegisterStruct(tbl, name, size)

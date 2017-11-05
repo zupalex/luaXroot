@@ -52,7 +52,13 @@ function ReadBytes(file, fmt, tohexa)
 
       if size then
         local bdata = file:read(size)
-        local data = string.unpack(fmt, bdata)
+
+        local status, data = pcall(string.unpack, fmt, bdata)
+
+        if not status then
+          print("ERROR in ReadBytes:", data)
+          return
+        end
 
         if tohexa and math.floor(data) == data then
           return PrintHexa(data, size)
@@ -79,7 +85,12 @@ function DecodeBytes(str, fmt, first, tohexa)
 
   if not first then first = 1 end
 
-  local decoded, offset = string.unpack(fmt, str:sub(first))
+  local status, decoded, offset = pcall(string.unpack, fmt, str:sub(first))
+
+  if not status then
+    print("ERROR in DecodeBytes:", decoded)
+    return nil, first
+  end
 
   if tohexa then 
     return PrintHexa(decoded, offset-first), (first+offset-1)

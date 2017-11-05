@@ -31,8 +31,8 @@ extern mutex rootProcessLoopLock;
 extern mutex syncSafeGuard;
 extern int updateRequestPending;
 
-void singtstp_handler_stop ( int signal );
-void singtstp_handler_pause ( int signal );
+void sigtstp_handler_stop ( int signal );
+void sigtstp_handler_pause ( int signal );
 
 // ---------------------------------------------------- TApplication Binder ------------------------------------------------------ //
 
@@ -86,6 +86,7 @@ int luaExt_NewTFile ( lua_State* L );
 int luaExt_TFile_Close ( lua_State* L );
 int luaExt_TFile_cd ( lua_State* L );
 int luaExt_TFile_ls ( lua_State* L );
+int luaExt_TFile_Get ( lua_State* L );
 
 // ------------------------------------------------------ TCutG Binder ----------------------------------------------------------- //
 
@@ -229,8 +230,8 @@ public:
     bool shouldStop = false;
     bool safeSync = false;
 
-    int msg_fd;
-    int rcv_fd;
+    int msg_fd = -1;
+    int rcv_fd = -1;
 
     ClassDef ( RootAppThreadManager, 1 )
 };
@@ -339,9 +340,11 @@ static const luaL_Reg luaXroot_lib [] =
 
     {"TTree", luaExt_NewTTree},
 
+    {"appendtohist", appendtohist},
     {"saveprompthistory", saveprompthistory},
-    {"wipeprompthistory", wipeprompthistory},
-
+    {"trunctehistoryfile", trunctehistoryfile},
+    {"clearprompthistory", clearprompthistory},
+    
     // SOCKETS BINDING //
 
     {"SysOpen", LuaSysOpen},

@@ -483,5 +483,9 @@ struct lua_Debug {
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************/
 
+extern char* homeDir;
+extern char* histPath;
+
+void sigint_handler_terminate( int i);
 
 #endif
