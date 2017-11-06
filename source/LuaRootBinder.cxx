@@ -162,15 +162,15 @@ char** input_completion(const char *text, int start, int end)
 
 mutex rootProcessLoopLock;
 
-RootAppThreadManager* theApp = 0;
+RootAppManager* theApp = 0;
 
-RootAppThreadManager::RootAppThreadManager(const char *appClassName, Int_t *argc, char **argv, void *options, Int_t numOptions) :
+RootAppManager::RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options, Int_t numOptions) :
 		TApplication(appClassName, argc, argv, options, numOptions)
 {
 
 }
 
-LuaEmbeddedCanvas::LuaEmbeddedCanvas() :
+LuaCanvas::LuaCanvas() :
 		TCanvas()
 {
 //     TQObject::Connect ( this, "HasBeenKilled()", "RootAppThreadManager", theApp, "OnCanvasKilled()" );
@@ -189,7 +189,7 @@ extern "C" int luaopen_libLuaXRootlib(lua_State* L)
 	luaL_setfuncs(L, luaTTreeBranchFns, 0);
 	lua_pop(L, 1);
 
-	InitializeBranchesFuncs();
+	InitializeBranchesFuncs(L);
 
 	LuaRegisterSocketConsts(L);
 	LuaRegisterSysOpenConsts(L);
@@ -426,7 +426,22 @@ int StartNewTask_C(lua_State* L)
 	return 0;
 }
 
-int MakeSyncSafe(lua_State* L)
+void MakeSyncSafe(bool apply)
+{
+	if (theApp->safeSync) syncSafeGuard.unlock();
+
+	if (apply)
+	{
+		theApp->shouldStop = true;
+		theApp->NotifyUpdatePending();
+		syncSafeGuard.lock();
+		theApp->safeSync = true;
+		theApp->NotifyUpdateDone();
+		//         cout << "Setting up sync safetey mutex..." << endl;
+	}
+}
+
+int LuaMakeSyncSafe(lua_State*L)
 {
 	bool apply = true;
 
@@ -435,21 +450,7 @@ int MakeSyncSafe(lua_State* L)
 		apply = lua_toboolean(L, 1);
 	}
 
-	if (!apply)
-	{
-		updateRequestPending = 0;
-		//         cout << "Reset updateRequestpending: " << updateRequestPending << endl;
-	}
-
-	if (theApp->safeSync) syncSafeGuard.unlock();
-
-	if (apply)
-	{
-		theApp->shouldStop = true;
-		syncSafeGuard.lock();
-		theApp->safeSync = true;
-		//         cout << "Setting up sync safetey mutex..." << endl;
-	}
+	MakeSyncSafe(apply);
 
 	return 0;
 }
@@ -511,6 +512,9 @@ int CheckSignals_C(lua_State* L)
 			{
 //                 cout << "stop" << endl;
 				sigs->clear();
+
+				MakeSyncSafe(false);
+
 				return 0;
 			}
 			if (i == 0 && sigs->at(i) == "wait")
@@ -518,10 +522,14 @@ int CheckSignals_C(lua_State* L)
 //                 cout << "wait" << endl;
 				tasksStatus[tasksNames[L]] = "suspended";
 
+				MakeSyncSafe(false);
+
 				while (sigs->at(i) == "wait")
 				{
 					sleep(1);
 				}
+
+				MakeSyncSafe(true);
 
 				return CheckSignals_C(L);
 			}
@@ -621,7 +629,7 @@ int luaExt_NewTApplication(lua_State* L)
 		lua = L;
 		rl_attempted_completion_function = input_completion;
 
-		RootAppThreadManager** tApp = NewUserData<RootAppThreadManager>(L, "tapp", nullptr, nullptr);
+		RootAppManager** tApp = NewUserData<RootAppManager>(L, "tapp", nullptr, nullptr);
 
 		theApp = *tApp;
 
@@ -765,7 +773,7 @@ int luaExt_TObject_Draw(lua_State* L)
 	{
 		if (opts.find("same") == string::npos && opts.find("SAME") == string::npos)
 		{
-			LuaEmbeddedCanvas* disp = new LuaEmbeddedCanvas();
+			LuaCanvas* disp = new LuaCanvas();
 			disp->cd();
 			canvasTracker[obj] = (TCanvas*) disp;
 		}
@@ -847,8 +855,11 @@ int luaExt_NewTF1(lua_State* L)
 	}
 	else if (!CheckLuaArgs(L, 1, true, "luaExt_NewTF1", LUA_TTABLE)) return 0;
 
-	lua_unpackarguments(L, 1, "luaExt_NewTF1 argument table", { "name", "formula", "xmin", "xmax", "ndim", "npars" }, { LUA_TSTRING, LUA_TSTRING, LUA_TNUMBER,
-			LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER }, { true, false, false, false, false, false });
+	lua_unpackarguments(L, 1, "luaExt_NewTF1 argument table",
+		{ "name", "formula", "xmin", "xmax", "ndim", "npars" },
+		{ LUA_TSTRING, LUA_TSTRING, LUA_TNUMBER,
+		LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER },
+		{ true, false, false, false, false, false });
 
 	string fname = lua_tostring(L, -6);
 
@@ -1075,8 +1086,11 @@ int luaExt_NewTHist(lua_State* L)
 	string name, title;
 	double xmin, xmax, nbinsx, ymin, ymax, nbinsy;
 
-	lua_unpackarguments(L, 1, "luaExt_NewTHist argument table", { "name", "title", "xmin", "xmax", "nbinsx", "ymin", "ymax", "nbinsy" }, { LUA_TSTRING,
-			LUA_TSTRING, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER }, { true, true, true, true, true, false, false, false });
+	lua_unpackarguments(L, 1, "luaExt_NewTHist argument table",
+		{ "name", "title", "xmin", "xmax", "nbinsx", "ymin", "ymax", "nbinsy" },
+		{ LUA_TSTRING,
+		LUA_TSTRING, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER },
+		{ true, true, true, true, true, false, false, false });
 
 	name = lua_tostring(L, -8);
 	title = lua_tostring(L, -7);
@@ -1151,8 +1165,7 @@ int luaExt_THist_Fill(lua_State* L)
 	int w = 1;
 
 	lua_getfield(L, 2, "x");
-	if (!CheckLuaArgs(L, -1, true, "luaExt_THist_Fill argument table: x", LUA_TNUMBER)
-			&& !CheckLuaArgs(L, -1, true, "luaExt_THist_Fill argument table: x", LUA_TNUMBER))
+	if (!CheckLuaArgs(L, -1, true, "luaExt_THist_Fill argument table: x", LUA_TNUMBER) && !CheckLuaArgs(L, -1, true, "luaExt_THist_Fill argument table: x", LUA_TNUMBER))
 	{
 		return 0;
 	}
@@ -1838,7 +1851,7 @@ int luaExt_TFile_ls(lua_State* L)
 	return 0;
 }
 
-int luaExt_TFile_Get ( lua_State* L )
+int luaExt_TFile_Get(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 1, true, "luaExt_TFile_ls", LUA_TUSERDATA)) return 0;
 
@@ -1955,7 +1968,10 @@ int luaExt_NewTClonesArray(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 2, true, "luaExt_NewTClonesArray", LUA_TTABLE)) return 0;
 
-	lua_unpackarguments(L, 1, "luaExt_NewTClonesArray argument table", { "class", "size", }, { LUA_TSTRING, LUA_TNUMBER }, { true, true });
+	lua_unpackarguments(L, 1, "luaExt_NewTClonesArray argument table",
+		{ "class", "size", },
+		{ LUA_TSTRING, LUA_TNUMBER },
+		{ true, true });
 
 	const char* classname = lua_tostring(L, -2);
 	int size = lua_tointeger(L, -1);
@@ -1973,7 +1989,10 @@ int luaExt_TClonesArray_ConstructedAt(lua_State* L)
 {
 	TClonesArray* clones = GetUserData<TClonesArray>(L);
 
-	lua_unpackarguments(L, 1, "luaExt_TClonesArray_ConstructedAt argument table", { "idx", }, { LUA_TNUMBER }, { true });
+	lua_unpackarguments(L, 1, "luaExt_TClonesArray_ConstructedAt argument table",
+		{ "idx", },
+		{ LUA_TNUMBER },
+		{ true });
 
 	int idx = lua_tointeger(L, -1);
 
@@ -1993,7 +2012,10 @@ int luaExt_NewTTree(lua_State* L)
 		return 0;
 	}
 
-	lua_unpackarguments(L, 1, "luaExt_NewTTree argument table", { "name", "title", }, { LUA_TSTRING, LUA_TSTRING }, { true, true });
+	lua_unpackarguments(L, 1, "luaExt_NewTTree argument table",
+		{ "name", "title", },
+		{ LUA_TSTRING, LUA_TSTRING },
+		{ true, true });
 
 	const char* name = lua_tostring(L, -2);
 	const char* title = lua_tostring(L, -1);
@@ -2038,7 +2060,10 @@ int luaExt_TTree_Draw(lua_State* L)
 {
 	TTree* tree = GetUserData<TTree>(L, 1, "luaExt_TTree_Draw");
 
-	lua_unpackarguments(L, 2, "luaExt_TTree_Draw argument table", { "exp", "cond", "opts" }, { LUA_TSTRING, LUA_TSTRING, LUA_TSTRING }, { true, false, false });
+	lua_unpackarguments(L, 2, "luaExt_TTree_Draw argument table",
+		{ "exp", "cond", "opts" },
+		{ LUA_TSTRING, LUA_TSTRING, LUA_TSTRING },
+		{ true, false, false });
 
 	const char* exp = lua_tostring(L, -3);
 	const char* cond = lua_tostringx(L, -2);
@@ -2048,7 +2073,7 @@ int luaExt_TTree_Draw(lua_State* L)
 
 	if (opts.find("same") == string::npos && opts.find("SAME") == string::npos)
 	{
-		LuaEmbeddedCanvas* disp = new LuaEmbeddedCanvas();
+		LuaCanvas* disp = new LuaCanvas();
 		disp->cd();
 		canvasTracker[(TObject*) tree] = (TCanvas*) disp;
 	}
@@ -2072,7 +2097,10 @@ int luaExt_TTree_GetEntry(lua_State* L)
 {
 	TTree* tree = GetUserData<TTree>(L, 1, "luaExt_TTree_GetEntry");
 
-	lua_unpackarguments(L, 2, "luaExt_TTree_Draw argument table", { "entry", "getall" }, { LUA_TNUMBER, LUA_TBOOLEAN }, { true, false });
+	lua_unpackarguments(L, 2, "luaExt_TTree_Draw argument table",
+		{ "entry", "getall" },
+		{ LUA_TNUMBER, LUA_TBOOLEAN },
+		{ true, false });
 
 	long long int entry = lua_tointeger(L, -2);
 	int getall = lua_tointegerx(L, -1, nullptr);
@@ -2109,7 +2137,8 @@ template<typename T> void MakeNewBranchFuncs(string type)
 
 	newBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname )
 	{
-		luaExt_NewUserData ( L );
+		LuaCtor(L, -1);
+		lua_remove(L, -2);
 		T* branch_ptr = GetUserData<T> ( L, -1, "luaExt_TTree_NewBranch" );
 		tree->Branch ( bname, branch_ptr );
 	};
@@ -2118,7 +2147,8 @@ template<typename T> void MakeNewBranchFuncs(string type)
 
 	newBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname )
 	{
-		luaExt_NewUserData ( L );
+		LuaCtor(L, -1);
+		lua_remove(L, -2);
 		vector<T>* branch_ptr = GetUserData<vector<T>> ( L, -1, "luaExt_TTree_NewBranch" );
 		tree->Branch ( bname, branch_ptr );
 	};
@@ -2127,7 +2157,8 @@ template<typename T> void MakeNewBranchFuncs(string type)
 
 	newBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname )
 	{
-		luaExt_NewUserData ( L );
+		LuaCtor(L, -1);
+		lua_remove(L, -2);
 		vector<vector<T>>* branch_ptr = GetUserData<vector<vector<T>>> ( L, -1, "luaExt_TTree_NewBranch" );
 		tree->Branch ( bname, branch_ptr );
 	};
@@ -2136,7 +2167,8 @@ template<typename T> void MakeNewBranchFuncs(string type)
 
 	newBranchFns[finalType] = [=] ( lua_State* L, TTree* tree, const char* bname )
 	{
-		luaExt_NewUserData ( L );
+		LuaCtor(L, -1);
+		lua_remove(L, -2);
 		lua_getfield ( L, -1, "array_size" );
 		int arraySize = lua_tointeger ( L, -1 );
 		lua_pop ( L, 1 );
@@ -2149,33 +2181,36 @@ template<typename T> void MakeNewBranchFuncs(string type)
 	};
 }
 
-template<typename T> void SetupBranchFuncs(string type)
+template<typename T> void SetupBranchFuncs(lua_State* L, string type)
 {
 	MakeNewBranchFuncs<T>(type);
 
-	MakeAccessorsUserDataFuncs<T>(type);
+	MakeAccessorsUserDataFuncs<T>(L, type);
 }
 
-void InitializeBranchesFuncs()
+void InitializeBranchesFuncs(lua_State* L)
 {
-	SetupBranchFuncs<bool>("bool");
-	SetupBranchFuncs<short>("short");
-	SetupBranchFuncs<unsigned short>("unsigned short");
-	SetupBranchFuncs<int>("int");
-	SetupBranchFuncs<unsigned int>("unsigned int");
-	SetupBranchFuncs<long>("long");
-	SetupBranchFuncs<unsigned long>("unsigned long");
-	SetupBranchFuncs<long long>("long long");
-	SetupBranchFuncs<unsigned long long>("unsigned long long");
-	SetupBranchFuncs<float>("float");
-	SetupBranchFuncs<double>("double");
+	SetupBranchFuncs<bool>(L, "bool");
+	SetupBranchFuncs<short>(L, "short");
+	SetupBranchFuncs<unsigned short>(L, "unsigned short");
+	SetupBranchFuncs<int>(L, "int");
+	SetupBranchFuncs<unsigned int>(L, "unsigned int");
+	SetupBranchFuncs<long>(L, "long");
+	SetupBranchFuncs<unsigned long>(L, "unsigned long");
+	SetupBranchFuncs<long long>(L, "long long");
+	SetupBranchFuncs<unsigned long long>(L, "unsigned long long");
+	SetupBranchFuncs<float>(L, "float");
+	SetupBranchFuncs<double>(L, "double");
 }
 
 int luaExt_TTree_NewBranch_Interface(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 1, true, "luaExt_TTree_NewBranch_Interface", LUA_TUSERDATA, LUA_TTABLE)) return 0;
 
-	lua_unpackarguments(L, 2, "luaExt_TTree_NewBranch_Interface argument table", { "type", "name" }, { LUA_TSTRING, LUA_TSTRING }, { true, true });
+	lua_unpackarguments(L, 2, "luaExt_TTree_NewBranch_Interface argument table",
+		{ "type", "name" },
+		{ LUA_TSTRING, LUA_TSTRING },
+		{ true, true });
 
 	lua_remove(L, 2);
 
@@ -2192,6 +2227,7 @@ int luaExt_TTree_NewBranch_Interface(lua_State* L)
 	lua_getfield(L, 1, "branches_list");
 	lua_remove(L, 1);
 
+	lua_pushstring(L, btype.c_str());
 	newBranchFns[adjust_type](L, tree, bname);
 
 	lua_pushvalue(L, -1);
@@ -2204,7 +2240,10 @@ int luaExt_TTree_GetBranch_Interface(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 1, true, "luaExt_TTree_GetBranch_Interface", LUA_TUSERDATA, LUA_TTABLE)) return 0;
 
-	lua_unpackarguments(L, 2, "luaExt_TTree_GetBranch_Interface argument table", { "name" }, { LUA_TSTRING }, { true });
+	lua_unpackarguments(L, 2, "luaExt_TTree_GetBranch_Interface argument table",
+		{ "name" },
+		{ LUA_TSTRING },
+		{ true });
 
 	const char* bname = lua_tostring(L, -1);
 

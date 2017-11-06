@@ -6,6 +6,9 @@
 
 lua_State* lua = 0;
 
+map<string, function<int()>> methodList;
+map<string, map<int, function<void(int)>>> constructorList;
+
 lua_State* InitLuaEnv()
 {
 	lua_State* L = luaL_newstate();
@@ -174,111 +177,7 @@ void DoForEach(lua_State *L, int index, function<bool(lua_State *L_)> dofn)
 	}
 }
 
-int LuaGetEnv(lua_State* L)
-{
-	if (!CheckLuaArgs(L, 1, true, "LuaGetEnv", LUA_TSTRING)) return 0;
 
-	string env_var = lua_tostring(L, 1);
-
-	lua_pushstring(L, getenv(env_var.c_str()));
-
-	return 1;
-}
-
-int LuaSysFork(lua_State* L)
-{
-	lua_unpackarguments(L, 1, "LuaSysFork argument table", { "fn", "args", "preinit" }, { LUA_TFUNCTION, LUA_TTABLE, LUA_TFUNCTION }, { true, false, false });
-
-	if (lua_type(L, -1) != LUA_TNIL)
-		lua_pcall(L, 0, 0, 0);
-	else
-		lua_pop(L, 1);
-
-	int nargs = lua_rawlen(L, -1);
-	int args_stack_pos = lua_gettop(L);
-
-	for (int i = 0; i < nargs; i++)
-		lua_geti(L, args_stack_pos, i + 1);
-
-	lua_remove(L, args_stack_pos);
-
-	int childid;
-
-	switch (childid = fork())
-	{
-	case 0:
-		lua_pcall(L, nargs, LUA_MULTRET, 0);
-
-		exit(0);
-	}
-
-	return 0;
-}
-
-int LuaSysExecvpe(lua_State* L)
-{
-	lua_unpackarguments(L, 1, "LuaSysFork argument table", { "file", "args", "env" }, { LUA_TSTRING, LUA_TTABLE, LUA_TTABLE }, { true, true, false });
-
-	const char* file = lua_tostring(L, -3);
-
-	unsigned int argv_size = lua_rawlen(L, -2);
-	char** argv = new char*[argv_size + 1];
-
-	for (unsigned int i = 0; i < argv_size; i++)
-	{
-		lua_geti(L, -2, i + 1);
-		argv[i] = new char[1024];
-		sprintf(argv[i], "%s", lua_tostring(L, -1));
-		lua_pop(L, 1);
-	}
-	argv[argv_size] = NULL;
-
-	vector<string> envp_str;
-	unsigned int envp_size = 0;
-
-	if (lua_type(L, -1) != LUA_TNIL)
-	{
-		lua_getglobal(L, "SplitTableKeyValue");
-		lua_insert(L, -2);
-		lua_pcall(L, 1, 2, 0);
-
-		envp_size = lua_rawlen(L, -1);
-
-		for (unsigned int i = 0; i < envp_size; i++)
-		{
-			string env_var = "";
-
-			lua_geti(L, -2, i + 1);
-			env_var += lua_tostring(L, -1);
-			lua_pop(L, 1);
-
-			env_var += "=";
-
-			lua_geti(L, -1, i + 1);
-			env_var += lua_tostring(L, -1);
-			lua_pop(L, 1);
-
-			envp_str.push_back(env_var.c_str());
-		}
-
-		lua_pop(L, 2);
-	}
-
-	char** envp = new char*[envp_size + 1];
-
-	for (unsigned int i = 0; i < envp_size; i++)
-	{
-		envp[i] = new char[1024];
-		sprintf(envp[i], "%s", envp_str[i].c_str());
-	}
-	envp[envp_size] = NULL;
-
-	int success = execvpe(file, argv, envp);
-
-	if (success == -1) cerr << "Failed to run execvpe => " << errno << endl;
-
-	return 0;
-}
 
 int LuaListDirContent(lua_State* L)
 {
@@ -415,44 +314,6 @@ int luaExt_GetUserDataValue(lua_State* L)
 	if (index > 0)
 	{
 		lua_geti(L, -1, index);
-	}
-
-	return 1;
-}
-
-int luaExt_NewUserData(lua_State* L)
-{
-	if (!CheckLuaArgs(L, 1, true, "luaExt_NewUserData", LUA_TSTRING)) return 0;
-
-	string btype = lua_tostring(L, 1);
-
-	size_t findIfArray = btype.find("[");
-	int arraySize = 0;
-
-	if (findIfArray != string::npos)
-	{
-		size_t endArraySize = btype.find("]");
-		arraySize = stoi(btype.substr(findIfArray + 1, endArraySize - findIfArray - 1));
-		btype = btype.substr(0, findIfArray) + "[]";
-		lua_pushinteger(L, arraySize);
-	}
-
-	newUserDataFns[btype](L);
-
-	lua_pushstring(L, btype.c_str());
-	lua_setfield(L, -2, "type");
-
-	if (findIfArray != string::npos)
-	{
-		lua_pushinteger(L, arraySize);
-		lua_setfield(L, -2, "array_size");
-		AddMethod(L, luaExt_GetVectorSize, "GetSize");
-	}
-
-	if (btype.find("vector") != string::npos)
-	{
-		AddMethod(L, luaExt_PushBackUserDataValue, "PushBack");
-		AddMethod(L, luaExt_GetVectorSize, "GetSize");
 	}
 
 	return 1;

@@ -31,9 +31,11 @@ end
 
 -- Loading the wrapper between ROOT objects and lua
 LoadLib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib", true)
+LoadLib(LUAXROOTLIBPATH .. "/libRootBinderLib.so", "lua_root_classes")
 
 -- Modules which wil be loaded upon starting a session of luaXroot --
 require("lua_helper")
+socket = require("lua_sockets")
 require("lua_tree")
 require("lua_root_binder")
 
@@ -116,11 +118,23 @@ if IsMasterState then
     return status
   end
 
-  function SendSignal(taskname, sig)
+  function SendSignal(taskname, sig, ...)
+    local args = table.pack(...)
+    local args_str = serpent.dump(args)
+
     if type(sig) == "string" then
+      if #args > 0 then
+        sig = sig.."$ARGS"..args_str
+      end
+
       SendSignal_C(taskname, sig)
     elseif type(sig) == "function" then
       local sig_str = serpent.dump(sig)
+
+      if #args > 0 then
+        sig_str = sig_str.."$ARGS"..args_str
+      end
+
       SendSignal_C(taskname, sig_str)
     end
   end
@@ -224,9 +238,27 @@ function CheckSignals()
   return CheckSignals_C()
 end
 
+_tasksignals = {}
+
+function AddSignal(signame, sigfn)
+  _tasksignals[signame] = sigfn
+end
+
 function ProcessSignal(sig_str)
-  local sigfn = load(sig_str)()
-  sigfn()
+  local args_pos = sig_str:find("$ARGS")
+  local args = {}
+  if args_pos ~= nil then
+    local args_str = sig_str:sub(args_pos+5)
+    sig_str = sig_str:sub(1, args_pos-1)
+    args = load(args_str)()
+  end
+
+  if _tasksignals[sig_str] then
+    _tasksignals[sig_str](table.unpack(args))
+  else
+    local sigfn = load(sig_str)()
+    sigfn(table.unpack(args))
+  end
 end
 
 pcall(require, 'userlogon') -- this line attempt to load additional user/userlogon.lua. If it doesnt't exist it does nothing. 

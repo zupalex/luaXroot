@@ -9,22 +9,12 @@
 #include <netdb.h>
 #include <fcntl.h>
 
-#include "LuaExtension.h"
+#include "LuaSystemCalls.h"
 
 // ************************************************************************************************ //
 // ***************************************** Sockets Binder *************************************** //
 // ************************************************************************************************ //
 
-int MakePipe ( lua_State* L );
-int MakeFiFo ( lua_State* L );
-
-int LuaSysOpen ( lua_State* L );
-int LuaSysClose ( lua_State* L );
-
-int LuaSysDup ( lua_State* L );
-int LuaSysDup2 ( lua_State* L );
-
-int LuaRegisterSysOpenConsts ( lua_State* L );
 int LuaRegisterSocketConsts ( lua_State* L );
 
 struct SocketInfos
@@ -46,20 +36,11 @@ struct SocketInfos
 };
 
 extern map<int, SocketInfos> socketsList;
-extern int maxFd;
-
-
-
-int LuaSysUnlink ( lua_State* L );
-int LuaSysRead ( lua_State* L );
-int LuaSysWrite ( lua_State* L );
 
 int LuaNewSocket ( lua_State* L );
 
 int LuaSocketBind ( lua_State* L );
 int LuaSocketConnect ( lua_State* L );
-
-int LuaSysSelect ( lua_State* L );
 
 int LuaSocketListen ( lua_State* L );
 int LuaSocketAccept ( lua_State* L );

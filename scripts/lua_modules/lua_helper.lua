@@ -157,8 +157,18 @@ function MakeEasyMethodCalls(obj)
 
   for i, v in ipairs(obj.methods) do
     obj[v] = function(self, ...)
-      obj:Call(v, ...)
+      return obj:Call(v, ...)
     end
+  end
+end
+
+function New(classname, ...)
+  return _ctor(classname, ...)
+end
+
+function MakeEasyConstructors(classname)
+  _G[classname] = function(...)
+    _ctor(classname, ...)
   end
 end
 
@@ -190,7 +200,7 @@ function RegisterLuaClass(class)
   luaClasses[class.classname] = class
 end
 
-function LuaClass(name, base, init)
+function LuaClass(name, base, init, skipregister)
   local c = {}    -- a new class instance
 
   if not init and type(base) == "function" then
@@ -256,7 +266,7 @@ function LuaClass(name, base, init)
 
   setmetatable(c, mt)
 
-  RegisterLuaClass(c)
+  if not skipregister then RegisterLuaClass(c) end
 
   return c
 end

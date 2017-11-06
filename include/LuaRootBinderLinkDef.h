@@ -17,8 +17,8 @@
 #pragma link C++ class vector<vector<float>>+;
 #pragma link C++ class vector<vector<double>>+;
 
-#pragma link C++ class RootAppThreadManager+;
-#pragma link C++ class LuaEmbeddedCanvas+;
+#pragma link C++ class RootAppManager+;
+#pragma link C++ class LuaCanvas+;
 #pragma link C++ class LuaUserClass+;
 
 #endif

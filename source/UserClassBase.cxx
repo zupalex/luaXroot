@@ -1,7 +1,5 @@
 #include "UserClassBase.h"
 
-map<string, function<void()>> methodList;
-
 void LuaUserClass::SetupMetatable(lua_State* L)
 {
 	AddMethod(L, GetMember, "Get");
@@ -12,6 +10,8 @@ void LuaUserClass::SetupMetatable(lua_State* L)
 
 	lua_newtable(L);
 	MakeAccessors(L);
+	AddClassMethod(L, &LuaUserClass::GetLuaName, "GetName");
+	AddClassMethod(L, &LuaUserClass::SetLuaName, "SetName");
 	lua_setfield(L, -2, "members");
 
 	lua_newtable(L);
@@ -98,7 +98,5 @@ int CallMethod(lua_State* L)
 	string method = lua_tostring(L, 2);
 	lua_remove(L, 2);
 
-	methodList[method]();
-
-	return 0;
+	return methodList[method]();
 }

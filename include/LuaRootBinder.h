@@ -21,7 +21,6 @@
 #include "TTimer.h"
 #include "TClonesArray.h"
 
-#include "LuaExtension.h"
 #include "LuaSocketBinder.h"
 #include <llimits.h>
 
@@ -31,255 +30,176 @@ extern mutex rootProcessLoopLock;
 extern mutex syncSafeGuard;
 extern int updateRequestPending;
 
-void sigtstp_handler_stop ( int signal );
-void sigtstp_handler_pause ( int signal );
+void sigtstp_handler_stop(int signal);
+void sigtstp_handler_pause(int signal);
 
-// ---------------------------------------------------- TApplication Binder ------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------ RootAppManager -------------------------------------------------------- //
+// ------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------ //
 
-int luaExt_NewTApplication ( lua_State* L );
-int luaExt_TApplication_Run ( lua_State* L );
-int luaExt_TApplication_Update ( lua_State* L );
-int luaExt_TApplication_Terminate ( lua_State* L );
+// --------------------------------- TApplication Binder---------------------------- //
 
-// ------------------------------------------------------- TObject Binder ------------------------------------------------------- //
+int luaExt_NewTApplication(lua_State* L);
+int luaExt_TApplication_Run(lua_State* L);
+int luaExt_TApplication_Update(lua_State* L);
+int luaExt_TApplication_Terminate(lua_State* L);
 
-int luaExt_NewTObject ( lua_State* L );
-int luaExt_TObject_Write ( lua_State* L );
-int luaExt_TObject_Draw ( lua_State* L );
-int luaExt_TObject_Update ( lua_State* L );
-int luaExt_TObject_GetName ( lua_State* L );
-int luaExt_TObject_GetTitle ( lua_State* L );
+// --------------------------------------------------------------------------------- //
 
-// ------------------------------------------------------ TF1 Binder -------------------------------------------------------------- //
-
-int luaExt_NewTF1 ( lua_State* L );
-int luaExt_TF1_SetParameters ( lua_State* L );
-int luaExt_TF1_Eval ( lua_State* L );
-int luaExt_TF1_GetPars ( lua_State* L );
-int luaExt_TF1_GetChi2 ( lua_State* L );
-
-// -------------------------------------------------- TH[istograms] Binder -------------------------------------------------------- //
-
-int luaExt_NewTHist ( lua_State* L );
-int luaExt_THist_Clone ( lua_State* L );
-int luaExt_THist_Fill ( lua_State* L );
-int luaExt_THist_Add ( lua_State* L );
-int luaExt_THist_Scale ( lua_State* L );
-int luaExt_THist_SetRangeUser ( lua_State* L );
-int luaExt_THist_Fit ( lua_State* L );
-int luaExt_THist_Reset ( lua_State* L );
-
-// -------------------------------------------------- TGraphErrors Binder -------------------------------------------------------- //
-
-int luaExt_NewTGraph ( lua_State* L );
-int luaExt_TGraph_SetTitle ( lua_State* L );
-int luaExt_TGraph_Fit ( lua_State* L );
-int luaExt_TGraph_SetPoint ( lua_State* L );
-int luaExt_TGraph_GetPoint ( lua_State* L );
-int luaExt_TGraph_RemovePoint ( lua_State* L );
-int luaExt_TGraph_SetNPoints ( lua_State* L );
-int luaExt_TGraph_Eval ( lua_State* L );
-
-// ------------------------------------------------------ TFile Binder ----------------------------------------------------------- //
-
-int luaExt_NewTFile ( lua_State* L );
-int luaExt_TFile_Close ( lua_State* L );
-int luaExt_TFile_cd ( lua_State* L );
-int luaExt_TFile_ls ( lua_State* L );
-int luaExt_TFile_Get ( lua_State* L );
-
-// ------------------------------------------------------ TCutG Binder ----------------------------------------------------------- //
-
-int luaExt_NewTCutG ( lua_State* L );
-int luaExt_TCutG_IsInside ( lua_State* L );
-
-// ------------------------------------------------------ TClonesArray Binder ----------------------------------------------------------- //
-
-int luaExt_NewTClonesArray ( lua_State* L );
-int luaExt_TClonesArray_ConstructedAt ( lua_State* L );
-
-// ------------------------------------------------------ TTree Binder ----------------------------------------------------------- //
-
-extern map<string, function<void ( lua_State*, TTree*, const char* ) >> newBranchFns;
-
-int luaExt_NewTTree ( lua_State* L );
-int luaExt_TTree_Fill ( lua_State* L );
-int luaExt_TTree_GetEntries ( lua_State* L );
-int luaExt_TTree_Draw ( lua_State* L );
-int luaExt_TTree_GetEntry ( lua_State* L );
-
-int luaExt_TTree_NewBranch_Interface ( lua_State* L );
-int luaExt_TTree_GetBranch_Interface ( lua_State* L );
-
-void InitializeBranchesFuncs();
-
-static const luaL_Reg luaTTreeBranchFns [] =
-{
-    {"NewBranchInterface", luaExt_TTree_NewBranch_Interface},
-    {"GetBranchInterface", luaExt_TTree_GetBranch_Interface},
-
-    {NULL, NULL}
-};
-
-// --------------------------------------------- ROOT Object API Helper Functions ------------------------------------------------ //
-
-inline void SetupTObjectMetatable ( lua_State* L )
-{
-    MakeMetatable ( L );
-
-    AddMethod ( L, luaExt_TObject_Write, "Write" );
-    AddMethod ( L, luaExt_TObject_GetName, "GetName" );
-    AddMethod ( L, luaExt_TObject_GetTitle, "GetTitle" );
-    AddMethod ( L, luaExt_TObject_Draw, "Draw" );
-    AddMethod ( L, luaExt_TObject_Update, "Update" );
-}
-
-// --------------------------------------------------- Lua Library export -------------------------------------------------------- //
-
-class RootAppThreadManager : public TApplication
-{
+class RootAppManager: public TApplication {
 private:
 
 public:
-    RootAppThreadManager ( const char *appClassName, Int_t *argc, char **argv, void *options=0, Int_t numOptions=0 );
-    virtual ~RootAppThreadManager() {}
+	RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options = 0, Int_t numOptions = 0);
+	virtual ~RootAppManager()
+	{
+	}
 
-    void SetupRootAppMetatable ( lua_State* L )
-    {
-        MakeMetatable ( L );
+	void SetupRootAppMetatable(lua_State* L)
+	{
+		MakeMetatable(L);
 
-        lua_pushcfunction ( L, luaExt_TApplication_Run );
-        lua_setfield ( L, -2, "Run" );
+		lua_pushcfunction(L, luaExt_TApplication_Run);
+		lua_setfield(L, -2, "Run");
 
-        lua_pushcfunction ( L, luaExt_TApplication_Update );
-        lua_setfield ( L, -2, "Update" );
+		lua_pushcfunction(L, luaExt_TApplication_Update);
+		lua_setfield(L, -2, "Update");
 
-        lua_pushcfunction ( L, luaExt_TApplication_Terminate );
-        lua_setfield ( L, -2, "Terminate" );
-    }
+		lua_pushcfunction(L, luaExt_TApplication_Terminate);
+		lua_setfield(L, -2, "Terminate");
+	}
 
-    void KillApp()
-    {
-        cout << "Received signal to kill the app" << endl;
-        gSystem->ExitLoop();
-    }
+	void KillApp()
+	{
+		cout << "Received signal to kill the app" << endl;
+		gSystem->ExitLoop();
+	}
 
-    void OnCanvasKilled()
-    {
-        cout << "A Canvas Has Been KILLED!" << endl;
-        this->shouldStop = true;
-    }
+	void OnCanvasKilled()
+	{
+		cout << "A Canvas Has Been KILLED!" << endl;
+		this->shouldStop = true;
+	}
 
-    void SetupUpdateSignalSender()
-    {
-        msg_fd = socket ( AF_UNIX, SOCK_STREAM, 0 );
+	void SetupUpdateSignalSender()
+	{
+		msg_fd = socket( AF_UNIX, SOCK_STREAM, 0);
 
-        remove ( "/tmp/.luaXroot_msgqueue" );
+		remove("/tmp/.luaXroot_msgqueue");
 
-        sockaddr_un addr;
-        addr.sun_family = AF_UNIX;
-        strcpy ( addr.sun_path, "/tmp/.luaXroot_msgqueue" );
+		sockaddr_un addr;
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "/tmp/.luaXroot_msgqueue");
 
-        if ( bind ( msg_fd, ( sockaddr* ) &addr, sizeof ( addr ) ) < 0 )
-        {
-            cerr << "Error opening socket" << endl;
-        }
+		if (bind(msg_fd, (sockaddr*) &addr, sizeof(addr)) < 0)
+		{
+			cerr << "Error opening socket" << endl;
+		}
 
-        listen ( msg_fd, 1 );
-    }
+		listen(msg_fd, 1);
+	}
 
-    void WaitForUpdateReceiver()
-    {
+	void WaitForUpdateReceiver()
+	{
 
-        sockaddr_storage clients_addr;
-        socklen_t addr_size;
+		sockaddr_storage clients_addr;
+		socklen_t addr_size;
 
-        msg_fd = accept ( msg_fd, ( sockaddr* ) &clients_addr, &addr_size );
-    }
+		msg_fd = accept(msg_fd, (sockaddr*) &clients_addr, &addr_size);
+	}
 
-    void SetupUpdateSignalReceiver()
-    {
-        rcv_fd = socket ( AF_UNIX, SOCK_STREAM, 0 );
+	void SetupUpdateSignalReceiver()
+	{
+		rcv_fd = socket( AF_UNIX, SOCK_STREAM, 0);
 
-        sockaddr_un addr;
-        addr.sun_family = AF_UNIX;
-        strcpy ( addr.sun_path, "/tmp/.luaXroot_msgqueue" );
+		sockaddr_un addr;
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "/tmp/.luaXroot_msgqueue");
 
-        connect ( rcv_fd, ( sockaddr* ) &addr, sizeof ( sockaddr_un ) );
+		connect(rcv_fd, (sockaddr*) &addr, sizeof(sockaddr_un));
 
-        gSystem->AddFileHandler ( new TFileHandler ( rcv_fd, 1 ) );
-    }
+		gSystem->AddFileHandler(new TFileHandler(rcv_fd, 1));
+	}
 
-    void NotifyUpdatePending()
-    {
-        updateRequestPending++;
-        shouldStop = true;
-        const char* msg = "update";
-        if ( send ( msg_fd, ( void* ) msg, 6, 0 ) == -1 ) cerr << "Failed to send update message:" << errno << endl;
-        rootProcessLoopLock.lock();
-    }
+	void NotifyUpdatePending()
+	{
+		updateRequestPending++;
+		shouldStop = true;
+		const char* msg = "update";
+		if (send(msg_fd, (void*) msg, 6, 0) == -1) cerr << "Failed to send update message:" << errno << endl;
+		rootProcessLoopLock.lock();
+	}
 
-    void NotifyUpdateDone()
-    {
-        updateRequestPending--;
-        char* buffer = new char[6];
-        if ( recv ( rcv_fd, buffer, 6, 0 ) == -1 ) cerr << "Failed to receive update message" << errno << endl;
-        rootProcessLoopLock.unlock();
-    }
+	void NotifyUpdateDone()
+	{
+		updateRequestPending--;
+		char* buffer = new char[6];
+		if (recv(rcv_fd, buffer, 6, 0) == -1) cerr << "Failed to receive update message" << errno << endl;
+		rootProcessLoopLock.unlock();
+	}
 
-    bool shouldStop = false;
-    bool safeSync = false;
+	bool shouldStop = false;
+	bool safeSync = false;
 
-    int msg_fd = -1;
-    int rcv_fd = -1;
+	int msg_fd = -1;
+	int rcv_fd = -1;
 
-    ClassDef ( RootAppThreadManager, 1 )
+ClassDef ( RootAppManager, 1 )
 };
 
-extern RootAppThreadManager* theApp;
+extern RootAppManager* theApp;
 
-inline int GetTheApp ( lua_State* L )
+inline int GetTheApp(lua_State* L)
 {
-    RootAppThreadManager** root_app = NewUserData<RootAppThreadManager> ( L, theApp );
+	RootAppManager** root_app = NewUserData<RootAppManager>(L, theApp);
 
-    ( *root_app )->SetupRootAppMetatable ( L );
+	(*root_app)->SetupRootAppMetatable(L);
 
-    return 1;
+	return 1;
 }
 
-class LuaEmbeddedCanvas : public TCanvas
-{
+// ------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------ //
+// --------------------------------------------- LuaCanvas ---------------------------------------------------------- //
+// ------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------ //
+
+class LuaCanvas: public TCanvas {
 private:
 
 public:
-    LuaEmbeddedCanvas();
-    virtual ~LuaEmbeddedCanvas()
-    {
-        HasBeenKilled();
+	LuaCanvas();
+	virtual ~LuaCanvas()
+	{
+		HasBeenKilled();
 
-        for ( auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++ )
-        {
-            if ( itr->second == this )
-            {
-                canvasTracker.erase ( itr );
-                break;
-            }
-        }
-    }
+		for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
+		{
+			if (itr->second == this)
+			{
+				canvasTracker.erase(itr);
+				break;
+			}
+		}
+	}
 
-    void HasBeenKilled()
-    {
+	void HasBeenKilled()
+	{
 //         cout << "Emitting signal to kill the app" << endl;
-        Emit ( "HasBeenKilled()" );
-    }
+		Emit("HasBeenKilled()");
+	}
 
-    void RequestMasterUpdate()
-    {
-        Emit ( "RequestMasterUpdate()" );
-    }
+	void RequestMasterUpdate()
+	{
+		Emit("RequestMasterUpdate()");
+	}
 
-    ClassDef ( LuaEmbeddedCanvas, 1 )
+ClassDef ( LuaCanvas, 1 )
 };
+
+// ----------------------------------------------Helper Functions -------------------------------------------------------------------- //
 
 extern map<string, lua_State*> tasksStates;
 extern map<lua_State*, string> tasksNames;
@@ -288,96 +208,188 @@ extern map<string, mutex> tasksMutexes;
 
 extern map<lua_State*, vector<string>> tasksPendingSignals;
 
-struct NewTaskArgs
-{
-    string task;
-    string packages;
+struct NewTaskArgs {
+	string task;
+	string packages;
 };
 
-int TasksList_C ( lua_State* L );
+int TasksList_C(lua_State* L);
+int StartNewTask_C(lua_State* L);
 
-int StartNewTask_C ( lua_State* L );
+int LockTaskMutex(lua_State* L);
+int ReleaseTaskMutex(lua_State* L);
 
-int LockTaskMutex ( lua_State* L );
-int ReleaseTaskMutex ( lua_State* L );
+void MakeSyncSafe(bool apply);
+int LuaMakeSyncSafe(lua_State*L);
 
-int MakeSyncSafe ( lua_State* L );
+int GetTaskStatus(lua_State* L);
 
-int GetTaskStatus ( lua_State* L );
+void PushSignal(string taskname, string signal);
 
-void PushSignal ( string taskname, string signal );
+int SendSignal_C(lua_State* L);
+int CheckSignals_C(lua_State* L);
 
-int SendSignal_C ( lua_State* L );
-int CheckSignals_C ( lua_State* L );
+int CompilePostInit_C(lua_State* L);
 
-int CompilePostInit_C ( lua_State* L );
+// ------------------------------------------------------- TObject Binder ------------------------------------------------------- //
 
-static const luaL_Reg luaXroot_lib [] =
+int luaExt_NewTObject(lua_State* L);
+int luaExt_TObject_Write(lua_State* L);
+int luaExt_TObject_Draw(lua_State* L);
+int luaExt_TObject_Update(lua_State* L);
+int luaExt_TObject_GetName(lua_State* L);
+int luaExt_TObject_GetTitle(lua_State* L);
+
+// ------------------------------------------------------ TF1 Binder -------------------------------------------------------------- //
+
+int luaExt_NewTF1(lua_State* L);
+int luaExt_TF1_SetParameters(lua_State* L);
+int luaExt_TF1_Eval(lua_State* L);
+int luaExt_TF1_GetPars(lua_State* L);
+int luaExt_TF1_GetChi2(lua_State* L);
+
+// -------------------------------------------------- TH[istograms] Binder -------------------------------------------------------- //
+
+int luaExt_NewTHist(lua_State* L);
+int luaExt_THist_Clone(lua_State* L);
+int luaExt_THist_Fill(lua_State* L);
+int luaExt_THist_Add(lua_State* L);
+int luaExt_THist_Scale(lua_State* L);
+int luaExt_THist_SetRangeUser(lua_State* L);
+int luaExt_THist_Fit(lua_State* L);
+int luaExt_THist_Reset(lua_State* L);
+
+// -------------------------------------------------- TGraphErrors Binder -------------------------------------------------------- //
+
+int luaExt_NewTGraph(lua_State* L);
+int luaExt_TGraph_SetTitle(lua_State* L);
+int luaExt_TGraph_Fit(lua_State* L);
+int luaExt_TGraph_SetPoint(lua_State* L);
+int luaExt_TGraph_GetPoint(lua_State* L);
+int luaExt_TGraph_RemovePoint(lua_State* L);
+int luaExt_TGraph_SetNPoints(lua_State* L);
+int luaExt_TGraph_Eval(lua_State* L);
+
+// ------------------------------------------------------ TFile Binder ----------------------------------------------------------- //
+
+int luaExt_NewTFile(lua_State* L);
+int luaExt_TFile_Close(lua_State* L);
+int luaExt_TFile_cd(lua_State* L);
+int luaExt_TFile_ls(lua_State* L);
+int luaExt_TFile_Get(lua_State* L);
+
+// ------------------------------------------------------ TCutG Binder ----------------------------------------------------------- //
+
+int luaExt_NewTCutG(lua_State* L);
+int luaExt_TCutG_IsInside(lua_State* L);
+
+// ------------------------------------------------------ TClonesArray Binder ----------------------------------------------------------- //
+
+int luaExt_NewTClonesArray(lua_State* L);
+int luaExt_TClonesArray_ConstructedAt(lua_State* L);
+
+// ------------------------------------------------------ TTree Binder ----------------------------------------------------------- //
+
+extern map<string, function<void(lua_State*, TTree*, const char*)>> newBranchFns;
+
+int luaExt_NewTTree(lua_State* L);
+int luaExt_TTree_Fill(lua_State* L);
+int luaExt_TTree_GetEntries(lua_State* L);
+int luaExt_TTree_Draw(lua_State* L);
+int luaExt_TTree_GetEntry(lua_State* L);
+
+int luaExt_TTree_NewBranch_Interface(lua_State* L);
+int luaExt_TTree_GetBranch_Interface(lua_State* L);
+
+void InitializeBranchesFuncs(lua_State* L);
+
+static const luaL_Reg luaTTreeBranchFns[] =
+	{
+		{ "NewBranchInterface", luaExt_TTree_NewBranch_Interface },
+		{ "GetBranchInterface", luaExt_TTree_GetBranch_Interface },
+
+		{ NULL, NULL } };
+
+// --------------------------------------------- ROOT Object API Helper Functions ------------------------------------------------ //
+
+inline void SetupTObjectMetatable(lua_State* L)
 {
-    {"TasksList_C", TasksList_C},
-    {"StartNewTask_C", StartNewTask_C},
-    {"MakeSyncSafe", MakeSyncSafe},
-    {"LockTaskMutex", LockTaskMutex},
-    {"ReleaseTaskMutex", ReleaseTaskMutex},
-    {"GetTaskStatus", GetTaskStatus},
-    {"SendSignal_C", SendSignal_C},
-    {"CheckSignals_C", CheckSignals_C},
-    {"CompilePostInit_C", CompilePostInit_C},
-    {"New", luaExt_NewUserData},
+	MakeMetatable(L);
 
-    {"TApplication", luaExt_NewTApplication},
-    {"GetTheApp", GetTheApp},
+	AddMethod(L, luaExt_TObject_Write, "Write");
+	AddMethod(L, luaExt_TObject_GetName, "GetName");
+	AddMethod(L, luaExt_TObject_GetTitle, "GetTitle");
+	AddMethod(L, luaExt_TObject_Draw, "Draw");
+	AddMethod(L, luaExt_TObject_Update, "Update");
+}
 
-    {"TObject", luaExt_NewTObject},
+// --------------------------------------------------- Lua Library export -------------------------------------------------------- //
 
-    {"TFile", luaExt_NewTFile},
+static const luaL_Reg luaXroot_lib[] =
+	{
+		{ "TasksList_C", TasksList_C },
+		{ "StartNewTask_C", StartNewTask_C },
+		{ "MakeSyncSafe", LuaMakeSyncSafe },
+		{ "LockTaskMutex", LockTaskMutex },
+		{ "ReleaseTaskMutex", ReleaseTaskMutex },
+		{ "GetTaskStatus", GetTaskStatus },
+		{ "SendSignal_C", SendSignal_C },
+		{ "CheckSignals_C", CheckSignals_C },
+		{ "CompilePostInit_C", CompilePostInit_C },
 
-    {"TF1", luaExt_NewTF1},
-    {"THist", luaExt_NewTHist},
-    {"TGraph", luaExt_NewTGraph},
-    {"TCutG", luaExt_NewTCutG},
-    {"TClonesArray", luaExt_NewTClonesArray},
+		{ "TApplication", luaExt_NewTApplication },
+		{ "GetTheApp", GetTheApp },
 
-    {"TTree", luaExt_NewTTree},
+		{ "TObject", luaExt_NewTObject },
 
-    {"appendtohist", appendtohist},
-    {"saveprompthistory", saveprompthistory},
-    {"trunctehistoryfile", trunctehistoryfile},
-    {"clearprompthistory", clearprompthistory},
-    
-    // SOCKETS BINDING //
+		{ "TFile", luaExt_NewTFile },
 
-    {"SysOpen", LuaSysOpen},
-    {"SysClose", LuaSysClose},
-    {"SysUnlink", LuaSysUnlink},
-    {"SysRead", LuaSysRead},
-    {"SysWrite", LuaSysWrite},
-    {"SysDup", LuaSysDup},
-    {"SysDup2", LuaSysDup2},
-    {"SysFork", LuaSysFork},
-    {"SysExec", LuaSysExecvpe},
-    {"GetEnv", LuaGetEnv},
+		{ "TF1", luaExt_NewTF1 },
+		{ "THist", luaExt_NewTHist },
+		{ "TGraph", luaExt_NewTGraph },
+		{ "TCutG", luaExt_NewTCutG },
+		{ "TClonesArray", luaExt_NewTClonesArray },
 
-    {"MakePipe", MakePipe},
-    {"MakeFiFo", MakeFiFo},
-    {"NewSocket", LuaNewSocket},
+		{ "TTree", luaExt_NewTTree },
 
-    {"SocketBind", LuaSocketBind},
-    {"SocketConnect", LuaSocketConnect},
+		{ "appendtohist", appendtohist },
+		{ "saveprompthistory", saveprompthistory },
+		{ "trunctehistoryfile", trunctehistoryfile },
+		{ "clearprompthistory", clearprompthistory },
 
-    {"SysSelect", LuaSysSelect},
+		{ "_ctor", luaExt_Ctor },
 
-    {"SocketListen", LuaSocketListen},
-    {"SocketAccept", LuaSocketAccept},
+	// SOCKETS BINDING //
 
+				{ "SysOpen", LuaSysOpen },
+				{ "SysClose", LuaSysClose },
+				{ "SysUnlink", LuaSysUnlink },
+				{ "SysRead", LuaSysRead },
+				{ "SysWrite", LuaSysWrite },
+				{ "SysDup", LuaSysDup },
+				{ "SysDup2", LuaSysDup2 },
+				{ "SysFork", LuaSysFork },
+				{ "SysExec", LuaSysExecvpe },
+				{ "GetEnv", LuaGetEnv },
 
-    {"SocketReceive", LuaSocketReceive},
-    {"SocketSend", LuaSocketSend},
+				{ "MakePipe", MakePipe },
+				{ "MakeFiFo", MakeFiFo },
+				{ "NewSocket", LuaNewSocket },
 
-    {NULL, NULL}
-};
+				{ "SocketBind", LuaSocketBind },
+				{ "SocketConnect", LuaSocketConnect },
 
-extern "C" int luaopen_libLuaXRootlib ( lua_State* L );
+				{ "SysSelect", LuaSysSelect },
+
+				{ "SocketListen", LuaSocketListen },
+				{ "SocketAccept", LuaSocketAccept },
+
+				{ "SocketReceive", LuaSocketReceive },
+				{ "SocketSend", LuaSocketSend },
+
+				{ NULL, NULL } };
+
+extern "C" int luaopen_libLuaXRootlib(lua_State* L);
 
 #endif
 
