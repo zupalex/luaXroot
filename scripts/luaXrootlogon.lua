@@ -34,6 +34,7 @@ LoadLib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib", true)
 LoadLib(LUAXROOTLIBPATH .. "/libRootBinderLib.so", "lua_root_classes")
 
 -- Modules which wil be loaded upon starting a session of luaXroot --
+require("lua_classes")
 require("lua_helper")
 socket = require("lua_sockets")
 require("lua_tree")

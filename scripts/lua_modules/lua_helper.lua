@@ -60,6 +60,10 @@ function deepcopy(orig)
   return copy
 end
 
+--------------------------------------------------------------------------------------------
+----------------------------------Table Utilities-------------------------------------------
+--------------------------------------------------------------------------------------------
+
 function printtable(tbl, printNested, ignores, level, maxlevel)
   if level == nil then
     level = 1
@@ -126,6 +130,16 @@ function newtable()
   return tbl
 end
 
+function InitTable(size, default)
+  local tbl = {}
+
+  for i= 1,size do
+    tbl[i] = default
+  end
+
+  return tbl
+end
+
 function SplitTableKeyValue(tbl)
   local keys = newtable()
   local values = newtable()
@@ -138,19 +152,9 @@ function SplitTableKeyValue(tbl)
   return keys, values
 end
 
-function isint(x)
-  return x == math.floor(x)
-end
-
-function InitTable(size, default)
-  local tbl = {}
-
-  for i= 1,size do
-    tbl[i] = default
-  end
-
-  return tbl
-end
+--------------------------------------------------------------------------------------------
+------------------Constructors and C++ Classes Method Calls Utilities-----------------------
+--------------------------------------------------------------------------------------------
 
 function MakeEasyMethodCalls(obj)
   if obj.methods == nil or obj.Call == nil then return end
@@ -172,139 +176,57 @@ function MakeEasyConstructors(classname)
   end
 end
 
-structs = {}
+--------------------------------------------------------------------------------------------
+----------------------------------Misc. Utilities-------------------------------------------
+--------------------------------------------------------------------------------------------
 
-function RegisterStruct(tbl, name, size)
-  structs[name] = {}
-  structs[name].members = {}
-  structs[name].size = size ~= nil and size or 0
-
-  for k, v in pairs(tbl) do
-    structs[name].members[k] = v
-  end
+function isint(x)
+  return x == math.floor(x)
 end
 
----------------------------------------- LuaClass Functions ----------------------------------------
+local PipeObject = LuaClass("PipeObject", function(self, data)
+    self.type = data.type or 1
+    self.fd = data.fd or nil
 
-function MakeCppClassCtor(classname)
-  _G[classname] = function()
-    return New(classname)
-  end
-end
-
-luaClasses = {}
-classPostInits = {}
-
-function RegisterLuaClass(class)
---	print("Registering " .. class.classname)
-  luaClasses[class.classname] = class
-end
-
-function LuaClass(name, base, init, skipregister)
-  local c = {}    -- a new class instance
-
-  if not init and type(base) == "function" then
-    init = base
-    base = nil
-  elseif type(base) == "string" then
-    if luaClasses[base] then base = luaClasses[base] else base = nil end
-  end
-
-  if type(base) == "table" then
-    -- our new class is a shallow copy of the base class!
-    for k,v in pairs(base) do
-      c[k] = v
-    end
-    c.parentclass = base
-  end
-
-  c.classname = name
-  -- c._data = {}
-
-  -- the class will be the metatable for all its objects,
-  -- and they will look up their methods in it.
-  c.__index = c
-
-  -- expose a constructor which can be called by <classname>(<args>)
-  local mt = {}
-  mt.__call = function(class_tbl, data)
-    local obj = {}
-    setmetatable(obj,c)
-
-    obj:init(data)
-    -- obj._data = data
-
-    return obj
-  end
-
-  c.init = function(self, data)
-    if base and base.init then
-      base.init(self, data)
-    end
-
-    if init then
-      init(self, data)
-    end
-
-    if classPostInits[name] ~= nil then
-      -- print("Post Init for "..name)
-      for k, v in pairs(classPostInits[name]) do
-        v(self, data)
+    function self:Write(data, size)
+      if self.type == 0 or self.type == 2 then
+        return SysWrite({fd=self.fd, data=data, size=size})
+      else
+        print("Attempting to write on the recieving end of a pipe...")
+        return
       end
     end
-  end
 
-  c.is_a = function(self, klass)
-    local m = getmetatable(self)
-    if type(klass) == "string" then klass = luaClasses[klass] end
-    while m do
-      if m == klass then return true end
-      m = m.parentclass
+    function self:Read(size)
+      if self.type >= 1 then
+        return SysRead({fd=self.fd, size=size})
+      else
+        print("Attempting to read from the input end of a pipe...")
+        return
+      end
     end
-    return false
+  end, nil, true)
+
+function AttachOutput(file, command, args_table)
+  local fds = {}
+
+  local function prefn()
+    fds.input, fds.output = MakePipe()
   end
 
-  setmetatable(c, mt)
-
-  if not skipregister then RegisterLuaClass(c) end
-
-  return c
-end
-
-function NewObject(classname, data)
-  if luaClasses[classname] ~= nil then
-    local newobj = luaClasses[classname](data)
-    newobj._data = data
-    return newobj
-  else
-
-    return nil
+  if type(command) == "table" then
+    args_table = command
+    command = file
   end
-end
 
-function TryGetPar(tabl_, par_, default_)
-  if tabl_ ~= nil and tabl_[par_] ~= nil then 
-    return tabl_[par_]
-  else 
-    return default_
+  local function execfn(...)
+    SysDup2(fds.input, 1);
+    SysClose(fds.output);
+
+    SysExec({file=file, args={command, ...}})
   end
+
+  SysFork({fn=execfn, args=args_table, preinit=prefn})
+
+  return PipeObject({type = 1, fd = fds.output})
 end
-
-function AddToClassInit(classname, fn, identifier)
-  if classPostInits[classname] == nil then classPostInits[classname] = {} end
-
-  if identifier then
-    classPostInits[classname].identifier = fn
-  else
-    table.insert(classPostInits[classname], fn)
-  end
-end
-
----------------------------------------- Base "Class" Object ----------------------------------------
-
-local LuaObject = LuaClass("LuaObject", function(self, data)
-    self.name = TryGetPar(data, "name", "lua_object")
-    self.title = TryGetPar(data, "title", "Lua Object")
-
-    self.serializable = TryGetPar(data, "serializable", {})
-  end)

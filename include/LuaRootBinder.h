@@ -49,104 +49,103 @@ int luaExt_TApplication_Terminate(lua_State* L);
 // --------------------------------------------------------------------------------- //
 
 class RootAppManager: public TApplication {
-private:
+	private:
 
-public:
-	RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options = 0, Int_t numOptions = 0);
-	virtual ~RootAppManager()
-	{
-	}
-
-	void SetupRootAppMetatable(lua_State* L)
-	{
-		MakeMetatable(L);
-
-		lua_pushcfunction(L, luaExt_TApplication_Run);
-		lua_setfield(L, -2, "Run");
-
-		lua_pushcfunction(L, luaExt_TApplication_Update);
-		lua_setfield(L, -2, "Update");
-
-		lua_pushcfunction(L, luaExt_TApplication_Terminate);
-		lua_setfield(L, -2, "Terminate");
-	}
-
-	void KillApp()
-	{
-		cout << "Received signal to kill the app" << endl;
-		gSystem->ExitLoop();
-	}
-
-	void OnCanvasKilled()
-	{
-		cout << "A Canvas Has Been KILLED!" << endl;
-		this->shouldStop = true;
-	}
-
-	void SetupUpdateSignalSender()
-	{
-		msg_fd = socket( AF_UNIX, SOCK_STREAM, 0);
-
-		remove("/tmp/.luaXroot_msgqueue");
-
-		sockaddr_un addr;
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "/tmp/.luaXroot_msgqueue");
-
-		if (bind(msg_fd, (sockaddr*) &addr, sizeof(addr)) < 0)
+	public:
+		RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options = 0, Int_t numOptions = 0);
+		virtual ~RootAppManager()
 		{
-			cerr << "Error opening socket" << endl;
 		}
 
-		listen(msg_fd, 1);
-	}
+		void SetupRootAppMetatable(lua_State* L)
+		{
+			MakeMetatable(L);
 
-	void WaitForUpdateReceiver()
-	{
+			lua_pushcfunction(L, luaExt_TApplication_Run);
+			lua_setfield(L, -2, "Run");
 
-		sockaddr_storage clients_addr;
-		socklen_t addr_size;
+			lua_pushcfunction(L, luaExt_TApplication_Update);
+			lua_setfield(L, -2, "Update");
 
-		msg_fd = accept(msg_fd, (sockaddr*) &clients_addr, &addr_size);
-	}
+			lua_pushcfunction(L, luaExt_TApplication_Terminate);
+			lua_setfield(L, -2, "Terminate");
+		}
 
-	void SetupUpdateSignalReceiver()
-	{
-		rcv_fd = socket( AF_UNIX, SOCK_STREAM, 0);
+		void KillApp()
+		{
+			cout << "Received signal to kill the app" << endl;
+			gSystem->ExitLoop();
+		}
 
-		sockaddr_un addr;
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "/tmp/.luaXroot_msgqueue");
+		void OnCanvasKilled()
+		{
+			cout << "A Canvas Has Been KILLED!" << endl;
+			this->shouldStop = true;
+		}
 
-		connect(rcv_fd, (sockaddr*) &addr, sizeof(sockaddr_un));
+		void SetupUpdateSignalSender()
+		{
+			msg_fd = socket( AF_UNIX, SOCK_STREAM, 0);
 
-		gSystem->AddFileHandler(new TFileHandler(rcv_fd, 1));
-	}
+			remove("/tmp/.luaXroot_msgqueue");
 
-	void NotifyUpdatePending()
-	{
-		updateRequestPending++;
-		shouldStop = true;
-		const char* msg = "update";
-		if (send(msg_fd, (void*) msg, 6, 0) == -1) cerr << "Failed to send update message:" << errno << endl;
-		rootProcessLoopLock.lock();
-	}
+			sockaddr_un addr;
+			addr.sun_family = AF_UNIX;
+			strcpy(addr.sun_path, "/tmp/.luaXroot_msgqueue");
 
-	void NotifyUpdateDone()
-	{
-		updateRequestPending--;
-		char* buffer = new char[6];
-		if (recv(rcv_fd, buffer, 6, 0) == -1) cerr << "Failed to receive update message" << errno << endl;
-		rootProcessLoopLock.unlock();
-	}
+			if (bind(msg_fd, (sockaddr*) &addr, sizeof(addr)) < 0)
+			{
+				cerr << "Error opening socket" << endl;
+			}
 
-	bool shouldStop = false;
-	bool safeSync = false;
+			listen(msg_fd, 1);
+		}
 
-	int msg_fd = -1;
-	int rcv_fd = -1;
+		void WaitForUpdateReceiver()
+		{
 
-ClassDef ( RootAppManager, 1 )
+			sockaddr_storage clients_addr;
+			socklen_t addr_size;
+
+			msg_fd = accept(msg_fd, (sockaddr*) &clients_addr, &addr_size);
+		}
+
+		void SetupUpdateSignalReceiver()
+		{
+			rcv_fd = socket( AF_UNIX, SOCK_STREAM, 0);
+
+			sockaddr_un addr;
+			addr.sun_family = AF_UNIX;
+			strcpy(addr.sun_path, "/tmp/.luaXroot_msgqueue");
+
+			connect(rcv_fd, (sockaddr*) &addr, sizeof(sockaddr_un));
+
+			gSystem->AddFileHandler(new TFileHandler(rcv_fd, 1));
+		}
+
+		void NotifyUpdatePending()
+		{
+			updateRequestPending++;
+			shouldStop = true;
+			const char* msg = "update";
+			if (send(msg_fd, (void*) msg, 6, 0) == -1) cerr << "Failed to send update message:" << errno << endl;
+			rootProcessLoopLock.lock();
+		}
+
+		void NotifyUpdateDone()
+		{
+			updateRequestPending--;
+			char* buffer = new char[6];
+			if (recv(rcv_fd, buffer, 6, 0) == -1) cerr << "Failed to receive update message" << errno << endl;
+			rootProcessLoopLock.unlock();
+		}
+
+		bool shouldStop = false;bool safeSync = false;
+
+		int msg_fd = -1;
+		int rcv_fd = -1;
+
+	ClassDef ( RootAppManager, 1 )
 };
 
 extern RootAppManager* theApp;
@@ -167,36 +166,36 @@ inline int GetTheApp(lua_State* L)
 // ------------------------------------------------------------------------------------------------------------------ //
 
 class LuaCanvas: public TCanvas {
-private:
+	private:
 
-public:
-	LuaCanvas();
-	virtual ~LuaCanvas()
-	{
-		HasBeenKilled();
-
-		for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
+	public:
+		LuaCanvas();
+		virtual ~LuaCanvas()
 		{
-			if (itr->second == this)
+			HasBeenKilled();
+
+			for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
 			{
-				canvasTracker.erase(itr);
-				break;
+				if (itr->second == this)
+				{
+					canvasTracker.erase(itr);
+					break;
+				}
 			}
 		}
-	}
 
-	void HasBeenKilled()
-	{
+		void HasBeenKilled()
+		{
 //         cout << "Emitting signal to kill the app" << endl;
-		Emit("HasBeenKilled()");
-	}
+			Emit("HasBeenKilled()");
+		}
 
-	void RequestMasterUpdate()
-	{
-		Emit("RequestMasterUpdate()");
-	}
+		void RequestMasterUpdate()
+		{
+			Emit("RequestMasterUpdate()");
+		}
 
-ClassDef ( LuaCanvas, 1 )
+	ClassDef ( LuaCanvas, 1 )
 };
 
 // ----------------------------------------------Helper Functions -------------------------------------------------------------------- //
@@ -209,8 +208,8 @@ extern map<string, mutex> tasksMutexes;
 extern map<lua_State*, vector<string>> tasksPendingSignals;
 
 struct NewTaskArgs {
-	string task;
-	string packages;
+		string task;
+		string packages;
 };
 
 int TasksList_C(lua_State* L);
@@ -359,35 +358,33 @@ static const luaL_Reg luaXroot_lib[] =
 
 		{ "_ctor", luaExt_Ctor },
 
-	// SOCKETS BINDING //
+		{ "SysOpen", LuaSysOpen },
+		{ "SysClose", LuaSysClose },
+		{ "SysUnlink", LuaSysUnlink },
+		{ "SysRead", LuaSysRead },
+		{ "SysWrite", LuaSysWrite },
+		{ "SysDup", LuaSysDup },
+		{ "SysDup2", LuaSysDup2 },
+		{ "SysFork", LuaSysFork },
+		{ "SysExec", LuaSysExecvpe },
+		{ "GetEnv", LuaGetEnv },
 
-				{ "SysOpen", LuaSysOpen },
-				{ "SysClose", LuaSysClose },
-				{ "SysUnlink", LuaSysUnlink },
-				{ "SysRead", LuaSysRead },
-				{ "SysWrite", LuaSysWrite },
-				{ "SysDup", LuaSysDup },
-				{ "SysDup2", LuaSysDup2 },
-				{ "SysFork", LuaSysFork },
-				{ "SysExec", LuaSysExecvpe },
-				{ "GetEnv", LuaGetEnv },
+		{ "MakePipe", MakePipe },
+		{ "MakeFiFo", MakeFiFo },
+		{ "NewSocket", LuaNewSocket },
 
-				{ "MakePipe", MakePipe },
-				{ "MakeFiFo", MakeFiFo },
-				{ "NewSocket", LuaNewSocket },
+		{ "SocketBind", LuaSocketBind },
+		{ "SocketConnect", LuaSocketConnect },
 
-				{ "SocketBind", LuaSocketBind },
-				{ "SocketConnect", LuaSocketConnect },
+		{ "SysSelect", LuaSysSelect },
 
-				{ "SysSelect", LuaSysSelect },
+		{ "SocketListen", LuaSocketListen },
+		{ "SocketAccept", LuaSocketAccept },
 
-				{ "SocketListen", LuaSocketListen },
-				{ "SocketAccept", LuaSocketAccept },
+		{ "SocketReceive", LuaSocketReceive },
+		{ "SocketSend", LuaSocketSend },
 
-				{ "SocketReceive", LuaSocketReceive },
-				{ "SocketSend", LuaSocketSend },
-
-				{ NULL, NULL } };
+		{ NULL, NULL } };
 
 extern "C" int luaopen_libLuaXRootlib(lua_State* L);
 

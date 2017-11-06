@@ -152,6 +152,7 @@ template<typename ... Rest> bool CheckLuaArgs(lua_State* L, int argIdx, bool abo
 			}
 			else
 			{
+				argIdx = lua_gettop(L) + argIdx + 1;
 				cerr << "ERROR in " << funcName << " : index " << argIdx << " => " << GetLuaTypename(arg1) << " expected, got " << lua_typename(L, lua_type(L, argIdx)) << endl;
 			}
 			lua_settop(L, 0);
@@ -914,6 +915,10 @@ template<typename T, typename ... Args> void MakeDefaultConstructor(lua_State* L
 	};
 
 	constructorList[name][0] = ctor;
+
+	lua_getglobal(L, "MakeEasyConstructors");
+	lua_pushstring(L, name.c_str());
+	lua_pcall(L, 1, 0, 0);
 }
 
 template<typename T, typename ... Args> void AddObjectConstructor(lua_State* L, string name)
