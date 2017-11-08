@@ -713,7 +713,7 @@ int luaExt_TApplication_Terminate(lua_State* L)
 	if (!CheckLuaArgs(L, 1, true, "luaExt_TApplication_Terminate", LUA_TUSERDATA)) return 0;
 
 	for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
-		delete itr->second;
+		itr->second->Close();
 
 	TApplication* tApp = *(reinterpret_cast<TApplication**>(lua_touserdata(L, 1)));
 

@@ -27,6 +27,14 @@ int LuaGetROOTObjectFromDir(lua_State* L)
 
 	string objName = lua_tostring(L, 2);
 
+	TObject* ret = dir->FindObject(objName.c_str());
+
+	if (ret == nullptr)
+	{
+		cerr << "The object with name " << objName << " does not exist in this location..." << endl;
+		return 0;
+	}
+
 	lua_getglobal(L, "New");
 	lua_pushstring(L, type.c_str());
 
@@ -34,7 +42,7 @@ int LuaGetROOTObjectFromDir(lua_State* L)
 
 	LuaUserClass* obj = GetUserData<LuaUserClass>(L, -1);
 
-	obj->SetROOTObject(dir->Get(objName.c_str()));
+	obj->SetROOTObject(ret);
 
 	return 1;
 }

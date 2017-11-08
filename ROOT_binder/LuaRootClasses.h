@@ -62,6 +62,8 @@ template<typename T> class LuaROOTBase: public LuaUserClass {
 		{
 			theApp->NotifyUpdatePending();
 
+			if(!is_same<T, TTree>::value) opts = varexp;
+
 			if (canvasTracker[rootObj] != nullptr && ((string) canvasTracker[rootObj]->GetName()).empty()) delete canvasTracker[rootObj];
 
 			if (canvasTracker[rootObj] == nullptr || ((string) canvasTracker[rootObj]->GetName()).empty())
@@ -78,6 +80,7 @@ template<typename T> class LuaROOTBase: public LuaUserClass {
 				}
 
 				Draw(varexp, cond, opts, nentries, firstentry);
+				canvasTracker[rootObj]->Update();
 			}
 			else
 			{
