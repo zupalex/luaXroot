@@ -37,27 +37,27 @@ local function SeparateAddressAndPort(full_address)
 end
 
 local function PrintSocketHelp()
-print("To create a socket connection:")
-print("The host should invoke socket.CreateHost(type, address, [maxqueue])")
-print("The client should invoke socket.CreateClient(type, address)")
-print("")
-print("  -> type : a string giving the type of connection")
-print("       * \"local\" = socket connection between 2 process on the same machine")
-print("       * \"net\" = socket connection over the network (ipv4)")
-print("       * \"ipv6\" = socket connection over the network (ipv6)")
-print("")
-print("  -> address : a string giving the address to establish the socket connection")
-print("       * if type is \"local\" => address should be the path to a file on the machine (e.g. \"/tmp/mysocket\")")
-print("       * if type is \"net\" => address should be the ip:port of the host (e.g. \"192.168.13.110:1234\")")
-print("")
-print("  -> maxqueue (optional) : a number stating how many connection the host may accept")
-print("")
-print("These function will return an object that can then be use to send and receive data")
-print("Example:")
-print("On the host machine: sender = socket.CreateHost(\"local\", \"/tmp/mysocket\", 1)")
-print("On the client machine: receiver = socket.CreateClient(\"local\", \"/tmp/mysocket\")")
-print("On the host machine: sender:Send(\"Hello Client\")")
-print("On the client machine: receiver:Receive() => will print \"Hello Client\"")
+  print("To create a socket connection:")
+  print("The host should invoke socket.CreateHost(type, address, [maxqueue])")
+  print("The client should invoke socket.CreateClient(type, address)")
+  print("")
+  print("  -> type : a string giving the type of connection")
+  print("       * \"local\" = socket connection between 2 process on the same machine")
+  print("       * \"net\" = socket connection over the network (ipv4)")
+  print("       * \"ipv6\" = socket connection over the network (ipv6)")
+  print("")
+  print("  -> address : a string giving the address to establish the socket connection")
+  print("       * if type is \"local\" => address should be the path to a file on the machine (e.g. \"/tmp/mysocket\")")
+  print("       * if type is \"net\" => address should be the ip:port of the host (e.g. \"192.168.13.110:1234\")")
+  print("")
+  print("  -> maxqueue (optional) : a number stating how many connection the host may accept")
+  print("")
+  print("These function will return an object that can then be use to send and receive data")
+  print("Example:")
+  print("On the host machine: sender = socket.CreateHost(\"local\", \"/tmp/mysocket\", 1)")
+  print("On the client machine: receiver = socket.CreateClient(\"local\", \"/tmp/mysocket\")")
+  print("On the host machine: sender:Send(\"Hello Client\")")
+  print("On the client machine: receiver:Receive() => will print \"Hello Client\"")
 end
 
 function socket.CreateHost(type, address, maxqueue)
@@ -87,6 +87,11 @@ function socket.CreateHost(type, address, maxqueue)
   SocketListen({sockfd=hfd, maxqueue=maxqueue})
   local dfd = SocketAccept({sockfd=hfd})
 
+  if dfd == nil then
+    print("There was an issue while accepting the socket connection")
+    return nil
+  end
+
   return SocketObject({type="host", sockfd=hfd, clientsfd={dfd}, address=address, port=port})
 end
 
@@ -94,7 +99,7 @@ function socket.CreateClient(type, address)
   if type == nil then
     return PrintSocketHelp()
   end
-  
+
   local cfd, port
 
   if type == "local" then

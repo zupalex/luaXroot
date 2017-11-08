@@ -284,6 +284,8 @@ int LuaSocketAccept ( lua_State* L )
         return 2;
     }
 
+    if ( new_fd > maxFd ) maxFd = new_fd;
+
     lua_pushinteger ( L, new_fd );
     return 1;
 }
@@ -309,7 +311,7 @@ int LuaSocketReceive ( lua_State* L )
     int bytes_received = recv ( sockfd, ( void* ) buffer, data_length, flags );
 
     lua_pushinteger ( L, bytes_received );
-    lua_pushstring ( L, buffer );
+    lua_pushlstring ( L, buffer, bytes_received );
 
     return 2;
 }
