@@ -36,7 +36,35 @@ local function SeparateAddressAndPort(full_address)
   return full_address, port
 end
 
+local function PrintSocketHelp()
+print("To create a socket connection:")
+print("The host should invoke socket.CreateHost(type, address, [maxqueue])")
+print("The client should invoke socket.CreateClient(type, address)")
+print("")
+print("  -> type : a string giving the type of connection")
+print("       * \"local\" = socket connection between 2 process on the same machine")
+print("       * \"net\" = socket connection over the network (ipv4)")
+print("       * \"ipv6\" = socket connection over the network (ipv6)")
+print("")
+print("  -> address : a string giving the address to establish the socket connection")
+print("       * if type is \"local\" => address should be the path to a file on the machine (e.g. \"/tmp/mysocket\")")
+print("       * if type is \"net\" => address should be the ip:port of the host (e.g. \"192.168.13.110:1234\")")
+print("")
+print("  -> maxqueue (optional) : a number stating how many connection the host may accept")
+print("")
+print("These function will return an object that can then be use to send and receive data")
+print("Example:")
+print("On the host machine: sender = socket.CreateHost(\"local\", \"/tmp/mysocket\", 1)")
+print("On the client machine: receiver = socket.CreateClient(\"local\", \"/tmp/mysocket\")")
+print("On the host machine: sender:Send(\"Hello Client\")")
+print("On the client machine: receiver:Receive() => will print \"Hello Client\"")
+end
+
 function socket.CreateHost(type, address, maxqueue)
+  if type == nil then
+    return PrintSocketHelp()
+  end
+
   if maxqueue == nil then maxqueue = 1 end
   local hfd, port
 
@@ -49,7 +77,7 @@ function socket.CreateHost(type, address, maxqueue)
     hfd = NewSocket({domain=AF_UNIX, type=SOCK_STREAM, protocol=0})
   else
     print("Invalid socket type", type)
-    print("Valid types are", "local", "net", "ipv4", "ipv6")
+    print("Type socket.CreateHost() to get detailed help")
     return nil, nil
   end
 
@@ -63,7 +91,10 @@ function socket.CreateHost(type, address, maxqueue)
 end
 
 function socket.CreateClient(type, address)
-  if maxqueue == nil then maxqueue = 1 end
+  if type == nil then
+    return PrintSocketHelp()
+  end
+  
   local cfd, port
 
   if type == "local" then
@@ -74,7 +105,7 @@ function socket.CreateClient(type, address)
     cfd = NewSocket({domain=AF_INET6, type=SOCK_STREAM, protocol=0})
   else
     print("Invalid socket type", type)
-    print("Valid types are", "local", "net", "ipv4", "ipv6")
+    print("Type socket.CreateClient() to get detailed help")
     return nil, nil
   end
 

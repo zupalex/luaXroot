@@ -24,7 +24,9 @@
 #include "LuaSocketBinder.h"
 #include <llimits.h>
 
-extern map<TObject*, TCanvas*> canvasTracker;
+class LuaCanvas;
+
+extern map<TObject*, LuaCanvas*> canvasTracker;
 
 extern mutex rootProcessLoopLock;
 extern mutex syncSafeGuard;
@@ -145,7 +147,7 @@ class RootAppManager: public TApplication {
 		int msg_fd = -1;
 		int rcv_fd = -1;
 
-	ClassDef ( RootAppManager, 1 )
+	ClassDef(RootAppManager, 1)
 };
 
 extern RootAppManager* theApp;
@@ -195,7 +197,7 @@ class LuaCanvas: public TCanvas {
 			Emit("RequestMasterUpdate()");
 		}
 
-	ClassDef ( LuaCanvas, 1 )
+	ClassDef(LuaCanvas, 1)
 };
 
 // ----------------------------------------------Helper Functions -------------------------------------------------------------------- //
@@ -230,44 +232,13 @@ int CheckSignals_C(lua_State* L);
 
 int CompilePostInit_C(lua_State* L);
 
-// ------------------------------------------------------- TObject Binder ------------------------------------------------------- //
-
-int luaExt_NewTObject(lua_State* L);
-int luaExt_TObject_Write(lua_State* L);
-int luaExt_TObject_Draw(lua_State* L);
-int luaExt_TObject_Update(lua_State* L);
-int luaExt_TObject_GetName(lua_State* L);
-int luaExt_TObject_GetTitle(lua_State* L);
+extern map<string, string> rootObjectAliases;
 
 // ------------------------------------------------------ TF1 Binder -------------------------------------------------------------- //
 
-int luaExt_NewTF1(lua_State* L);
-int luaExt_TF1_SetParameters(lua_State* L);
-int luaExt_TF1_Eval(lua_State* L);
-int luaExt_TF1_GetPars(lua_State* L);
-int luaExt_TF1_GetChi2(lua_State* L);
+extern map<string, function<double(double*, double*)>> registeredTF1fns;
 
-// -------------------------------------------------- TH[istograms] Binder -------------------------------------------------------- //
-
-int luaExt_NewTHist(lua_State* L);
-int luaExt_THist_Clone(lua_State* L);
-int luaExt_THist_Fill(lua_State* L);
-int luaExt_THist_Add(lua_State* L);
-int luaExt_THist_Scale(lua_State* L);
-int luaExt_THist_SetRangeUser(lua_State* L);
-int luaExt_THist_Fit(lua_State* L);
-int luaExt_THist_Reset(lua_State* L);
-
-// -------------------------------------------------- TGraphErrors Binder -------------------------------------------------------- //
-
-int luaExt_NewTGraph(lua_State* L);
-int luaExt_TGraph_SetTitle(lua_State* L);
-int luaExt_TGraph_Fit(lua_State* L);
-int luaExt_TGraph_SetPoint(lua_State* L);
-int luaExt_TGraph_GetPoint(lua_State* L);
-int luaExt_TGraph_RemovePoint(lua_State* L);
-int luaExt_TGraph_SetNPoints(lua_State* L);
-int luaExt_TGraph_Eval(lua_State* L);
+int RegisterTF1fn(lua_State* L);
 
 // ------------------------------------------------------ TFile Binder ----------------------------------------------------------- //
 
@@ -276,16 +247,6 @@ int luaExt_TFile_Close(lua_State* L);
 int luaExt_TFile_cd(lua_State* L);
 int luaExt_TFile_ls(lua_State* L);
 int luaExt_TFile_Get(lua_State* L);
-
-// ------------------------------------------------------ TCutG Binder ----------------------------------------------------------- //
-
-int luaExt_NewTCutG(lua_State* L);
-int luaExt_TCutG_IsInside(lua_State* L);
-
-// ------------------------------------------------------ TClonesArray Binder ----------------------------------------------------------- //
-
-int luaExt_NewTClonesArray(lua_State* L);
-int luaExt_TClonesArray_ConstructedAt(lua_State* L);
 
 // ------------------------------------------------------ TTree Binder ----------------------------------------------------------- //
 
@@ -297,29 +258,13 @@ int luaExt_TTree_GetEntries(lua_State* L);
 int luaExt_TTree_Draw(lua_State* L);
 int luaExt_TTree_GetEntry(lua_State* L);
 
-int luaExt_TTree_NewBranch_Interface(lua_State* L);
-int luaExt_TTree_GetBranch_Interface(lua_State* L);
-
 void InitializeBranchesFuncs(lua_State* L);
-
-static const luaL_Reg luaTTreeBranchFns[] =
-	{
-		{ "NewBranchInterface", luaExt_TTree_NewBranch_Interface },
-		{ "GetBranchInterface", luaExt_TTree_GetBranch_Interface },
-
-		{ NULL, NULL } };
 
 // --------------------------------------------- ROOT Object API Helper Functions ------------------------------------------------ //
 
 inline void SetupTObjectMetatable(lua_State* L)
 {
 	MakeMetatable(L);
-
-	AddMethod(L, luaExt_TObject_Write, "Write");
-	AddMethod(L, luaExt_TObject_GetName, "GetName");
-	AddMethod(L, luaExt_TObject_GetTitle, "GetTitle");
-	AddMethod(L, luaExt_TObject_Draw, "Draw");
-	AddMethod(L, luaExt_TObject_Update, "Update");
 }
 
 // --------------------------------------------------- Lua Library export -------------------------------------------------------- //
@@ -339,17 +284,7 @@ static const luaL_Reg luaXroot_lib[] =
 		{ "TApplication", luaExt_NewTApplication },
 		{ "GetTheApp", GetTheApp },
 
-		{ "TObject", luaExt_NewTObject },
-
-		{ "TFile", luaExt_NewTFile },
-
-		{ "TF1", luaExt_NewTF1 },
-		{ "THist", luaExt_NewTHist },
-		{ "TGraph", luaExt_NewTGraph },
-		{ "TCutG", luaExt_NewTCutG },
-		{ "TClonesArray", luaExt_NewTClonesArray },
-
-		{ "TTree", luaExt_NewTTree },
+		{ "RegisterTF1fn", RegisterTF1fn },
 
 		{ "appendtohist", appendtohist },
 		{ "saveprompthistory", saveprompthistory },

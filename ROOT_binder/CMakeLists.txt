@@ -1,4 +1,6 @@
-add_library(ROOTBINDER_OBJECT OBJECT LuaTGraph.cxx)
+set (LUAROOTCLASSES_SRCS LuaRootClasses.cxx LuaTFile.cxx LuaTF1.cxx LuaTGraph.cxx LuaTHist.cxx LuaTCutG.cxx LuaTTree.cxx)
+
+add_library(ROOTBINDER_OBJECT OBJECT ${LUAROOTCLASSES_SRCS})
 add_library(RootBinderLib SHARED $<TARGET_OBJECTS:ROOTBINDER_OBJECT>)
 target_link_libraries(RootBinderLib LuaXRootlib)
 

@@ -8,17 +8,17 @@ void LuaUserClass::SetupMetatable(lua_State* L)
 	AddMethod(L, ResetValues, "Reset");
 	AddMethod(L, CallMethod, "Call");
 
+	AddNonClassMethods(L);
+
 	lua_newtable(L);
 	MakeAccessors(L);
-	AddClassMethod(L, &LuaUserClass::GetLuaName, "GetName");
-	AddClassMethod(L, &LuaUserClass::SetLuaName, "SetName");
 	lua_setfield(L, -2, "members");
 
 	lua_newtable(L);
 	for (unsigned int i = 0; i < methods.size(); i++)
 	{
 		lua_pushstring(L, methods[i].c_str());
-		lua_seti(L, -2, i+1);
+		lua_seti(L, -2, i + 1);
 	}
 	lua_setfield(L, -2, "methods");
 

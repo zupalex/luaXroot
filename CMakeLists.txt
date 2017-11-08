@@ -54,4 +54,6 @@ add_subdirectory(Lua)
 include_directories(include)
 add_subdirectory(source)
 
+include_directories(ROOT_binder)
 add_subdirectory(ROOT_binder)
+

@@ -4,135 +4,141 @@
 #include "LuaRootBinder.h"
 #include "TObject.h"
 
-class LuaUserClass: public TObject {
-private:
+class LuaUserClass {
+	private:
 
-protected:
+	protected:
 
-public:
-	LuaUserClass()
-	{
-		obj_name = new char[13];
-		strcpy(obj_name, "LuaUserClass");
-	}
-	virtual ~LuaUserClass()
-	{
-	}
-
-	vector<string> methods;
-
-	char* obj_name;
-
-	virtual char* GetLuaName() const
-	{
-		return obj_name;
-	}
-
-	virtual void SetLuaName(const char* newname)
-	{
-		obj_name = new char[((string) newname).length()+1];
-		strcpy(obj_name, newname);
-	}
-
-	void SetupMetatable(lua_State* L);
-	virtual void MakeAccessors(lua_State* L) = 0;
-	virtual void Reset(){};
-
-	template<typename T> void AddAccessor(lua_State* L, T* member, string name, string type)
-	{
-		lua_pushstring(L, type.c_str());
-		LuaCtor(L, -1);
-		lua_remove(L, -2);
-
-		T** ud = GetUserDataPtr<T>(L, -1);
-		*ud = member;
-
-		lua_setfield(L, -2, name.c_str());
-	}
-
-	template<typename T, typename R, typename ... Args> typename enable_if<!is_same<R, void>::value, void>::type AddClassMethod(lua_State* L, R (T::*method)(Args...), string name)
-	{
-		LuaUserClass* obj_base = GetUserData<LuaUserClass>(L, -2);
-		obj_base->methods.push_back(name);
-
-		methodList[name] = [=]()
+	public:
+		LuaUserClass()
 		{
-			T* obj = GetUserData<T>(L, 1);
-
-			auto args = LuaMultPop(L, 1, method);
-
-			LuaMemFuncCaller<T, R, Args...> func;
-			func.mfptr = method;
-
-			StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
-			{	func, args, obj};
-			return lua_autogetvalue(L, retrieved.DoCallMemFn(), -1);
-		};
-	}
-
-	template<typename T, typename R, typename ... Args> typename enable_if<is_same<R, void>::value, void>::type AddClassMethod(lua_State* L, R (T::*method)(Args...), string name)
-	{
-		LuaUserClass* obj_base = GetUserData<LuaUserClass>(L, -2);
-		obj_base->methods.push_back(name);
-
-		methodList[name] = [=]()
+		}
+		virtual ~LuaUserClass()
 		{
-			T* obj = GetUserData<T>(L, 1);
+		}
 
-			auto args = LuaMultPop(L, 1, method);
+		vector<string> methods;
 
-			LuaMemFuncCaller<T, R, Args...> func;
-			func.mfptr = method;
-
-			StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
-			{	func, args, obj};
-			retrieved.DoCallMemFn();
-			return 0;
-		};
-	}
-
-	template<typename T, typename R, typename ... Args> typename enable_if<!is_same<R, void>::value, void>::type AddClassMethod(lua_State* L, R (T::*method)(Args...) const, string name)
-	{
-		LuaUserClass* obj_base = GetUserData<LuaUserClass>(L, -2);
-		obj_base->methods.push_back(name);
-
-		methodList[name] = [=]()
+		virtual TObject* GetROOTObject()
 		{
-			T* obj = GetUserData<T>(L, 1);
+			return nullptr;
+		}
 
-			auto args = LuaMultPop(L, 1, method);
-
-			LuaMemFuncCaller<T, R, Args...> func;
-			func.const_mfptr = method;
-
-			StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
-			{	func, args, obj};
-			return lua_autogetvalue(L, retrieved.DoCallMemFnConst(), -1);
-		};
-	}
-
-	template<typename T, typename R, typename ... Args> typename enable_if<is_same<R, void>::value, void>::type AddClassMethod(lua_State* L, R (T::*method)(Args...) const, string name)
-	{
-		LuaUserClass* obj_base = GetUserData<LuaUserClass>(L, -2);
-		obj_base->methods.push_back(name);
-
-		methodList[name] = [=]()
+		virtual void SetROOTObject(TObject* obj)
 		{
-			T* obj = GetUserData<T>(L, 1);
+		}
 
-			auto args = LuaMultPop(L, 1, method);
+		void SetupMetatable(lua_State* L);
 
-			LuaMemFuncCaller<T, R, Args...> func;
-			func.const_mfptr = method;
+		virtual void MakeAccessors(lua_State* L)
+		{
+		}
 
-			StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
-			{	func, args, obj};
-			retrieved.DoCallMemFnConst();
-			return 0;
-		};
-	}
+		virtual void AddNonClassMethods(lua_State* L)
+		{
+		}
 
-ClassDef ( LuaUserClass, 1 )
+		virtual void Reset()
+		{
+		}
+
+		template<typename T> void AddAccessor(lua_State* L, T* member, string name, string type)
+		{
+			lua_pushstring(L, type.c_str());
+			LuaCtor(L, -1);
+			lua_remove(L, -2);
+
+			T** ud = GetUserDataPtr<T>(L, -1);
+			*ud = member;
+
+			lua_setfield(L, -2, name.c_str());
+		}
+
+		template<typename T, typename R, typename ... Args> typename enable_if<!is_same<R, void>::value, void>::type AddClassMethod(lua_State* L, R (T::*method)(Args...),
+				string name)
+		{
+			LuaUserClass* obj_base = GetUserData<LuaUserClass>(L, -2);
+			obj_base->methods.push_back(name);
+
+			methodList[name] = [=]()
+			{
+				T* obj = GetUserData<T>(L, 1);
+
+				auto args = LuaMultPop(L, 1, method);
+
+				LuaMemFuncCaller<T, R, Args...> func;
+				func.mfptr = method;
+
+				StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
+				{	func, args, obj};
+				return lua_autogetvalue(L, retrieved.DoCallMemFn(), -1);
+			};
+		}
+
+		template<typename T, typename R, typename ... Args> typename enable_if<is_same<R, void>::value, void>::type AddClassMethod(lua_State* L, R (T::*method)(Args...),
+				string name)
+		{
+			LuaUserClass* obj_base = GetUserData<LuaUserClass>(L, -2);
+			obj_base->methods.push_back(name);
+
+			methodList[name] = [=]()
+			{
+				T* obj = GetUserData<T>(L, 1);
+
+				auto args = LuaMultPop(L, 1, method);
+
+				LuaMemFuncCaller<T, R, Args...> func;
+				func.mfptr = method;
+
+				StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
+				{	func, args, obj};
+				retrieved.DoCallMemFn();
+				return 0;
+			};
+		}
+
+		template<typename T, typename R, typename ... Args> typename enable_if<!is_same<R, void>::value, void>::type AddClassMethod(lua_State* L, R (T::*method)(Args...) const,
+				string name)
+		{
+			LuaUserClass* obj_base = GetUserData<LuaUserClass>(L, -2);
+			obj_base->methods.push_back(name);
+
+			methodList[name] = [=]()
+			{
+				T* obj = GetUserData<T>(L, 1);
+
+				auto args = LuaMultPop(L, 1, method);
+
+				LuaMemFuncCaller<T, R, Args...> func;
+				func.const_mfptr = method;
+
+				StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
+				{	func, args, obj};
+				return lua_autogetvalue(L, retrieved.DoCallMemFnConst(), -1);
+			};
+		}
+
+		template<typename T, typename R, typename ... Args> typename enable_if<is_same<R, void>::value, void>::type AddClassMethod(lua_State* L, R (T::*method)(Args...) const,
+				string name)
+		{
+			LuaUserClass* obj_base = GetUserData<LuaUserClass>(L, -2);
+			obj_base->methods.push_back(name);
+
+			methodList[name] = [=]()
+			{
+				T* obj = GetUserData<T>(L, 1);
+
+				auto args = LuaMultPop(L, 1, method);
+
+				LuaMemFuncCaller<T, R, Args...> func;
+				func.const_mfptr = method;
+
+				StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
+				{	func, args, obj};
+				retrieved.DoCallMemFnConst();
+				return 0;
+			};
+		}
 };
 
 int GetMember(lua_State* L);

@@ -1,61 +1,90 @@
 #include <iostream>
 #include <vector>
 
-#include "UserClassBase.h"
+#include "LuaRootClasses.h"
 
 using namespace std;
 
-class LuaGraphError: public LuaUserClass, public TGraphErrors {
-private:
-
-public:
-	LuaGraphError()
-	{
-	}
-
-	LuaGraphError(int i) :
-			TGraphErrors(i)
-	{
-	}
-
-	~LuaGraphError()
-	{
-	}
-
-	void Draw(string chopt = "")
-	{
-		TGraphErrors::Draw(chopt.c_str());
-	}
-
-	virtual void Set(int n)
-	{
-		TGraphErrors::Set(n);
-	}
-
-	int GetMaxSize()
-	{
-		return TGraphErrors::GetMaxSize();
-	}
-
-	void MakeAccessors(lua_State* L)
-	{
-		AddClassMethod(L, &LuaGraphError::Draw, "Draw");
-		AddClassMethod(L, &LuaGraphError::GetMaxSize, "GetMaxSize");
-		AddClassMethod(L, &LuaGraphError::Set, "SetNPoint");
-	}
-};
-
-extern "C" int openlib_lua_root_classes(lua_State* L)
+void LuaGraphError::Set(int n)
 {
-	MakeAccessFunctions<LuaGraphError>(L, "TGraph");
-	AddObjectConstructor<LuaGraphError, int>(L, "TGraph");
-
-	return 0;
+	((TGraphErrors*) rootObj)->Set(n);
 }
 
-#ifdef __CINT__
+int LuaGraphError::GetMaxSize()
+{
+	return ((TGraphErrors*) rootObj)->GetMaxSize();
+}
 
-#pragma link C++ class LuaGraphError+;
-#pragma link C++ class vector<LuaGraphError>+;
+tuple<double, double> LuaGraphError::GetPointVals(int i)
+{
+	double x, y;
+	((TGraphErrors*) rootObj)->GetPoint(i, x, y);
+	return make_tuple(x, y);
+}
 
-#endif
+tuple<double, double> LuaGraphError::GetPointErrors(int i)
+{
+	return make_tuple(((TGraphErrors*) rootObj)->GetErrorX(i), ((TGraphErrors*) rootObj)->GetErrorY(i));
+}
+
+void LuaGraphError::SetPointVals(int i, double x, double y)
+{
+	((TGraphErrors*) rootObj)->SetPoint(i, x, y);
+}
+
+void LuaGraphError::SetPointErrors(int i, double errx, double erry)
+{
+	((TGraphErrors*) rootObj)->SetPointError(i, errx, erry);
+}
+
+int LuaGraphError::RemovePoint(int i)
+{
+	return ((TGraphErrors*) rootObj)->RemovePoint(i);
+}
+
+double LuaGraphError::Eval(double x)
+{
+	return ((TGraphErrors*) rootObj)->Eval(x);
+}
+
+void LuaGraphError::MakeAccessors(lua_State* L)
+{
+	AddClassMethod(L, &LuaGraphError::SetTitle, "SetTitle");
+	AddClassMethod(L, &LuaGraphError::GetTitle, "GetTitle");
+
+	AddClassMethod(L, &LuaGraphError::GetMaxSize, "GetMaxSize");
+
+	AddClassMethod(L, &LuaGraphError::GetPointVals, "GetPoint");
+	AddClassMethod(L, &LuaGraphError::GetPointErrors, "GetPointError");
+
+	AddClassMethod(L, &LuaGraphError::Set, "SetNPoint");
+	AddClassMethod(L, &LuaGraphError::SetPointVals, "SetPoint");
+	AddClassMethod(L, &LuaGraphError::SetPointErrors, "SetPointError");
+
+	AddClassMethod(L, &LuaGraphError::RemovePoint, "RemovePoint");
+	AddClassMethod(L, &LuaGraphError::Eval, "Eval");
+
+	AddClassMethod(L, &LuaGraphError::DoDraw, "Draw");
+	AddClassMethod(L, &LuaGraphError::DoUpdate, "Update");
+	AddClassMethod(L, &LuaGraphError::DoWrite, "Write");
+}
+
+void LuaGraphError::AddNonClassMethods(lua_State* L)
+{
+	AddMethod(L, LuaTObjectSetName<LuaGraphError>, "SetName");
+	AddMethod(L, LuaTObjectGetName<LuaGraphError>, "GetName");
+
+	AddMethod(L, LuaTFit<LuaGraphError>, "Fit");
+	AddMethod(L, LuaTClone<LuaGraphError>, "Clone");
+}
+
+extern "C" void LoadLuaTGraphLib(lua_State* L)
+{
+	MakeAccessFunctions<LuaGraphError>(L, "TGraph");
+	rootObjectAliases["TGraph"] = "TGraph";
+	rootObjectAliases["TGraphErrors"] = "TGraph";
+
+	AddObjectConstructor<LuaGraphError, int>(L, "TGraph");
+	AddObjectConstructor<LuaGraphError, int, vector<double>, vector<double>>(L, "TGraph");
+	AddObjectConstructor<LuaGraphError, int, vector<double>, vector<double>, vector<double>, vector<double>>(L, "TGraph");
+}

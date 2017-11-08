@@ -166,13 +166,25 @@ function MakeEasyMethodCalls(obj)
   end
 end
 
-function New(classname, ...)
-  return _ctor(classname, ...)
-end
-
 function MakeEasyConstructors(classname)
   _G[classname] = function(...)
-    _ctor(classname, ...)
+    return _ctor(classname, ...)
+  end
+end
+
+function New(classname, ...)
+  return _G[classname](...)
+end
+
+-- Use this function to add stuffs to the metatable of a C++ Class --
+function AddPostInit(class, fn)
+  local constructor = _G[class]
+  _G[class] = function(...)
+    local obj = constructor(...)
+
+    fn(obj)
+
+    return obj
   end
 end
 

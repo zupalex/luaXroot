@@ -5,7 +5,8 @@
 
 using namespace std;
 
-class MyLateClass: public LuaUserClass {  // Don't forget to make your class derived from LuaUserClass (required to use some wrapper function below)
+class MyLateClass: public LuaUserClass, public TObject {  // Don't forget to make your class derived from LuaUserClass (required to use some wrapper function below)
+														  // You can also make it a derived class from TObject or any other ROOT class
 private:
 
 public:
@@ -74,12 +75,3 @@ extern "C" int openlib_late_compile(lua_State* L)
 
 	return 0;
 }
-
-// The following section is to allow ROOT to know about your class. The syntax is pretty straightforward.
-#ifdef __CINT__
-
-#pragma link C++ class MyLateClass+;
-#pragma link C++ class vector<MyLateClass>+;
-
-#endif
-
