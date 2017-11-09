@@ -712,6 +712,12 @@ int luaExt_TApplication_Terminate(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 1, true, "luaExt_TApplication_Terminate", LUA_TUSERDATA)) return 0;
 
+	for (auto itr = socketsList.begin(); itr != socketsList.end(); itr++)
+	{
+		unlink(itr->second.address.c_str());
+		close(itr->first);
+	}
+
 	for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
 		itr->second->Close();
 

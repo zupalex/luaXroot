@@ -1,5 +1,18 @@
 local socket = {}
 
+socket._activesockets = {}
+
+function socket.ListActiveSockets()
+  print("----- Active Sockets -----")
+  for k, v in pairs(socket._activesockets) do
+    print("  * ID = ", v.sockfd)
+    print("  * type = ", v.type)
+    print("  * address = ", v.address)
+    print("  * port = ", v.port)
+    print("-------------------------")
+  end
+end
+
 local SocketObject = LuaClass("SocketObject", function(self, data)
     self.type = data.type or "client"
     self.sockfd = data.sockfd or nil
@@ -72,9 +85,9 @@ function socket.CreateHost(type, address, maxqueue)
     hfd = NewSocket({domain=AF_UNIX, type=SOCK_STREAM, protocol=0})
     os.remove(address)
   elseif type == "IPV4" or type == "ipv4" or type == "network" or type == "net" then
-    hfd = NewSocket({domain=AF_UNIX, type=SOCK_STREAM, protocol=0})
+    hfd = NewSocket({domain=AF_INET, type=SOCK_STREAM, protocol=0})
   elseif type == "IPV6" or type == "ipv6" then
-    hfd = NewSocket({domain=AF_UNIX, type=SOCK_STREAM, protocol=0})
+    hfd = NewSocket({domain=AF_INET6, type=SOCK_STREAM, protocol=0})
   else
     print("Invalid socket type", type)
     print("Type socket.CreateHost() to get detailed help")
@@ -82,6 +95,16 @@ function socket.CreateHost(type, address, maxqueue)
   end
 
   address, port = SeparateAddressAndPort(address)
+
+  sockobj = SocketObject({type="host", sockfd=hfd, address=address, port=port})
+
+  if socket._activesockets[address] ~= nil then
+    SysClose(socket._activesockets[address].sockfd)
+  end
+
+  socket._activesockets[address] = sockobj
+
+  print("Socket connection created at "..address..":"..port.." ... Waiting for connection(s) ...")
 
   SocketBind({sockfd=hfd, name=address, address=address, port=port})
   SocketListen({sockfd=hfd, maxqueue=maxqueue})
@@ -92,7 +115,9 @@ function socket.CreateHost(type, address, maxqueue)
     return nil
   end
 
-  return SocketObject({type="host", sockfd=hfd, clientsfd={dfd}, address=address, port=port})
+  sockobj.clientsfd= {dfd}
+
+  return sockobj
 end
 
 function socket.CreateClient(type, address)
@@ -116,9 +141,17 @@ function socket.CreateClient(type, address)
 
   address, port = SeparateAddressAndPort(address)
 
+  sockobj = SocketObject({type="client", sockfd=cfd, address=address, port=port})
+
+  if socket._activesockets[address] ~= nil then
+    SysClose(socket._activesockets[address].sockfd)
+  end
+
+  socket._activesockets[address] = sockobj
+
   SocketConnect({sockfd=cfd, name=address, address=address, port=port})
 
-  return SocketObject({type="client", sockfd=cfd, address=address, port=port})
+  return sockobj
 end
 
 return socket

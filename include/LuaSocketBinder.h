@@ -21,17 +21,23 @@ struct SocketInfos
 {
     int domain;
     int type;
+    string address;
+    int port;
 
-    SocketInfos ( int dom_, int typ_ )
+    SocketInfos ( int dom_, int typ_ , string address_ = "", int port_ = 0)
     {
         domain = dom_;
         type = typ_;
+        address = address_;
+        port = port_;
     }
 
     SocketInfos()
     {
         domain = AF_UNIX;
         type = SOCK_STREAM;
+        address = "/tmp/sockets";
+        port = 8080;
     }
 };
 
