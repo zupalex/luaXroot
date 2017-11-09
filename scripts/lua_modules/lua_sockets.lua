@@ -83,35 +83,39 @@ function socket.CreateHost(type, address, maxqueue)
 
   if type == "local" then
     hfd = NewSocket({domain=AF_UNIX, type=SOCK_STREAM, protocol=0})
-    os.remove(address)
   elseif type == "IPV4" or type == "ipv4" or type == "network" or type == "net" then
     hfd = NewSocket({domain=AF_INET, type=SOCK_STREAM, protocol=0})
+    address, port = SeparateAddressAndPort(address)
   elseif type == "IPV6" or type == "ipv6" then
     hfd = NewSocket({domain=AF_INET6, type=SOCK_STREAM, protocol=0})
+    address, port = SeparateAddressAndPort(address)
   else
     print("Invalid socket type", type)
     print("Type socket.CreateHost() to get detailed help")
     return nil, nil
   end
 
-  address, port = SeparateAddressAndPort(address)
-
   sockobj = SocketObject({type="host", sockfd=hfd, address=address, port=port})
-
-  if socket._activesockets[address] ~= nil then
-    SysClose(socket._activesockets[address].sockfd)
-  end
 
   socket._activesockets[address] = sockobj
 
-  print("Socket connection created at "..address..(port ~= nil and (":"..port) or "").." ... Waiting for connection(s) ...")
+  print("Socket ("..hfd..") connection created at "..address..(port ~= nil and (":"..port) or "").." ... Waiting for connection(s) ...")
 
-  SocketBind({sockfd=hfd, name=address, address=address, port=port})
-  SocketListen({sockfd=hfd, maxqueue=maxqueue})
-  local dfd = SocketAccept({sockfd=hfd})
+  if not SocketBind({sockfd=hfd, address=address, port=port}) then
+    print("Socket binding failed...")
+    return
+  end
+
+  if SocketListen({sockfd=hfd, maxqueue=maxqueue}) ~= 0 then
+    print("Socket listen failed...")
+    return
+  end
+
+  print("hfd val:", hfd)
+  local dfd, errno = SocketAccept({sockfd=hfd})
 
   if dfd == nil then
-    print("There was an issue while accepting the socket connection")
+    print("There was an issue while accepting the socket connection:", errno)
     return nil
   end
 
@@ -131,25 +135,20 @@ function socket.CreateClient(type, address)
     cfd = NewSocket({domain=AF_UNIX, type=SOCK_STREAM, protocol=0})
   elseif type == "IPV4" or type == "ipv4" or type == "network" or type == "net" then
     cfd = NewSocket({domain=AF_INET, type=SOCK_STREAM, protocol=0})
+    address, port = SeparateAddressAndPort(address)
   elseif type == "IPV6" or type == "ipv6" then
-    cfd = NewSocket({domain=AF_INET6, type=SOCK_STREAM, protocol=0})
+    cfd = NewSocket({domain=AF_INET6, type=SOCK_STREAM, protocol=0})  
+    address, port = SeparateAddressAndPort(address)
   else
     print("Invalid socket type", type)
     print("Type socket.CreateClient() to get detailed help")
     return nil, nil
   end
 
-  address, port = SeparateAddressAndPort(address)
-
   sockobj = SocketObject({type="client", sockfd=cfd, address=address, port=port})
 
-  if socket._activesockets[address] ~= nil then
-    SysClose(socket._activesockets[address].sockfd)
-  end
-
   socket._activesockets[address] = sockobj
-
-  SocketConnect({sockfd=cfd, name=address, address=address, port=port})
+  SocketConnect({sockfd=cfd, address=address, port=port})
 
   return sockobj
 end

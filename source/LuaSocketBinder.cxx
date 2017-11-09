@@ -109,13 +109,20 @@ int LuaSocketBind(lua_State* L)
 	int sock_domain = socketsList[sockfd].domain;
 	int sock_type = socketsList[sockfd].type;
 
+	int yes = 1;
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1)
+	{
+		perror("setsockopt");
+		exit(1);
+	}
+
 	if (sock_domain == AF_UNIX)
 	{
 		sockaddr_un addr;
 
 		addr.sun_family = AF_UNIX;
 
-		lua_getfield(L, 1, "name");
+		lua_getfield(L, 1, "address");
 		if (!CheckLuaArgs(L, -1, true, "LuaSocketBind arguments", LUA_TSTRING)) return 0;
 
 		const char* name = lua_tostring(L, -1);
@@ -192,7 +199,7 @@ int LuaSocketConnect(lua_State* L)
 
 		addr.sun_family = AF_UNIX;
 
-		lua_getfield(L, 1, "name");
+		lua_getfield(L, 1, "address");
 		if (!CheckLuaArgs(L, -1, true, "LuaSocketConnect arguments", LUA_TSTRING)) return 0;
 		const char* name = lua_tostring(L, -1);
 
@@ -285,10 +292,20 @@ int LuaSocketAccept(lua_State* L)
 	if (!CheckLuaArgs(L, -1, true, "LuaSocketAccept arguments", LUA_TNUMBER)) return 0;
 	int sockfd = lua_tointeger(L, -1);
 
-	sockaddr_storage clients_addr;
 	socklen_t addr_size;
 
-	int new_fd = accept(sockfd, (sockaddr*) &clients_addr, &addr_size);
+	int new_fd = -1;
+
+	if (socketsList[sockfd].domain == AF_INET6)
+	{
+		sockaddr_in6 clients_addr;
+		new_fd = accept(sockfd, (sockaddr*) &clients_addr, &addr_size);
+	}
+	else
+	{
+		sockaddr_in clients_addr;
+		new_fd = accept(sockfd, (sockaddr*) &clients_addr, &addr_size);
+	}
 
 	if (new_fd < 0)
 	{

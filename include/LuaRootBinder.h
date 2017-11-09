@@ -89,16 +89,24 @@ class RootAppManager: public TApplication {
 		void SetupUpdateSignalSender()
 		{
 			msg_fd = socket( AF_UNIX, SOCK_STREAM, 0);
+			msgq_address = "/tmp/.luaXroot" + to_string(getpid()) + "_msgqueue";
 
-			remove("/tmp/.luaXroot_msgqueue");
+			remove(msgq_address.c_str());
+
+			int yes = 1;
+			if (setsockopt(msg_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1)
+			{
+				perror("setsockopt");
+				exit(1);
+			}
 
 			sockaddr_un addr;
 			addr.sun_family = AF_UNIX;
-			strcpy(addr.sun_path, "/tmp/.luaXroot_msgqueue");
+			strcpy(addr.sun_path, msgq_address.c_str());
 
 			if (bind(msg_fd, (sockaddr*) &addr, sizeof(addr)) < 0)
 			{
-				cerr << "Error opening socket" << endl;
+				cerr << "Error opening ROOT sync socket:" << errno << endl;
 			}
 
 			listen(msg_fd, 1);
@@ -106,11 +114,14 @@ class RootAppManager: public TApplication {
 
 		void WaitForUpdateReceiver()
 		{
-
-			sockaddr_storage clients_addr;
+			sockaddr_in clients_addr;
 			socklen_t addr_size;
 
 			msg_fd = accept(msg_fd, (sockaddr*) &clients_addr, &addr_size);
+			if (msg_fd == -1)
+			{
+				cerr << "Error accepting ROOT sync socket:" << errno << endl;
+			}
 		}
 
 		void SetupUpdateSignalReceiver()
@@ -119,7 +130,7 @@ class RootAppManager: public TApplication {
 
 			sockaddr_un addr;
 			addr.sun_family = AF_UNIX;
-			strcpy(addr.sun_path, "/tmp/.luaXroot_msgqueue");
+			strcpy(addr.sun_path, msgq_address.c_str());
 
 			connect(rcv_fd, (sockaddr*) &addr, sizeof(sockaddr_un));
 
@@ -147,6 +158,8 @@ class RootAppManager: public TApplication {
 
 		int msg_fd = -1;
 		int rcv_fd = -1;
+
+		string msgq_address;
 
 	ClassDef(RootAppManager, 1)
 };

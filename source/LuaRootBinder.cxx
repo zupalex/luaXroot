@@ -716,6 +716,8 @@ int luaExt_TApplication_Terminate(lua_State* L)
 		close(itr->first);
 	}
 
+	remove(theApp->msgq_address.c_str());
+
 	for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
 		itr->second->Close();
 
