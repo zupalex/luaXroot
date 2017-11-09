@@ -68,10 +68,7 @@ map<int, SocketInfos> socketsList;
 
 int LuaNewSocket(lua_State* L)
 {
-	if (!CheckLuaArgs(L, 1, true, "LuaNewSocket", LUA_TTABLE))
-	{
-		return 0;
-	}
+	if (!CheckLuaArgs(L, 1, true, "LuaNewSocket", LUA_TTABLE)) return 0;
 
 	lua_getfield(L, 1, "domain");
 	lua_getfield(L, 1, "type");
@@ -198,8 +195,6 @@ int LuaSocketConnect(lua_State* L)
 		lua_getfield(L, 1, "name");
 		if (!CheckLuaArgs(L, -1, true, "LuaSocketConnect arguments", LUA_TSTRING)) return 0;
 		const char* name = lua_tostring(L, -1);
-
-		unlink(name);
 
 		strcpy(addr.sun_path, name);
 

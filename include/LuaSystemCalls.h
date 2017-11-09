@@ -10,6 +10,8 @@ extern int maxFd;
 
 int LuaRegisterSysOpenConsts ( lua_State* L );
 
+int GetFlagsFromOctalString(lua_State* L, string str);
+
 int LuaGetEnv(lua_State* L);
 int LuaSysFork(lua_State* L);
 int LuaSysExecvpe(lua_State* L);

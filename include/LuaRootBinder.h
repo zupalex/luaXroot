@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <mutex>
+#include <llimits.h>
 
 #include "TSystem.h"
 #include "TROOT.h"
@@ -21,8 +22,8 @@
 #include "TTimer.h"
 #include "TClonesArray.h"
 
+#include "LuaSemaphoresBinder.h"
 #include "LuaSocketBinder.h"
-#include <llimits.h>
 
 class LuaCanvas;
 
@@ -303,6 +304,11 @@ static const luaL_Reg luaXroot_lib[] =
 		{ "SysFork", LuaSysFork },
 		{ "SysExec", LuaSysExecvpe },
 		{ "GetEnv", LuaGetEnv },
+
+		{ "LuaSemFtok", LuaSemFtok },
+		{ "LuaSemGet", LuaSemGet },
+		{ "LuaSemCtl", LuaSemCtl },
+		{ "LuaSemOp", LuaSemOp },
 
 		{ "MakePipe", MakePipe },
 		{ "MakeFiFo", MakeFiFo },

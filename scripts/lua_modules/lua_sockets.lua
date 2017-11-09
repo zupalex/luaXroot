@@ -104,7 +104,7 @@ function socket.CreateHost(type, address, maxqueue)
 
   socket._activesockets[address] = sockobj
 
-  print("Socket connection created at "..address..":"..port.." ... Waiting for connection(s) ...")
+  print("Socket connection created at "..address..(port ~= nil and (":"..port) or "").." ... Waiting for connection(s) ...")
 
   SocketBind({sockfd=hfd, name=address, address=address, port=port})
   SocketListen({sockfd=hfd, maxqueue=maxqueue})

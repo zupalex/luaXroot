@@ -192,8 +192,77 @@ end
 ----------------------------------Misc. Utilities-------------------------------------------
 --------------------------------------------------------------------------------------------
 
+_utilities = {}
+
 function isint(x)
   return x == math.floor(x)
+end
+
+function  _utilities.removetrailingspaces(str)
+  return str:gsub("%s+", "")
+end
+
+function _utilities.stringtoflags(str)
+  local flags = {}
+  local ops = {}
+
+  local orPos = str:find("|")
+  local andPos = str:find("&")
+
+  local sepPos = math.min(orPos or 0, andPos or 0)
+
+  local flag_str, flag_nbr
+
+  while orPos ~= nil or andPos ~= nil do
+    local nextsep = math.min(orPos or math.huge, andPos or math.huge)
+    flag_str = _utilities.removetrailingspaces(str:sub(1, nextsep-1))
+    flag_nbr = tonumber(flag_str, 8)
+
+    if flag_nbr == nil then
+      if _G[flag_str] ~= nil then
+        flag_nbr = tonumber(_G[flag_str])
+      end
+    end
+
+    if flag_nbr == nil then
+      print("Invalid flag part:", flag_str)
+      return "0"
+    end
+
+    table.insert(flags, flag_nbr)
+    table.insert(ops, nextsep == orPos and "|" or "&")
+
+    str = str:sub(nextsep+1)
+
+    if nextsep == orPos then
+      orPos = str:find("|")
+    else
+      andPos = str:find("&") 
+    end
+  end
+
+  flag_str = _utilities.removetrailingspaces(str)
+  flag_nbr = tonumber(flag_str, 8)
+
+  if flag_nbr == nil then
+    if _G[flag_str] ~= nil then
+      flag_nbr = tonumber(_G[flag_str])
+    end
+  end
+
+  table.insert(flags, flag_nbr)
+
+  for i=1,#flags do
+    if ops[i] ~= nil then
+      if ops[i] == "|" then
+        flags[i+1] = flags[i] | flags[i+1]
+      else
+        flags[i+1] = flags[i] & flags[i+1]
+      end
+    else
+      return flags[i]
+    end
+  end
 end
 
 local PipeObject = LuaClass("PipeObject", function(self, data)

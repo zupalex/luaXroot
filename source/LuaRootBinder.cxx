@@ -193,8 +193,9 @@ extern "C" int luaopen_libLuaXRootlib(lua_State* L)
 
 	InitializeBranchesFuncs(L);
 
-	LuaRegisterSocketConsts(L);
 	LuaRegisterSysOpenConsts(L);
+	LuaRegisterSemaphoresConsts(L);
+	LuaRegisterSocketConsts(L);
 
 	return 0;
 }
@@ -276,10 +277,7 @@ int ReleaseTaskMutex(lua_State* L)
 {
 	string mutexName;
 
-	if (CheckLuaArgs(L, 1, false, "", LUA_TSTRING))
-	{
-		mutexName = lua_tostring(L, 1);
-	}
+	if (CheckLuaArgs(L, 1, false, "", LUA_TSTRING)) mutexName = lua_tostring(L, 1);
 	else
 	{
 		lua_getglobal(L, "taskName");

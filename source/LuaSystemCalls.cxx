@@ -1,6 +1,17 @@
 #include "LuaSystemCalls.h"
 #include <sys/ioctl.h>
 
+int GetFlagsFromOctalString(lua_State* L, string str)
+{
+	TryGetGlobalField(L, "_utilities.stringtoflags");
+	lua_pushstring(L, str.c_str());
+	lua_pcall(L, 1, 1, 0);
+	int flagval = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+
+	return flagval;
+}
+
 int LuaGetEnv(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 1, true, "LuaGetEnv", LUA_TSTRING)) return 0;
@@ -232,17 +243,18 @@ int LuaSysOpen(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaSysOpen argument table",
 		{ "name", "flags", "mode" },
-		{ LUA_TSTRING, LUA_TNUMBER, LUA_TSTRING },
+		{ LUA_TSTRING, LUA_TSTRING, LUA_TSTRING },
 		{ true, false, false });
 
 	const char* name = lua_tostring(L, -3);
-	int flags = lua_tointegerx(L, -2, nullptr);
+	string flags_str = lua_tostringx(L, -2);
 	string mode_str = lua_tostringx(L, -1);
 
-	if (flags == 0) flags = O_RDONLY | O_NONBLOCK;
+	if (flags_str.empty()) flags_str = "O_RDONLY | O_NONBLOCK";
 	if (mode_str.empty()) mode_str = "0666";
 
-	mode_t mode = strtol(mode_str.c_str(), nullptr, 8);
+	int flags = GetFlagsFromOctalString(L, flags_str);
+	mode_t mode = GetFlagsFromOctalString(L, mode_str);
 
 	int fd_open = open(name, flags, mode);
 	if (fd_open > maxFd) maxFd = fd_open;
@@ -301,7 +313,7 @@ int MakeFiFo(lua_State* L)
 
 	if (mode_str.empty()) mode_str = "0777";
 
-	mode_t mode = strtol(mode_str.c_str(), nullptr, 8);
+	mode_t mode = GetFlagsFromOctalString(L, mode_str);
 
 	if (mkfifo(name, mode) == -1)
 	{
