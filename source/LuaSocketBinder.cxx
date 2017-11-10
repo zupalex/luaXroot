@@ -61,6 +61,27 @@ int LuaRegisterSocketConsts(lua_State* L)
 	lua_pushinteger(L, SOCK_CLOEXEC);
 	lua_setglobal(L, "SOCK_CLOEXEC");
 
+	lua_pushinteger(L, MSG_CMSG_CLOEXEC);
+	lua_setglobal(L, "MSG_CMSG_CLOEXEC");
+
+	lua_pushinteger(L, MSG_DONTWAIT);
+	lua_setglobal(L, "MSG_DONTWAIT");
+
+	lua_pushinteger(L, MSG_ERRQUEUE);
+	lua_setglobal(L, "MSG_ERRQUEUE");
+
+	lua_pushinteger(L, MSG_OOB);
+	lua_setglobal(L, "MSG_OOB");
+
+	lua_pushinteger(L, MSG_PEEK);
+	lua_setglobal(L, "MSG_PEEK");
+
+	lua_pushinteger(L, MSG_TRUNC);
+	lua_setglobal(L, "MSG_TRUNC");
+
+	lua_pushinteger(L, MSG_WAITALL);
+	lua_setglobal(L, "MSG_WAITALL");
+
 	return 0;
 }
 
@@ -116,20 +137,26 @@ int LuaSocketBind(lua_State* L)
 		exit(1);
 	}
 
+	lua_getfield(L, 1, "address");
+	string address = lua_tostringx(L, -1);
+
+	open(address.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0777);
+
 	if (sock_domain == AF_UNIX)
 	{
 		sockaddr_un addr;
 
 		addr.sun_family = AF_UNIX;
 
-		lua_getfield(L, 1, "address");
-		if (!CheckLuaArgs(L, -1, true, "LuaSocketBind arguments", LUA_TSTRING)) return 0;
+		if (address.empty())
+		{
+			cerr << "Address field cannot be empty..." << endl;
+			return 0;
+		}
 
-		const char* name = lua_tostring(L, -1);
+		strcpy(addr.sun_path, address.c_str());
 
-		strcpy(addr.sun_path, name);
-
-		unlink(name);
+		unlink (address.c_str());
 
 		if (bind(sockfd, (sockaddr*) &addr, sizeof(addr)) < 0)
 		{
@@ -137,7 +164,7 @@ int LuaSocketBind(lua_State* L)
 			return 1;
 		}
 
-		socketsList[sockfd].address = name;
+		socketsList[sockfd].address = address;
 	}
 	else if (sock_domain == AF_INET)
 	{
@@ -147,16 +174,14 @@ int LuaSocketBind(lua_State* L)
 
 		hints.ai_family = AF_INET;
 		hints.ai_socktype = sock_type;
-		hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
+		hints.ai_flags = AI_PASSIVE;  // fill in my IP for me
 
 		lua_getfield(L, 1, "port");
 		if (!CheckLuaArgs(L, -1, true, "LuaSocketBind arguments", LUA_TSTRING)) return 0;
 		const char* portno = lua_tostring(L, -1);
 
-		string address = "";
-		if (lua_checkfield(L, 1, "address", LUA_TSTRING))
+		if (!address.empty())
 		{
-			address = lua_tostring(L, -1);
 			unlink(address.c_str());
 			getaddrinfo(address.c_str(), portno, &hints, &res);
 		}
@@ -322,19 +347,17 @@ int LuaSocketAccept(lua_State* L)
 
 int LuaSocketReceive(lua_State* L)
 {
-	if (!CheckLuaArgs(L, 1, true, "LuaSocketReceive", LUA_TTABLE)) return 0;
+	lua_unpackarguments(L, 1, "LuaSocketReceive argument table",
+		{ "sockfd", "size", "flags" },
+		{ LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER },
+		{ true, false, false });
 
-	lua_getfield(L, 1, "sockfd");
-	if (!CheckLuaArgs(L, -1, true, "LuaSocketReceive argument sockfd", LUA_TNUMBER)) return 0;
-	int sockfd = lua_tointeger(L, -1);
+	int sockfd = lua_tointeger(L, -3);
 
-	lua_getfield(L, 1, "size");
-	int data_length;
-	if (CheckLuaArgs(L, -1, false, "LuaSocketReceive argument size", LUA_TNUMBER)) data_length = lua_tointeger(L, -1);
-	else ioctl(sockfd, FIONREAD, &data_length);
+	int data_length = lua_tointegerx(L, -2, nullptr);
+	if(data_length == 0) ioctl(sockfd, FIONREAD, &data_length);
 
-	int flags = 0;
-	if (lua_checkfield(L, 1, "flags", LUA_TNUMBER)) flags = lua_tointeger(L, -1);
+	int flags = lua_tointegerx(L, -1, nullptr);
 
 	char* buffer = new char[data_length];
 

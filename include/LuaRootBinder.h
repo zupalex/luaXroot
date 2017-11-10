@@ -88,8 +88,10 @@ class RootAppManager: public TApplication {
 
 		void SetupUpdateSignalSender()
 		{
-			msg_fd = socket( AF_UNIX, SOCK_STREAM, 0);
 			msgq_address = "/tmp/.luaXroot" + to_string(getpid()) + "_msgqueue";
+			open(msgq_address.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0777);
+
+			msg_fd = socket( AF_UNIX, SOCK_STREAM, 0);
 
 			remove(msgq_address.c_str());
 

@@ -31,8 +31,16 @@ local SocketObject = LuaClass("SocketObject", function(self, data)
       end
     end
 
-    function self:Receive(size)
-      return SocketReceive({sockfd=self.sockfd, size=size})
+    function self:Receive(size, wait)
+      return SocketReceive({sockfd=self.sockfd, size=size, flags=(wait and MSG_WAITALL or 0)})
+    end
+
+    function self:SendResponse(data, size)
+      return SocketSend({sockfd=self.sockfd, data=data, size=size})
+    end
+
+    function self:ReadResponse(fd, size)
+      return SocketReceive({sockfd=fd, size=size})
     end
   end, nil, true)
 
@@ -111,7 +119,6 @@ function socket.CreateHost(type, address, maxqueue)
     return
   end
 
-  print("hfd val:", hfd)
   local dfd, errno = SocketAccept({sockfd=hfd})
 
   if dfd == nil then
@@ -148,7 +155,12 @@ function socket.CreateClient(type, address)
   sockobj = SocketObject({type="client", sockfd=cfd, address=address, port=port})
 
   socket._activesockets[address] = sockobj
-  SocketConnect({sockfd=cfd, address=address, port=port})
+  local success, errmsg = SocketConnect({sockfd=cfd, address=address, port=port})
+
+  if not success then
+    print(errmsg)
+    return nil
+  end
 
   return sockobj
 end
