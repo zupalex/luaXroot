@@ -82,30 +82,18 @@ int LuaSysExecvpe(lua_State* L)
 
 	if (lua_type(L, -1) != LUA_TNIL)
 	{
-		lua_getglobal(L, "SplitTableKeyValue");
-		lua_insert(L, -2);
-		lua_pcall(L, 1, 2, 0);
-
 		envp_size = lua_rawlen(L, -1);
 
 		for (unsigned int i = 0; i < envp_size; i++)
 		{
-			string env_var = "";
-
-			lua_geti(L, -2, i + 1);
-			env_var += lua_tostring(L, -1);
-			lua_pop(L, 1);
-
-			env_var += "=";
-
 			lua_geti(L, -1, i + 1);
-			env_var += lua_tostring(L, -1);
-			lua_pop(L, 1);
+			string env_var = lua_tostring(L, -1);
+			string env_value = getenv(env_var.c_str());
+
+			env_var += "=" + env_value;
 
 			envp_str.push_back(env_var.c_str());
 		}
-
-		lua_pop(L, 2);
 	}
 
 	char** envp = new char*[envp_size + 1];
@@ -383,7 +371,7 @@ int LuaSysRead(lua_State* L)
 
 	int rbytes = read(rfd, buffer, read_length);
 
-	lua_pushstring(L, buffer);
+	lua_pushlstring(L, buffer, rbytes);
 	lua_pushinteger(L, rbytes);
 
 	return 2;

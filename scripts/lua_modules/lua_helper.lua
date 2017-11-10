@@ -265,9 +265,41 @@ function _utilities.stringtoflags(str)
   end
 end
 
+function BlockUntilReadable(fd, verbose)
+  if type(fd) ~= "table" then
+    fd = {fd}  
+  end
+
+  local rfd
+  while rfd == nil or rfd == 0 do 
+    rfd, wfd = SysSelect({read=fd}) 
+    if rfd == 0 and verbose then
+      print("Socket not ready to be read... waiting...")
+    end
+  end
+
+  return fd
+end
+
+function BlockUntilWritable(fd, verbose)
+  if type(fd) ~= "table" then
+    fd = {fd}  
+  end
+
+  local rfd, wfd
+  while wfd == nil or rfd == 0 do 
+    rfd, wfd = SysSelect({write=fd}) 
+    if rfd == 0 and verbose then
+      print("Socket not ready for writing... waiting...")
+    end
+  end
+
+  return fd
+end
+
 local PipeObject = LuaClass("PipeObject", function(self, data)
-    self.type = data.type or 1
-    self.fd = data.fd or nil
+    self.type = data and data.type or 1
+    self.fd = data and data.fd or nil
 
     function self:Write(data, size)
       if self.type == 0 or self.type == 2 then
@@ -286,9 +318,40 @@ local PipeObject = LuaClass("PipeObject", function(self, data)
         return
       end
     end
-  end, nil, true)
 
-function AttachOutput(file, command, args_table)
+    function self:WaitAndRead(size)
+      BlockUntilReadable(self.fd)
+
+      return self:Read(size)
+    end
+
+    function self:WaitAndWrite(data, size)
+      BlockUntilWritable(self.fd)
+
+      return self:Write(data, size)
+    end
+  end)
+
+function ForkAndRedirect(fn, args_table)
+  local fds = {}
+
+  local function prefn()
+    fds.input, fds.output = MakePipe()
+  end
+
+  local function execfn(...)
+    SysDup2(fds.input, 1);
+    SysClose(fds.output);
+
+    fn(...)
+  end
+
+  SysFork({fn=execfn, args=args_table, preinit=prefn})
+
+  return PipeObject({type = 1, fd = fds.output})
+end
+
+function AttachOutput(file, command, args_table, env_table)
   local fds = {}
 
   local function prefn()
@@ -296,6 +359,7 @@ function AttachOutput(file, command, args_table)
   end
 
   if type(command) == "table" then
+    env_table = args_table
     args_table = command
     command = file
   end
@@ -304,7 +368,7 @@ function AttachOutput(file, command, args_table)
     SysDup2(fds.input, 1);
     SysClose(fds.output);
 
-    SysExec({file=file, args={command, ...}})
+    SysExec({file=file, args={command, ...}, env=env_table})
   end
 
   SysFork({fn=execfn, args=args_table, preinit=prefn})

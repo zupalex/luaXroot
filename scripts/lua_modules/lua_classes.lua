@@ -97,7 +97,7 @@ function LuaClass(name, base, init, skipregister)
   return c
 end
 
-function NewObject(classname, data)
+function Instantiate(classname, data)
   if luaClasses[classname] ~= nil then
     local newobj = luaClasses[classname](data)
     newobj._data = data

@@ -13,12 +13,14 @@ function socket.ListActiveSockets()
   end
 end
 
-local SocketObject = LuaClass("SocketObject", function(self, data)
-    self.type = data.type or "client"
-    self.sockfd = data.sockfd or nil
-    self.clientsfd = data.clientsfd or nil
-    self.address = data.address or nil
-    self.port = data.port or nil
+local SocketObject = LuaClass("SocketObject", "PipeObject", function(self, data)
+    self.type = data and data.type or "client"
+    self.sockfd = data and data.sockfd or nil
+    self.clientsfd = data and data.clientsfd or nil
+    self.address = data and data.address or nil
+    self.port = data and data.port or nil
+
+    self.fd = self.sockfd
 
     function self:Send(data, size, listeners)
       if type(size) == "table" then
@@ -42,7 +44,35 @@ local SocketObject = LuaClass("SocketObject", function(self, data)
     function self:ReadResponse(fd, size)
       return SocketReceive({sockfd=fd, size=size})
     end
-  end, nil, true)
+
+    if self.type == "client" then
+      function self:WaitAndReceive(size)
+        BlockUntilReadable(self.fd)
+
+        return self:Receive(size)
+      end
+    else
+      function self:WaitAndReadResponse(fd, size)
+        BlockUntilReadable(fd)
+
+        return self:ReadResponse(fd, size)
+      end
+    end
+
+    if self.type == "client" then
+      function self:WaitAndSendResponse(data, size)
+        BlockUntilWritable(self.fd)
+
+        return self:SendResponse(data, size)
+      end
+    else
+      function self:WaitAndSend(data, size)
+        BlockUntilWritable(self.clientsfd)
+
+        return self:Send(data, size)
+      end
+    end
+  end)
 
 local function SeparateAddressAndPort(full_address)
   local portSep = full_address:find(":")
