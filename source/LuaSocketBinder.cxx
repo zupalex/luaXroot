@@ -145,6 +145,7 @@ int LuaSocketBind(lua_State* L)
 	if (sock_domain == AF_UNIX)
 	{
 		sockaddr_un addr;
+		memset(&addr, 0, sizeof(addr));
 
 		addr.sun_family = AF_UNIX;
 
@@ -199,6 +200,7 @@ int LuaSocketBind(lua_State* L)
 	else if (sock_domain == AF_INET6)
 	{
 		sockaddr_in6 addr;
+		memset(&addr, 0, sizeof(addr));
 
 		addr.sin6_family = AF_INET6;
 	}
@@ -221,6 +223,7 @@ int LuaSocketConnect(lua_State* L)
 	if (sock_domain == AF_UNIX)
 	{
 		sockaddr_un addr;
+		memset(&addr, 0, sizeof(addr));
 
 		addr.sun_family = AF_UNIX;
 
@@ -324,11 +327,15 @@ int LuaSocketAccept(lua_State* L)
 	if (socketsList[sockfd].domain == AF_INET6)
 	{
 		sockaddr_in6 clients_addr;
+		memset(&clients_addr, 0, sizeof(clients_addr));
+
 		new_fd = accept(sockfd, (sockaddr*) &clients_addr, &addr_size);
 	}
 	else
 	{
 		sockaddr_in clients_addr;
+		memset(&clients_addr, 0, sizeof(clients_addr));
+
 		new_fd = accept(sockfd, (sockaddr*) &clients_addr, &addr_size);
 	}
 

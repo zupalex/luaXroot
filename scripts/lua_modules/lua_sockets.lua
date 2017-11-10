@@ -46,10 +46,10 @@ local SocketObject = LuaClass("SocketObject", "PipeObject", function(self, data)
     end
 
     if self.type == "client" then
-      function self:WaitAndReceive(size)
+      function self:WaitAndReceive(size, wait)
         BlockUntilReadable(self.fd)
 
-        return self:Receive(size)
+        return self:Receive(size, wait)
       end
     else
       function self:WaitAndReadResponse(fd, size)

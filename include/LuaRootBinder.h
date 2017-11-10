@@ -103,6 +103,8 @@ class RootAppManager: public TApplication {
 			}
 
 			sockaddr_un addr;
+			memset(&addr, 0, sizeof(addr));
+
 			addr.sun_family = AF_UNIX;
 			strcpy(addr.sun_path, msgq_address.c_str());
 
@@ -119,6 +121,9 @@ class RootAppManager: public TApplication {
 			sockaddr_in clients_addr;
 			socklen_t addr_size;
 
+			memset(&clients_addr, 0, sizeof(clients_addr));
+			memset(&addr_size, 0, sizeof(addr_size));
+
 			msg_fd = accept(msg_fd, (sockaddr*) &clients_addr, &addr_size);
 			if (msg_fd == -1)
 			{
@@ -131,6 +136,8 @@ class RootAppManager: public TApplication {
 			rcv_fd = socket( AF_UNIX, SOCK_STREAM, 0);
 
 			sockaddr_un addr;
+			memset(&addr, 0, sizeof(addr));
+
 			addr.sun_family = AF_UNIX;
 			strcpy(addr.sun_path, msgq_address.c_str());
 
