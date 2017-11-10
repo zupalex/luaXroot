@@ -271,9 +271,9 @@ int luaExt_SetUserDataValue(lua_State* L)
 
 int luaExt_PushBackUserDataValue(lua_State* L)
 {
-	if (lua_type(L, -1) == LUA_TNIL || lua_type(L, -1) == LUA_TTABLE)
+	if (lua_type(L, -1) == LUA_TNIL)
 	{
-		cerr << "Cannot push_back nil or table..." << endl;
+		cerr << "Cannot push_back nil..." << endl;
 
 		return 0;
 	}

@@ -121,7 +121,7 @@ int LuaSemCtl(lua_State* L)
 
 	semun sem_un;
 
-	int ret;
+	int ret = 0;
 
 	bool nret = 0;
 

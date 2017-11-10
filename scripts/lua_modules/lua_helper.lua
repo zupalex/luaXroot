@@ -127,6 +127,10 @@ function newtable()
     table.insert(tbl, stuff)
   end
 
+  function tbl:GetSize()
+    return #tbl
+  end
+
   return tbl
 end
 
@@ -173,7 +177,11 @@ function MakeEasyConstructors(classname)
 end
 
 function New(classname, ...)
-  return _G[classname](...)
+  if _G[classname] then
+    return _G[classname](...)
+  else
+    return _ctor(classname, ...)
+  end
 end
 
 -- Use this function to add stuffs to the metatable of a C++ Class --

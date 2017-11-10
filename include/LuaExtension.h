@@ -495,7 +495,7 @@ template<typename T> int lua_autosetvalue(lua_State* L, T* dest, int type = -1, 
 	else if (type == LUA_TUSERDATA) lua_trygetuserdata(L, index, dest);
 	else if (type == -1)
 	{
-		if (lua_type(L, index) == LUA_TTABLE) lua_autosetvector(L, dest, type);
+		if (lua_type(L, index) == LUA_TTABLE) lua_autosetvector(L, dest, -1);
 		else if (is_same<T, bool>::value) lua_trygetnumber(L, index, dest);
 		else if (is_integral<T>::value) lua_trygetinteger(L, index, dest);
 		else if (is_convertible<T, double>::value) lua_trygetnumber(L, index, dest);
@@ -577,7 +577,14 @@ template<typename T> int lua_autopushback(lua_State* L, vector<T>* dest, int typ
 	return 0;
 }
 
-template<typename T> int lua_autosetvector(lua_State* L, vector<T>* dest, int type = -1, int index = -1, string errmsg = "Bad setter vector")
+template<typename T> typename enable_if<!is_std_vector<T>::value, int>::type lua_autopushback(lua_State* L, T* dest, int type = -1, int index = -1, string errmsg =
+		"Bad setter push_back vector")
+{
+	return 0;
+}
+
+template<typename T> typename enable_if<!is_std_vector<T>::value, int>::type lua_autosetvector(lua_State* L, vector<T>* dest, int type = -1, int index = -1, string errmsg =
+		"Bad setter vector")
 {
 	if (lua_gettop(L) == 1)
 	{
@@ -598,6 +605,49 @@ template<typename T> int lua_autosetvector(lua_State* L, vector<T>* dest, int ty
 		lua_geti(L, index, i + 1);
 
 		lua_autosetvalue(L, new_elem, type, -1, errmsg);
+
+		dest->push_back(*new_elem);
+	}
+
+	lua_remove(L, index);
+
+	return 0;
+}
+
+template<typename T> int lua_autosetvector(lua_State* L, vector<vector<T>>* dest, int type = -1, int index = -1, string errmsg = "Bad setter vector")
+{
+	if (lua_gettop(L) == 1)
+	{
+		dest->clear();
+		return 0;
+	}
+
+	if (!CheckLuaArgs(L, index, true, errmsg, LUA_TTABLE)) return 0;
+
+	vector<T>* new_elem = new vector<T>;
+	unsigned int nelems = 1;
+
+	lua_geti(L, index, 1);
+
+	if (lua_type(L, -1) != LUA_TTABLE)
+	{
+		new_elem->clear();
+		lua_autosetvector(L, new_elem, type, index, errmsg);
+		dest->push_back(*new_elem);
+		return 0;
+	}
+
+	lua_pop(L, 1);
+
+	nelems = lua_rawlen(L, index);
+	dest->clear();
+
+	for (unsigned int i = 0; i < nelems; i++)
+	{
+		lua_geti(L, index, i + 1);
+
+		new_elem->clear();
+		lua_autosetvector(L, new_elem, type, -1, errmsg);
 
 		dest->push_back(*new_elem);
 	}
@@ -824,35 +874,35 @@ template<int N, int ...S> struct gens: gens<N - 1, N - 1, S...> {
 };
 
 template<int ...S> struct gens<0, S...> {
-		typedef seq<S...> type;
+	typedef seq<S...> type;
 };
 
 template<size_t, typename R, typename ... Args>
 struct StoreArgsAndCallFn {
-		R (*fptr)(Args...);
-		tuple<Args...> params;
+	R (*fptr)(Args...);
+	tuple<Args...> params;
 
-		R DoCallFn()
-		{
-			return CallFn(typename gens<sizeof...(Args)>::type());
-		}
+	R DoCallFn()
+	{
+		return CallFn(typename gens<sizeof...(Args)>::type());
+	}
 
-		template<int ...S>
-		R CallFn(seq<S...>)
-		{
-			return (*fptr)(std::get<S>(params) ...);
-		}
+	template<int ...S>
+	R CallFn(seq<S...>)
+	{
+		return (*fptr)(std::get<S>(params) ...);
+	}
 };
 
 template<typename R, typename ... Args>
 struct StoreArgsAndCallFn<0, R, Args...> {
-		R (*fptr)(Args...);
-		void* params;
+	R (*fptr)(Args...);
+	void* params;
 
-		R DoCallFn()
-		{
-			return (*fptr)();
-		}
+	R DoCallFn()
+	{
+		return (*fptr)();
+	}
 };
 
 // ------------------ Push -------------------- //
@@ -900,100 +950,100 @@ template<typename T> typename enable_if<!is_std_tuple<T>::value>::type lua_trypu
 // ------------------ Pop and Call ----------------- //
 
 template<typename T, typename R, typename ... Args> union LuaMemFuncCaller {
-		R (T::*mfptr)(Args...);
-		R (T::*const_mfptr)(Args...) const;
+	R (T::*mfptr)(Args...);
+	R (T::*const_mfptr)(Args...) const;
 };
 
 template<size_t, typename T, typename R, typename ... Args>
 struct StoreArgsAndCallMemberFn {
-		LuaMemFuncCaller<T, R, Args...> func;
-		tuple<Args...> params;
-		T* obj;
+	LuaMemFuncCaller<T, R, Args...> func;
+	tuple<Args...> params;
+	T* obj;
 
-		R DoCallMemFn()
-		{
-			return CallMemFn(typename gens<sizeof...(Args)>::type());
-		}
+	R DoCallMemFn()
+	{
+		return CallMemFn(typename gens<sizeof...(Args)>::type());
+	}
 
-		template<int ...S>
-		R CallMemFn(seq<S...>)
-		{
-			return (obj->*(func.mfptr))(std::get<S>(params) ...);
-		}
+	template<int ...S>
+	R CallMemFn(seq<S...>)
+	{
+		return (obj->*(func.mfptr))(std::get<S>(params) ...);
+	}
 
-		R DoCallConstMemFn()
-		{
-			return CallConstMemFn(typename gens<sizeof...(Args)>::type());
-		}
+	R DoCallConstMemFn()
+	{
+		return CallConstMemFn(typename gens<sizeof...(Args)>::type());
+	}
 
-		template<int ...S>
-		R CallConstMemFn(seq<S...>)
-		{
-			return (obj->*(func.const_mfptr))(std::get<S>(params) ...);
-		}
+	template<int ...S>
+	R CallConstMemFn(seq<S...>)
+	{
+		return (obj->*(func.const_mfptr))(std::get<S>(params) ...);
+	}
 };
 
 template<typename T, typename R, typename ... Args>
 struct StoreArgsAndCallMemberFn<0, T, R, Args...> {
-		LuaMemFuncCaller<T, R, Args...> func;
-		void* params;
-		T* obj;
+	LuaMemFuncCaller<T, R, Args...> func;
+	void* params;
+	T* obj;
 
-		R DoCallMemFn()
-		{
-			return (obj->*(func.mfptr))();
-		}
+	R DoCallMemFn()
+	{
+		return (obj->*(func.mfptr))();
+	}
 
-		R DoCallMemFnConst()
-		{
-			return (obj->*(func.const_mfptr))();
-		}
+	R DoCallMemFnConst()
+	{
+		return (obj->*(func.const_mfptr))();
+	}
 
-		R DoCallFn()
-		{
-			return ((func.fptr))();
-		}
+	R DoCallFn()
+	{
+		return ((func.fptr))();
+	}
 };
 
 template<size_t, typename ... Ts>
 struct LuaPopHelper {
-		typedef std::tuple<Ts...> type;
+	typedef std::tuple<Ts...> type;
 
-		template<typename T>
-		static tuple<T> LuaStackToTuple(lua_State* L, const int index)
-		{
-			T* stack_element = new T();
-			if (is_std_vector<T>::value) lua_autosetvector(L, stack_element, -1, index);
-			else lua_autosetvalue(L, stack_element, -1, index);
-			return make_tuple(*stack_element);
-		}
+	template<typename T>
+	static tuple<T> LuaStackToTuple(lua_State* L, const int index)
+	{
+		T* stack_element = new T();
+		if (is_std_vector<T>::value) lua_autosetvector(L, stack_element, -1, index);
+		else lua_autosetvalue(L, stack_element, -1, index);
+		return make_tuple(*stack_element);
+	}
 
-		// inductive case
-		template<typename T1, typename T2, typename ... Rest>
-		static tuple<T1, T2, Rest...> LuaStackToTuple(lua_State* L, const int index)
-		{
-			T1* stack_element = new T1();
-			if (is_std_vector<T1>::value) lua_autosetvector(L, stack_element, -1, index);
-			else lua_autosetvalue(L, stack_element, -1, index);
-			tuple<T1> head = make_tuple(*stack_element);
-			return tuple_cat(head, LuaStackToTuple<T2, Rest...>(L, index));
-		}
+	// inductive case
+	template<typename T1, typename T2, typename ... Rest>
+	static tuple<T1, T2, Rest...> LuaStackToTuple(lua_State* L, const int index)
+	{
+		T1* stack_element = new T1();
+		if (is_std_vector<T1>::value) lua_autosetvector(L, stack_element, -1, index);
+		else lua_autosetvalue(L, stack_element, -1, index);
+		tuple<T1> head = make_tuple(*stack_element);
+		return tuple_cat(head, LuaStackToTuple<T2, Rest...>(L, index));
+	}
 
-		static std::tuple<Ts...> DoPop(lua_State* L, int index = 1)
-		{
-			auto ret = LuaStackToTuple<Ts...>(L, index + 1);
-			return ret;
-		}
+	static std::tuple<Ts...> DoPop(lua_State* L, int index = 1)
+	{
+		auto ret = LuaStackToTuple<Ts...>(L, index + 1);
+		return ret;
+	}
 };
 
 template<typename ... Ts>
 struct LuaPopHelper<0, Ts...> {
-		typedef void* type;
+	typedef void* type;
 
-		static void* DoPop(lua_State* L, int index)
-		{
-			return nullptr;
-		}
+	static void* DoPop(lua_State* L, int index)
+	{
+		return nullptr;
+	}
 };
 
 template<typename T, typename R, typename ... Args> typename LuaPopHelper<sizeof...(Args), Args...>::type LuaMultPop(lua_State* L, int index, R (T::*method)(Args...))
