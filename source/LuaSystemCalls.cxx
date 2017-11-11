@@ -545,3 +545,20 @@ int LuaSysSelect(lua_State* L)
 		return 3;
 	}
 }
+
+int LuaSysFtok(lua_State* L)
+{
+	lua_unpackarguments(L, 1, "LuaSemFtok argument table",
+		{ "pathname", "id" },
+		{ LUA_TSTRING, LUA_TNUMBER },
+		{ true, false });
+
+	const char* pathname = lua_tostring(L, -2);
+	int proj_id = lua_tointegerx(L, -1, nullptr);
+
+	key_t fkey = ftok(pathname, proj_id > 0 ? proj_id : 'Z');
+
+	lua_pushinteger(L, fkey);
+
+	return 1;
+}

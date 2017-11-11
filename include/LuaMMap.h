@@ -5,7 +5,28 @@
 
 #include "LuaSystemCalls.h"
 
-extern map<int, void*> mmapList;
+struct MMapInfo {
+		char* address;
+		size_t size;
+		int fd;
+
+		MMapInfo(char* address_, size_t size_, int fd_)
+		{
+			address = address_;
+			size = size_;
+			fd = fd_;
+		}
+
+		MMapInfo()
+		{
+			address = nullptr;
+			size = 0;
+			fd = -1;
+		}
+};
+
+
+extern map<int, MMapInfo> mmapList;
 
 int LuaRegisterMMFileConsts(lua_State* L);
 

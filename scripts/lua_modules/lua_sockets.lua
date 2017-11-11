@@ -87,7 +87,7 @@ local function SeparateAddressAndPort(full_address)
   return full_address, port
 end
 
-local function PrintSocketHelp()
+function PrintSocketHelp()
   print("To create a socket connection:")
   print("The host should invoke socket.CreateHost(type, address, [maxqueue])")
   print("The client should invoke socket.CreateClient(type, address)")

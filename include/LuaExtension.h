@@ -399,6 +399,13 @@ template<typename T> T** GetUserDataPtr(lua_State* L, int idx = 1, string errmsg
 template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::type SetupMetatable(lua_State* L)
 {
 	T* obj = GetUserData<T>(L, -1);
+	AddMethod(L, [](lua_State* L_)
+	{
+		T** obj_ = GetUserDataPtr<T>(L_);
+		int shift = lua_tointeger(L_, 2);
+		*obj_ += shift;
+		return 0;
+	}, "ShiftAddress");
 	obj->SetupMetatable(L);
 }
 
@@ -406,6 +413,13 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::ty
 {
 	AddMethod(L, luaExt_SetUserDataValue, "Set");
 	AddMethod(L, luaExt_GetUserDataValue, "Get");
+	AddMethod(L, [](lua_State* L_)
+	{
+		T** obj_ = GetUserDataPtr<T>(L_);
+		int shift = lua_tointeger(L_, 2);
+		*obj_ += shift;
+		return 0;
+	}, "ShiftAddress");
 }
 
 // ************************************************************************************************ //
@@ -1134,7 +1148,7 @@ inline int LuaCtor(lua_State* L, int index = 1)
 	lua_pushstring(L, classname.c_str());
 	lua_setfield(L, -2, "type");
 
-	lua_pushinteger(L, type_size);
+	lua_pushinteger(L, type_size * (arraySize > 0 ? arraySize : 1));
 	lua_setfield(L, -2, "sizeof");
 
 	if (findIfArray != string::npos)
@@ -1169,7 +1183,7 @@ inline int luaExt_Ctor(lua_State* L)
 extern map<string, function<void(lua_State*)>> newUserDataFns;
 extern map<string, function<void(lua_State*)>> setUserDataFns;
 extern map<string, function<void(lua_State*)>> getUserDataFns;
-extern map<string, function<void(lua_State*, void*)>> assignUserDataFns;
+extern map<string, function<void(lua_State*, char*)>> assignUserDataFns;
 
 template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string type)
 {
@@ -1190,7 +1204,7 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		lua_autogetvalue ( L, *ud, -1 );
 	};
 
-	assignUserDataFns[finalType] = [=] (lua_State* L, void* addr)
+	assignUserDataFns[finalType] = [=] (lua_State* L, char* addr)
 	{
 		T** ud = GetUserDataPtr<T> ( L, 1, "assignUserDataFns" );
 		*ud = (T*) addr;
@@ -1213,7 +1227,7 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		lua_autogetvalue ( L, *ud, -1 );
 	};
 
-	assignUserDataFns[finalType] = [=] (lua_State* L, void* addr)
+	assignUserDataFns[finalType] = [=] (lua_State* L, char* addr)
 	{
 		vector<T>** ud = GetUserDataPtr<vector<T>> ( L, 1, "assignUserDataFns" );
 		*ud = (vector<T>*) addr;
@@ -1235,7 +1249,7 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		lua_autogetvalue ( L, *ud, -1 );
 	};
 
-	assignUserDataFns[finalType] = [=] (lua_State* L, void* addr)
+	assignUserDataFns[finalType] = [=] (lua_State* L, char* addr)
 	{
 		vector<vector<T>>** ud = GetUserDataPtr<vector<vector<T>>> ( L, 1, "assignUserDataFns" );
 		*ud = (vector<vector<T>>*) addr;
@@ -1264,7 +1278,7 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		lua_autogetarray ( L, ud, array_size, -1 );
 	};
 
-	assignUserDataFns[finalType] = [=] (lua_State* L, void* addr)
+	assignUserDataFns[finalType] = [=] (lua_State* L, char* addr)
 	{
 		T** ud = GetUserDataPtr<T> ( L, 1, "assignUserDataFns" );
 		*ud = (T*) addr;

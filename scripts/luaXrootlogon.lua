@@ -32,7 +32,7 @@ end
 -- Modules which wil be loaded upon starting a session of luaXroot --
 require("lua_classes")
 require("lua_helper")
-shm = require("lua_shmem")
+sem, shmem, mmap = table.unpack(require("lua_shmem"))
 socket = require("lua_sockets")
 require("lua_tree")
 

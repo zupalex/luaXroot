@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <mutex>
 #include <llimits.h>
+#include <LuaMMap.h>
 
 #include "TSystem.h"
 #include "TROOT.h"
@@ -24,8 +25,7 @@
 
 #include "LuaSemaphoresBinder.h"
 #include "LuaShMem.h"
-#include "LuaMMFile.h"
-#include "LuaSemaphoresBinder.h"
+#include "LuaMMap.h"
 #include "LuaSocketBinder.h"
 
 class LuaCanvas;

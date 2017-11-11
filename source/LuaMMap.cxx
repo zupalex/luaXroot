@@ -1,4 +1,4 @@
-#include "LuaMMFile.h"
+#include <LuaMMap.h>
 
 int LuaRegisterMMFileConsts(lua_State* L)
 {
@@ -56,7 +56,7 @@ int LuaRegisterMMFileConsts(lua_State* L)
 	return 0;
 }
 
-map<int, void*> mmapList;
+map<int, MMapInfo> mmapList;
 
 int LuaNewMMap(lua_State* L)
 {
@@ -81,7 +81,7 @@ int LuaNewMMap(lua_State* L)
 	int flags = GetFlagsFromOctalString(L, flags_str);
 	int prot = GetFlagsFromOctalString(L, prot_str);
 
-	void* mmap_addr = mmap((caddr_t) 0, size, prot, flags, mapid, offset);
+	char* mmap_addr = (char*) mmap((caddr_t) 0, size, prot, flags, mapid, offset);
 
 	if (mmap_addr == MAP_FAILED)
 	{
@@ -89,7 +89,7 @@ int LuaNewMMap(lua_State* L)
 		return 0;
 	}
 
-	mmapList[mapid] = mmap_addr;
+	mmapList[mapid] = MMapInfo(mmap_addr, size, mapid);
 
 	return 0;
 }
@@ -97,21 +97,33 @@ int LuaNewMMap(lua_State* L)
 int LuaAssignMMap(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaAssignMMap argument table",
-		{ "mapid", "buffer" },
-		{ LUA_TNUMBER, LUA_TUSERDATA },
-		{ true, true });
+		{ "mapid", "buffer", "offset" },
+		{ LUA_TNUMBER, LUA_TUSERDATA, LUA_TNUMBER },
+		{ true, true, false });
 
 	lua_remove(L, 1);
 
-	int mapid = lua_tointeger(L, -2);
-	lua_remove(L, -2);
+	int mapid = lua_tointeger(L, -3);
+	lua_remove(L, -3);
 
-	lua_getfield(L, -1, "type");
+	int offset = lua_tointegerx(L, -1, nullptr);
+	if(offset < 0) offset = 0;
+
+	lua_getfield(L, -2, "sizeof");
+	int buffer_size = lua_tointeger(L, -1);
+
+	if(mmapList[mapid].address+offset+buffer_size > mmapList[mapid].address+mmapList[mapid].size)
+	{
+		cerr << "WARNING: assigning memory segment partially or totally outside of the mmap allocated space. Forced it back to last available block" << endl;
+		offset = mmapList[mapid].size-buffer_size;
+	}
+
+	lua_getfield(L, -3, "type");
 	string type = lua_tostring(L, -1);
-	lua_pop(L, 1);
+	lua_pop(L, 2);
 
-	assignUserDataFns[type](L, mmapList[mapid]);
+	assignUserDataFns[type](L, mmapList[mapid].address+offset);
 
-	return 0;
+	lua_pushinteger(L, offset);
+	return 1;
 }
-

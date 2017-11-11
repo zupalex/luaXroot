@@ -61,23 +61,6 @@ int LuaRegisterSemaphoresConsts(lua_State* L)
 	return 0;
 }
 
-int LuaSemFtok(lua_State* L)
-{
-	lua_unpackarguments(L, 1, "LuaSemFtok argument table",
-		{ "pathname", "id" },
-		{ LUA_TSTRING, LUA_TNUMBER },
-		{ true, false });
-
-	const char* pathname = lua_tostring(L, -2);
-	int proj_id = lua_tointegerx(L, -1, nullptr);
-
-	key_t semkey = ftok(pathname, proj_id > 0 ? proj_id : 'Z');
-
-	lua_pushinteger(L, semkey);
-
-	return 1;
-}
-
 int LuaSemGet(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaSemGet argument table",
@@ -99,6 +82,22 @@ int LuaSemGet(lua_State* L)
 	{
 		cerr << "Error while getting semaphore. Check that the flag required is appropriate (by default flag = \"IPC_CREAT | IPC_EXCL | 0666\")" << endl;
 		return 0;
+	}
+
+	if (nsems == 0)
+	{
+		semid_ds semstat;
+		semun sem_un;
+		sem_un.buf = &semstat;
+		int success = semctl(semid, 0, IPC_STAT, sem_un);
+
+		if (success == -1)
+		{
+			cerr << "Error while retrieving semaphore info: " << errno << endl;
+			return 0;
+		}
+
+		nsems = semstat.sem_nsems;
 	}
 
 	semaphoreList[semid] = SemInfos(semkey, nsems);
@@ -129,36 +128,66 @@ int LuaSemCtl(lua_State* L)
 	{
 		lua_getfield(L, 1, "val");
 		sem_un.val = lua_tointegerx(L, -1, nullptr);
-		ret = semctl(semid, semnum, cmd, sem_un);
+		ret = semctl(semid, semnum, SETVAL, sem_un);
 	}
 	else if (cmd == SETALL)
 	{
 		lua_getfield(L, 1, "val");
-		vector<unsigned short> vals;
-		lua_autosetvector(L, &vals);
-		sem_un.array = &vals[0];
-		ret = semctl(semid, semnum, cmd, sem_un);
+		sem_un.array = new unsigned short[semaphoreList[semid].nsems];
+		lua_autosetarray(L, sem_un.array, semaphoreList[semid].nsems);
+		ret = semctl(semid, semnum, SETALL, sem_un);
 	}
 	else if (cmd == GETVAL)
 	{
-		ret = semctl(semid, semnum, cmd);
+		ret = semctl(semid, semnum, GETVAL);
 		lua_pushinteger(L, ret);
 		nret = 1;
 	}
 	else if (cmd == GETALL)
 	{
-		vector<int> vals;
+		sem_un.array = new unsigned short[semaphoreList[semid].nsems];
 
-		ret = semctl(semid, semnum, cmd, sem_un);
+		ret = semctl(semid, semnum, GETALL, sem_un);
 
-		for (int i = 0; i < semaphoreList[semid].nsems; i++)
-			vals[i] = sem_un.array[i];
-
-		lua_autogetvector(L, vals);
+		lua_autogetarray(L, sem_un.array, semaphoreList[semid].nsems);
 		nret = 1;
+	}
+	else if (cmd == IPC_STAT)
+	{
+		semid_ds semstat;
+		sem_un.buf = &semstat;
+		int success = semctl(semid, semnum, IPC_STAT, sem_un);
+
+		if (success == -1)
+		{
+			cerr << "Error while retrieving semaphore info: " << errno << endl;
+			return 0;
+		}
+
+		lua_newtable(L);
+		lua_pushinteger(L, semstat.sem_nsems);
+		lua_pushinteger(L, semstat.sem_ctime);
+		lua_pushinteger(L, semstat.sem_otime);
+		lua_setfield(L, -4, "semop_time");
+		lua_setfield(L, -3, "lastchange_time");
+		lua_setfield(L, -2, "nsem");
+		return 1;
+	}
+	else if (cmd == GETNCNT)
+	{
+		int ncnt = semctl(semid, semnum, GETNCNT);
+		lua_pushinteger(L, ncnt);
+		return 1;
+	}
+	else if (cmd == GETZCNT)
+	{
+		int zcnt = semctl(semid, semnum, GETZCNT);
+		lua_pushinteger(L, zcnt);
+		return 1;
 	}
 	else
 	{
+		semctl(semid, semnum, cmd);
 		lua_pushnil(L);
 	}
 
@@ -184,7 +213,6 @@ int LuaSemOp(lua_State* L)
 	int nsops = lua_rawlen(L, -2);
 
 	sembuf* sb = new sembuf[nsops];
-//	sembuf sb;
 
 	unsigned short* semnum = new unsigned short[nsops];
 	short* sop = new short[nsops];
@@ -198,11 +226,7 @@ int LuaSemOp(lua_State* L)
 		sb[i].sem_op = sop[i];
 	}
 
-//	sb.sem_num = semnum[0];
-//	sb.sem_op = sop[0];
-
 	int ret = semop(semid, sb, nsops);
-//	int ret = semop(semid, &sb, 1);
 
 	if (ret == -1)
 	{

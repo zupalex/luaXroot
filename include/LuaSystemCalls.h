@@ -2,6 +2,7 @@
 #define __LUASYSTEMCALLS__
 
 #include <sys/types.h>
+#include <sys/ipc.h>
 #include <fcntl.h>
 
 #include "LuaExtension.h"
@@ -30,6 +31,8 @@ int LuaSysWrite(lua_State* L);
 
 int LuaSysSelect(lua_State* L);
 
+int LuaSysFtok(lua_State* L);
+
 static const luaL_Reg luaSysCall_lib[] =
 	{
 		{ "SysOpen", LuaSysOpen },
@@ -48,6 +51,8 @@ static const luaL_Reg luaSysCall_lib[] =
 		{ "MakeFiFo", MakeFiFo },
 
 		{ "SysSelect", LuaSysSelect },
+
+		{ "SysFtok", LuaSysFtok },
 
 		{ NULL, NULL } };
 
