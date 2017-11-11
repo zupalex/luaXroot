@@ -4,7 +4,18 @@ local sem = {}
 
 sem._activesems = {}
 
-local function PrintSemaphoresHelp()
+function sem.ListActiveSemaphores()
+  print("----- Active Semaphores -----")
+  for k, v in pairs(sem._activesems) do
+    print("  * id = ", v.id)
+    print("  * nsems = ", v.nsem)
+    print("  * key = ", v.key)
+    print("  * file descriptor = ", v.fd)
+    print("-------------------------")
+  end
+end
+
+function PrintSemaphoresHelp()
   print("To create a Semaphores set:")
   print("sem.CreateSemSet(path, nsems, flags, id)")
   print("To get an existing Semaphores set:")
@@ -16,7 +27,6 @@ local function PrintSemaphoresHelp()
   print("       * \"recreate\" = if the semaphore set file already exists, it is deleted and regenerated")
   print("       * \"protected\" = if the semaphore file already exists, the creation will fail")
   print("       * \"open\" = if the semaphore file already exists, it will simply be opened")
-  print("  -> id (mostly useless): an integer, should be left blank")
 end
 
 local SemaphoreObject = LuaClass("SemaphoreObject", function(self, data)
@@ -52,11 +62,11 @@ local SemaphoreObject = LuaClass("SemaphoreObject", function(self, data)
     end
   end)
 
-function sem.CreateSemSet(path, nsem, flag, id)
+function sem.CreateSemSet(path, nsem, flag)
   local openfile_flags = "O_CREAT | O_RDWR | O_NONBLOCK"
   local semfileid = SysOpen({name=path, flags=openfile_flags})
 
-  local semkey = SysFtok({pathname=path, id=id})
+  local semkey = SysFtok({pathname=path})
 
   if flag == nil or flag == "recreate" then 
     flag = "IPC_CREAT | 0666"
@@ -74,11 +84,11 @@ function sem.CreateSemSet(path, nsem, flag, id)
   return semobj
 end
 
-function sem.GetSemSet(path, id)
+function sem.GetSemSet(path)
   local openfile_flags = "O_RDWR | O_NONBLOCK"
   local semfileid = SysOpen({name=path, flags=openfile_flags})
 
-  local semkey = SysFtok({pathname=path, id=id})
+  local semkey = SysFtok({pathname=path})
 
   local semid = SemGet({key=semkey, nsem=0, flag="0666"})
 
@@ -96,13 +106,208 @@ local shmem = {}
 
 shmem._activeshmems = {}
 
+function shmem.ListActiveShMem()
+  print("----- Active Shared Memory Segments -----")
+  for k, v in pairs(shmem._activeshmems) do
+    print("  * path = ", v.path)
+    print("  * id = ", v.id)
+    print("  * size = ", v.size)
+    print("  * key = ", v.key)
+    print("-------------------------")
+  end
+end
+
+function PrintSharedMemoryHelp()
+  print("To create a shared memory segment:")
+  print("shmem.CreateShMem(path, [size or buffer], flag)")
+  print("To get an existing memory mapped file:")
+  print("shmem.GetShMem(path, buffer, flags)")
+  print("")
+  print("  -> path : a string, path to the shared memory segment \"file\"")
+  print("  -> size : an integer, the size of the shared memory segment. If called with size, user need to attach a userdata afterward to use the segment")
+  print("  -> buffer : a userdata, will be the interface to read from and write to the shared memory segment")
+  print("  -> flag : a string, protection mode")
+  print("       * \"read\" = read authorization only on the mmap")
+  print("       * \"write\" = write authorization only on the mmap")
+  print("       * \"full\" = read and write authorization to the mmap")
+end
+
+local ShMemObject = LuaClass("ShMemObject", function(self, data)
+    self.path = data and data.path or "/tmp/shmem"
+    self.fd = data and data.fd or -1
+    self.key = data and data.key or -1
+    self.id = data and data.id or -1
+    self.size = data and data.size or 0
+    self.buffer = data and data.buffer or nil
+    self.current_offset = data and data.current_offset or 0
+
+    function self:SetAddress(buffer)
+      AssignShmem({shmid=self.id, buffer=buffer})
+      self.buffer = buffer
+    end
+
+    function self:SetOffset(offset)
+      local dest = offset and offset*self.buffer.sizeof
+      if dest and dest ~= self.current_offset and dest <= self.size-self.buffer.sizeof then
+        AssignShmem({shmid=self.id, buffer=self.buffer})
+        self:Advance(offset)
+        self.current_offset = dest
+      end
+    end
+
+    function self:Advance(n)
+      local dest = n and self.current_offset+n*self.buffer.sizeof
+      if dest <= self.size-self.buffer.sizeof then
+        self.buffer:ShiftAddress(n)
+        self.current_offset = dest
+        return dest
+      end
+    end
+
+    function self:Next()
+      return self:Advance(1)
+    end
+
+    function self:Previous()
+      return self:Advance(-1)
+    end
+
+    function self:Read(at)
+      local result
+      if at and at >= 0 and at ~= self.current_offset/self.buffer.sizeof then
+        local shift = at - self.current_offset/self.buffer.sizeof
+        if self:Advance(shift) then
+          result = self.buffer:Get()
+          self:Advance(-shift)
+        else
+          return nil
+        end
+      else
+        result = self.buffer:Get()
+      end
+
+      return result
+    end
+
+    function self:SetValue(data, at)
+      if at and at >= 0 and at ~= self.current_offset/self.buffer.sizeof then
+        local shift = at - self.current_offset/self.buffer.sizeof
+        if self:Advance(shift) then
+          self.buffer:Set(data)
+          self:Advance(-shift)
+        else
+          return nil
+        end
+      else
+        self.buffer:Set(data)
+      end
+
+      return true
+    end
+  end)
+
+function shmem.CreateShMem(path, buffer, flag)
+  local openfile_flags = "O_CREAT | O_RDWR | O_NONBLOCK"
+  local shmfileid = SysOpen({name=path, flags=openfile_flags})
+
+  local shmkey = SysFtok({pathname=path})
+
+  if flag == nil or flag == "recreate" then 
+    flag = "IPC_CREAT | 0666"
+  elseif flag == "protected" then
+    flag = "IPC_CREAT | IPC_EXCL | 0666"
+  elseif flag == "open" then
+    flag = "0666"
+  end
+
+  local size
+  if type(buffer) == "number" then 
+    size = buffer
+  else
+    size = buffer.sizeof
+  end
+
+  local shmid = ShmGet({key=shmkey, size=size, flag=flag})
+  ShmAt({shmid=shmid})
+
+  local shmobj = ShMemObject({path=path, size=size, id=shmid, fd=shmfileid, key=shmkey})
+  shmem._activeshmems[shmkey] = semobj
+
+  if type(buffer) == "userdata" then 
+    AssignShMem({shmid=shmid, buffer=buffer})
+
+    if flag == "read" then
+      buffer.__Set = buffer.Set
+      buffer.__PushBack = buffer.PushBack
+      buffer.Set = function() print("Userdata associated to a read-only shared memory segment") end
+      buffer.PushBack = function() print("Userdata associated to a read-only shared memory segment") end
+    end
+
+    shmobj.buffer = buffer
+  end
+
+  return shmobj
+end
+
+function shmem.GetShMem(path, buffer, flag)
+  local openfile_flags = "O_RDWR | O_NONBLOCK"
+  local shmfileid = SysOpen({name=path, flags=openfile_flags})
+
+  local shmkey = SysFtok({pathname=path})
+
+  if flag == nil or flag == "recreate" then 
+    flag = "IPC_CREAT | 0666"
+  elseif flag == "protected" then
+    flag = "IPC_CREAT | IPC_EXCL | 0666"
+  elseif flag == "open" then
+    flag = "0666"
+  end
+
+  local shmid = ShmGet({key=shmkey, size=1, flag=flag})
+
+  local shmstat = ShmCtl({shmid=shmid, cmd=IPC_STAT})
+
+  local size = shmstat.size
+
+  shmid = ShmGet({key=shmkey, size=size, flag="0666"})
+  ShmAt({shmid=shmid})
+
+  local shmobj = ShMemObject({path=path, size=size, id=shmid, fd=shmfileid, key=shmkey})
+  shmem._activeshmems[shmkey] = shmobj
+
+  if type(buffer) == "userdata" then 
+    AssignShmem({shmid=shmid, buffer=buffer})
+
+    if flag == "read" then
+      buffer.__Set = buffer.Set
+      buffer.__PushBack = buffer.PushBack
+      buffer.Set = function() print("Userdata associated to a read-only shared memory segment") end
+      buffer.PushBack = function() print("Userdata associated to a read-only shared memory segment") end
+    end
+
+    shmobj.buffer = buffer
+  end
+
+  return shmobj
+end
+
 ----------------------- MEMORY MAPPED FILES --------------------------------
 
 local mmap = {}
 
 mmap._activemmaps = {}
 
-local function PrintMemoryMappedFileHelp()
+function mmap.ListActiveMMap()
+  print("----- Active Memory Mapped Files -----")
+  for k, v in pairs(mmap._activemmaps) do
+    print("  * path = ", v.path)
+    print("  * size = ", v.size)
+    print("  * file descriptor = ", v.fd)
+    print("-------------------------")
+  end
+end
+
+function PrintMemoryMappedFileHelp()
   print("To create a memory mapped file:")
   print("mmap.CreateMMap(path, buffer, prot, flags, offset)")
   print("To attach to an existing memory mapped file:")
@@ -132,12 +337,6 @@ local MMapObject = LuaClass("MMapObject", function(self, data)
       self.buffer = buffer
     end
 
-    function self:SetByteOffset(offset)
-      if offset and offset ~= self.current_offset and offset <= self.size-self.buffer.sizeof then
-        self.current_offset = AssignMMap({mapid=self.fd, buffer=self.buffer, offset=offset})
-      end
-    end
-
     function self:SetOffset(offset)
       local dest = offset and offset*self.buffer.sizeof
       if dest and dest ~= self.current_offset and dest <= self.size-self.buffer.sizeof then
@@ -149,38 +348,50 @@ local MMapObject = LuaClass("MMapObject", function(self, data)
       local dest = n and self.current_offset+n*self.buffer.sizeof
       if dest <= self.size-self.buffer.sizeof then
         self.buffer:ShiftAddress(n)
-        return true
+        self.current_offset = dest
+        return self.current_offset
       end
     end
 
     function self:Next()
-      self:Advance(1)
+      return self:Advance(1)
     end
 
     function self:Previous()
-      self:Advance(-1)
+      return self:Advance(-1)
     end
 
     function self:Read(at)
-      if at and at ~= self.current_offset/self.buffer.sizeof then
-        if self:Advance(at - self.current_offset/self.buffer.sizeof) then
-          self.current_offset = at*self.buffer.sizeof
+      local result
+      if at and at >= 0 and at ~= self.current_offset/self.buffer.sizeof then
+        local shift = at - self.current_offset/self.buffer.sizeof
+        if self:Advance(shift) then
+          result = self.buffer:Get()
+          self:Advance(-shift)
+        else
+          return nil
         end
+      else
+        result = self.buffer:Get()
       end
 
-      return self.buffer:Get(), self.current_offset+self.buffer.sizeof
+      return result
     end
 
     function self:SetValue(data, at)
-      if at and at ~= self.current_offset/self.buffer.sizeof then
-        if self:Advance(at - self.current_offset/self.buffer.sizeof) then
-          self.current_offset = at*self.buffer.sizeof
+      if at and at >= 0 and at ~= self.current_offset/self.buffer.sizeof then
+        local shift = at - self.current_offset/self.buffer.sizeof
+        if self:Advance(shift) then
+          self.buffer:Set(data)
+          self:Advance(-shift)
+        else
+          return nil
         end
+      else
+        self.buffer:Set(data)
       end
 
-      self.buffer:Set(data)
-
-      return self.current_offset+self.buffer.sizeof
+      return true
     end
   end)
 
