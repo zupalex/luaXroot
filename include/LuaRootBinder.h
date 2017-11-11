@@ -23,6 +23,9 @@
 #include "TClonesArray.h"
 
 #include "LuaSemaphoresBinder.h"
+#include "LuaShMem.h"
+#include "LuaMMFile.h"
+#include "LuaSemaphoresBinder.h"
 #include "LuaSocketBinder.h"
 
 class LuaCanvas;
@@ -315,37 +318,6 @@ static const luaL_Reg luaXroot_lib[] =
 		{ "clearprompthistory", clearprompthistory },
 
 		{ "_ctor", luaExt_Ctor },
-
-		{ "SysOpen", LuaSysOpen },
-		{ "SysClose", LuaSysClose },
-		{ "SysUnlink", LuaSysUnlink },
-		{ "SysRead", LuaSysRead },
-		{ "SysWrite", LuaSysWrite },
-		{ "SysDup", LuaSysDup },
-		{ "SysDup2", LuaSysDup2 },
-		{ "SysFork", LuaSysFork },
-		{ "SysExec", LuaSysExecvpe },
-		{ "GetEnv", LuaGetEnv },
-
-		{ "LuaSemFtok", LuaSemFtok },
-		{ "LuaSemGet", LuaSemGet },
-		{ "LuaSemCtl", LuaSemCtl },
-		{ "LuaSemOp", LuaSemOp },
-
-		{ "MakePipe", MakePipe },
-		{ "MakeFiFo", MakeFiFo },
-		{ "NewSocket", LuaNewSocket },
-
-		{ "SocketBind", LuaSocketBind },
-		{ "SocketConnect", LuaSocketConnect },
-
-		{ "SysSelect", LuaSysSelect },
-
-		{ "SocketListen", LuaSocketListen },
-		{ "SocketAccept", LuaSocketAccept },
-
-		{ "SocketReceive", LuaSocketReceive },
-		{ "SocketSend", LuaSocketSend },
 
 		{ NULL, NULL } };
 

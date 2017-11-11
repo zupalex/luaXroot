@@ -193,7 +193,11 @@ inline bool lua_unpackarguments(lua_State* L, int index, string errmsg, vector<c
 	for (unsigned int i = 0; i < arg_names.size(); i++)
 	{
 		lua_getfield(L, const_idx, arg_names[i]);
-		if (arg_required[i] && !CheckLuaArgs(L, -1, true, errmsg, arg_types[i])) return false;
+		if (arg_required[i] && !CheckLuaArgs(L, -1, true, errmsg, arg_types[i]))
+		{
+			cerr << "Missing or invalid field: " << arg_names[i] << endl;
+			return false;
+		}
 	}
 
 	return true;
@@ -631,6 +635,7 @@ template<typename T> int lua_autosetvector(lua_State* L, vector<vector<T>>* dest
 
 	if (lua_type(L, -1) != LUA_TTABLE)
 	{
+		lua_pop(L, 1);
 		new_elem->clear();
 		lua_autosetvector(L, new_elem, type, index, errmsg);
 		dest->push_back(*new_elem);
@@ -865,7 +870,7 @@ int luaExt_GetVectorSize(lua_State* L);
 // --------------------------------------------------------------------------------------------------------- //
 
 extern map<string, function<int()>> methodList;
-extern map<string, map<int, function<void(int)>>> constructorList;
+extern map<string, map<int, function<int(int)>>> constructorList;
 
 template<int...> struct seq
 {};
@@ -1074,7 +1079,7 @@ template<typename T, typename ... Args> void MakeDefaultConstructor(lua_State* L
 		MakeMetatable ( L );
 		SetupMetatable<T> ( L );
 
-		return;
+		return sizeof(T);
 	};
 
 	constructorList[name][0] = ctor;
@@ -1100,7 +1105,7 @@ template<typename T, typename ... Args> void AddObjectConstructor(lua_State* L, 
 		MakeMetatable ( L );
 		SetupMetatable<T> ( L );
 
-		return;
+		return sizeof(T);
 	};
 
 	constructorList[name][sizeof...(Args)] = ctor;
@@ -1124,10 +1129,13 @@ inline int LuaCtor(lua_State* L, int index = 1)
 		classname = classname.substr(0, findIfArray) + "[]";
 	}
 
-	(constructorList[classname][nargs])(index);
+	int type_size = (constructorList[classname][nargs])(index);
 
 	lua_pushstring(L, classname.c_str());
 	lua_setfield(L, -2, "type");
+
+	lua_pushinteger(L, type_size);
+	lua_setfield(L, -2, "sizeof");
 
 	if (findIfArray != string::npos)
 	{
@@ -1161,6 +1169,7 @@ inline int luaExt_Ctor(lua_State* L)
 extern map<string, function<void(lua_State*)>> newUserDataFns;
 extern map<string, function<void(lua_State*)>> setUserDataFns;
 extern map<string, function<void(lua_State*)>> getUserDataFns;
+extern map<string, function<void(lua_State*, void*)>> assignUserDataFns;
 
 template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string type)
 {
@@ -1181,6 +1190,12 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		lua_autogetvalue ( L, *ud, -1 );
 	};
 
+	assignUserDataFns[finalType] = [=] (lua_State* L, void* addr)
+	{
+		T** ud = GetUserDataPtr<T> ( L, 1, "assignUserDataFns" );
+		*ud = (T*) addr;
+	};
+
 	finalType = "vector<" + type + ">";
 
 	MakeDefaultConstructor<vector<T>>(_lstate, finalType);
@@ -1198,6 +1213,12 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		lua_autogetvalue ( L, *ud, -1 );
 	};
 
+	assignUserDataFns[finalType] = [=] (lua_State* L, void* addr)
+	{
+		vector<T>** ud = GetUserDataPtr<vector<T>> ( L, 1, "assignUserDataFns" );
+		*ud = (vector<T>*) addr;
+	};
+
 	finalType = "vector<vector<" + type + ">>";
 
 	MakeDefaultConstructor<vector<vector<T>>>(_lstate, finalType);
@@ -1212,6 +1233,12 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 	{
 		vector<vector<T>>* ud = GetUserData<vector<vector<T>>> ( L, 1, "getUserDataFns" );
 		lua_autogetvalue ( L, *ud, -1 );
+	};
+
+	assignUserDataFns[finalType] = [=] (lua_State* L, void* addr)
+	{
+		vector<vector<T>>** ud = GetUserDataPtr<vector<vector<T>>> ( L, 1, "assignUserDataFns" );
+		*ud = (vector<vector<T>>*) addr;
 	};
 
 	finalType = type + "[]";
@@ -1235,6 +1262,12 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		int array_size = lua_tointeger ( L, -1 );
 		lua_pop ( L, 1 );
 		lua_autogetarray ( L, ud, array_size, -1 );
+	};
+
+	assignUserDataFns[finalType] = [=] (lua_State* L, void* addr)
+	{
+		T** ud = GetUserDataPtr<T> ( L, 1, "assignUserDataFns" );
+		*ud = (T*) addr;
 	};
 }
 

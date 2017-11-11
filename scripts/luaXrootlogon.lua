@@ -29,14 +29,15 @@ function LoadLib(lib, libname, use_pristine)
   libraries.loaded[libname] = true
 end
 
--- Loading the wrapper between ROOT objects and lua
-LoadLib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib", true)
-
 -- Modules which wil be loaded upon starting a session of luaXroot --
 require("lua_classes")
 require("lua_helper")
+shm = require("lua_shmem")
 socket = require("lua_sockets")
 require("lua_tree")
+
+-- Loading the wrapper between ROOT objects and lua
+LoadLib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib", true)
 
 LoadLib(LUAXROOTLIBPATH .. "/libRootBinderLib.so", "lua_root_classes")
 

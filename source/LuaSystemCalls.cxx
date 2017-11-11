@@ -47,10 +47,10 @@ int LuaSysFork(lua_State* L)
 
 	switch (childid = fork())
 	{
-		case 0:
-			lua_pcall(L, nargs, LUA_MULTRET, 0);
+	case 0:
+		lua_pcall(L, nargs, LUA_MULTRET, 0);
 
-			exit(0);
+		exit(0);
 	}
 
 	return 0;
@@ -256,6 +256,23 @@ int LuaSysOpen(lua_State* L)
 	lua_pushinteger(L, fd_open);
 
 	return 1;
+}
+
+int LuaSysFtruncate(lua_State* L)
+{
+	lua_unpackarguments(L, 1, "LuaSysFtruncate argument table",
+		{ "fd", "size" },
+		{ LUA_TNUMBER, LUA_TNUMBER },
+		{ true, true });
+
+	int fd = lua_tointeger(L, -2);
+	int size = lua_tointeger(L, -1);
+
+	int success = ftruncate(fd, size);
+
+	if(success == -1) cerr << "Failed to truncate the file: " << errno << endl;
+
+	return 0;
 }
 
 int LuaSysClose(lua_State* L)

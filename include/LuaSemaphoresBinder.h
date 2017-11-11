@@ -42,4 +42,13 @@ int LuaSemGet(lua_State* L);
 int LuaSemCtl(lua_State* L);
 int LuaSemOp(lua_State* L);
 
+static const luaL_Reg luaSem_lib[] =
+	{
+		{ "LuaSemFtok", LuaSemFtok },
+		{ "LuaSemGet", LuaSemGet },
+		{ "LuaSemCtl", LuaSemCtl },
+		{ "LuaSemOp", LuaSemOp },
+
+		{ NULL, NULL } };
+
 #endif

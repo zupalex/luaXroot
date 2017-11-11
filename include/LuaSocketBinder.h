@@ -54,4 +54,19 @@ int LuaSocketAccept ( lua_State* L );
 int LuaSocketSend ( lua_State* L );
 int LuaSocketReceive ( lua_State* L );
 
+static const luaL_Reg luaSocket_lib[] =
+	{
+		{ "NewSocket", LuaNewSocket },
+
+		{ "SocketBind", LuaSocketBind },
+		{ "SocketConnect", LuaSocketConnect },
+
+		{ "SocketListen", LuaSocketListen },
+		{ "SocketAccept", LuaSocketAccept },
+
+		{ "SocketReceive", LuaSocketReceive },
+		{ "SocketSend", LuaSocketSend },
+
+		{ NULL, NULL } };
+
 #endif

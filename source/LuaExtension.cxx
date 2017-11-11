@@ -7,7 +7,7 @@
 lua_State* lua = 0;
 
 map<string, function<int()>> methodList;
-map<string, map<int, function<void(int)>>> constructorList;
+map<string, map<int, function<int(int)>>> constructorList;
 
 lua_State* InitLuaEnv()
 {
@@ -255,6 +255,7 @@ int LuaListDirContent(lua_State* L)
 map<string, function<void(lua_State*)>> setUserDataFns;
 map<string, function<void(lua_State*)>> getUserDataFns;
 map<string, function<void(lua_State*)>> newUserDataFns;
+map<string, function<void(lua_State*, void*)>> assignUserDataFns;
 
 int luaExt_SetUserDataValue(lua_State* L)
 {

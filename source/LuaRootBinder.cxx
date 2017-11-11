@@ -186,6 +186,11 @@ extern "C" int luaopen_libLuaXRootlib(lua_State* L)
 
 	lua_getglobal(L, "_G");
 	luaL_setfuncs(L, luaXroot_lib, 0);
+	luaL_setfuncs(L, luaSysCall_lib, 0);
+	luaL_setfuncs(L, luaSem_lib, 0);
+	luaL_setfuncs(L, luaShMem_lib, 0);
+	luaL_setfuncs(L, luaMMap_lib, 0);
+	luaL_setfuncs(L, luaSocket_lib, 0);
 	lua_pop(L, 1);
 
 	lua_getglobal(L, "_G");
@@ -195,7 +200,10 @@ extern "C" int luaopen_libLuaXRootlib(lua_State* L)
 
 	LuaRegisterSysOpenConsts(L);
 	LuaRegisterSemaphoresConsts(L);
+	LuaRegisterShMemConsts(L);
+	LuaRegisterMMFileConsts(L);
 	LuaRegisterSocketConsts(L);
+
 
 	return 0;
 }
@@ -766,7 +774,7 @@ int RegisterTF1fn(lua_State* L)
 		lua_pcall ( L, npars+1, 1, 0 );
 
 		double res = lua_tonumber ( L, -1 );
-		lua_settop(L, 0); // Required to not flood the console... When moving the mouse over the TCanvas, each mouse movement call this function and push the result on the stack!
+		lua_settop(L, 0);  // Required to not flood the console... When moving the mouse over the TCanvas, each mouse movement call this function and push the result on the stack!
 
 			return res;
 		};
