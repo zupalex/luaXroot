@@ -64,7 +64,7 @@ int LuaRegisterSemaphoresConsts(lua_State* L)
 int LuaSemGet(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaSemGet argument table",
-		{ "key", "nsem", "flag" },
+		{ "key", "nsem", "flags" },
 		{ LUA_TNUMBER, LUA_TNUMBER, LUA_TSTRING },
 		{ true, false, false });
 
@@ -184,6 +184,10 @@ int LuaSemCtl(lua_State* L)
 		int zcnt = semctl(semid, semnum, GETZCNT);
 		lua_pushinteger(L, zcnt);
 		return 1;
+	}
+	else if (cmd == IPC_RMID)
+	{
+		semctl(semid, 0, IPC_RMID);
 	}
 	else
 	{

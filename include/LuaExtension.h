@@ -514,7 +514,7 @@ template<typename T> int lua_autosetvalue(lua_State* L, T* dest, int type = -1, 
 	else if (type == -1)
 	{
 		if (lua_type(L, index) == LUA_TTABLE) lua_autosetvector(L, dest, -1);
-		else if (is_same<T, bool>::value) lua_trygetnumber(L, index, dest);
+		else if (is_same<T, bool>::value) lua_trygetboolean(L, index, dest);
 		else if (is_integral<T>::value) lua_trygetinteger(L, index, dest);
 		else if (is_convertible<T, double>::value) lua_trygetnumber(L, index, dest);
 		else if (is_convertible<T, string>::value) lua_trygetstring(L, index, dest);
@@ -1181,26 +1181,36 @@ inline int luaExt_Ctor(lua_State* L)
 // --------------------------------------------------------------------------------------------------------- //
 
 extern map<string, function<void(lua_State*)>> newUserDataFns;
-extern map<string, function<void(lua_State*)>> setUserDataFns;
-extern map<string, function<void(lua_State*)>> getUserDataFns;
+extern map<string, function<void(lua_State*, char*)>> setUserDataFns;
+extern map<string, function<void(lua_State*, char*)>> getUserDataFns;
 extern map<string, function<void(lua_State*, char*)>> assignUserDataFns;
+
+extern map<string, int> userDataSizes;
+
+int luaExt_GetUserDataSize(lua_State* L);
 
 template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string type)
 {
 	string finalType = type;
 
+	userDataSizes[type] = sizeof(T);
+
 	MakeDefaultConstructor<T>(_lstate, finalType);
 	AddObjectConstructor<T, T>(_lstate, finalType);
 
-	setUserDataFns[finalType] = [=] ( lua_State* L )
+	setUserDataFns[finalType] = [=] ( lua_State* L, char* address)
 	{
-		T* ud = GetUserData<T> ( L, 1, "setUserDataFns" );
+		T* ud;
+		if(address == nullptr) ud = GetUserData<T> ( L, 1, "setUserDataFns" );
+		else ud = (T*) address;
 		lua_autosetvalue ( L, ud, -1 );
 	};
 
-	getUserDataFns[finalType] = [=] ( lua_State* L )
+	getUserDataFns[finalType] = [=] ( lua_State* L, char* address)
 	{
-		T* ud = GetUserData<T> ( L, 1, "getUserDataFns" );
+		T* ud;
+		if(address == nullptr) ud = GetUserData<T> ( L, 1, "getUserDataFns" );
+		else ud = (T*) address;
 		lua_autogetvalue ( L, *ud, -1 );
 	};
 
@@ -1215,15 +1225,19 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 	MakeDefaultConstructor<vector<T>>(_lstate, finalType);
 	AddObjectConstructor<vector<T>, vector<T>>(_lstate, finalType);
 
-	setUserDataFns[finalType] = [=] ( lua_State* L )
+	setUserDataFns[finalType] = [=] ( lua_State* L, char* address)
 	{
-		vector<T>* ud = GetUserData<vector<T>> ( L, 1, "setUserDataFns" );
+		vector<T>* ud;
+		if(address == nullptr) ud = GetUserData<vector<T>> ( L, 1, "setUserDataFns" );
+		else ud = (vector<T>*) address;
 		lua_autosetvector ( L, ud, -1 );
 	};
 
-	getUserDataFns[finalType] = [=] ( lua_State* L )
+	getUserDataFns[finalType] = [=] ( lua_State* L, char* address )
 	{
-		vector<T>* ud = GetUserData<vector<T>> ( L, 1, "getUserDataFns" );
+		vector<T>* ud;
+		if(address == nullptr) ud = GetUserData<vector<T>> ( L, 1, "getUserDataFns" );
+		else ud = (vector<T>*) address;
 		lua_autogetvalue ( L, *ud, -1 );
 	};
 
@@ -1237,15 +1251,19 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 
 	MakeDefaultConstructor<vector<vector<T>>>(_lstate, finalType);
 
-	setUserDataFns[finalType] = [=] ( lua_State* L )
+	setUserDataFns[finalType] = [=] ( lua_State* L, char* address )
 	{
-		vector<vector<T>>* ud = GetUserData<vector<vector<T>>> ( L, 1, "setUserDataFns" );
+		vector<vector<T>>* ud;
+		if(address == nullptr) ud = GetUserData<vector<vector<T>>> ( L, 1, "setUserDataFns" );
+		else ud = (vector<vector<T>>*) address;
 		lua_autosetvector ( L, ud, -1 );
 	};
 
-	getUserDataFns[finalType] = [=] ( lua_State* L )
+	getUserDataFns[finalType] = [=] ( lua_State* L, char* address )
 	{
-		vector<vector<T>>* ud = GetUserData<vector<vector<T>>> ( L, 1, "getUserDataFns" );
+		vector<vector<T>>* ud;
+		if(address == nullptr) ud = GetUserData<vector<vector<T>>> ( L, 1, "getUserDataFns" );
+		else ud = (vector<vector<T>>*) address;
 		lua_autogetvalue ( L, *ud, -1 );
 	};
 
@@ -1260,19 +1278,29 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 	MakeDefaultConstructor<T>(_lstate, finalType);
 	AddObjectConstructor<T, T>(_lstate, finalType);
 
-	setUserDataFns[finalType] = [=] ( lua_State* L )
+	setUserDataFns[finalType] = [=] ( lua_State* L, char* address )
 	{
-		T* ud = GetUserData<T> ( L, 1, "setUserDataFns" );
-		lua_getfield ( L, 1, "array_size" );
+		T* ud;
+		if(address == nullptr)
+		{
+			ud = GetUserData<T> ( L, 1, "setUserDataFns" );
+			lua_getfield ( L, 1, "array_size" );
+		}
+		else ud = (T*) address;
 		int array_size = lua_tointeger ( L, -1 );
 		lua_pop ( L, 1 );
 		lua_autosetarray ( L, ud, array_size, -1 );
 	};
 
-	getUserDataFns[finalType] = [=] ( lua_State* L )
+	getUserDataFns[finalType] = [=] ( lua_State* L, char* address )
 	{
-		T* ud = GetUserData<T> ( L, 1, "getUserDataFns" );
-		lua_getfield ( L, 1, "array_size" );
+		T* ud;
+		if(address == nullptr)
+		{
+			ud = GetUserData<T> ( L, 1, "getUserDataFns" );
+			lua_getfield ( L, 1, "array_size" );
+		}
+		else ud = (T*) address;
 		int array_size = lua_tointeger ( L, -1 );
 		lua_pop ( L, 1 );
 		lua_autogetarray ( L, ud, array_size, -1 );
@@ -1284,6 +1312,16 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		*ud = (T*) addr;
 	};
 }
+
+int StrLength(lua_State* L);
+
+void MakeStringAccessor(lua_State* L);
+
+int SetMemoryBlock(lua_State* L, char* address);
+void GetMemoryBlock(lua_State* L, char* address);
+
+int luaExt_SetMemoryBlock(lua_State* L);
+int luaExt_GetMemryBlock(lua_State* L);
 
 #endif
 

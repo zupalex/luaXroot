@@ -57,8 +57,7 @@ void TryGetGlobalField(lua_State *L, string gfield)
 
 	size_t sepPos = gfield.find_first_of(".");
 
-	if (sepPos == string::npos)
-		chain.push_back(gfield);
+	if (sepPos == string::npos) chain.push_back(gfield);
 	else
 	{
 		chain.push_back(gfield.substr(0, sepPos));
@@ -104,8 +103,7 @@ bool TrySetGlobalField(lua_State *L, string gfield)
 
 	size_t sepPos = gfield.find_first_of(".");
 
-	if (sepPos == string::npos)
-		chain.push_back(gfield);
+	if (sepPos == string::npos) chain.push_back(gfield);
 	else
 	{
 		chain.push_back(gfield.substr(0, sepPos));
@@ -132,7 +130,8 @@ bool TrySetGlobalField(lua_State *L, string gfield)
 			lua_newtable(L);
 			lua_pushvalue(L, -1);
 			lua_setfield(L, -3, chain[i].c_str());
-		} else if (lua_type(L, -1) != LUA_TTABLE)
+		}
+		else if (lua_type(L, -1) != LUA_TTABLE)
 		{
 			cerr << "attempt to assign a field to " << chain[i] << ": a " << lua_typename(L, lua_type(L, -1)) << endl;
 			lua_pop(L, 1);
@@ -170,14 +169,13 @@ void DoForEach(lua_State *L, int index, function<bool(lua_State *L_)> dofn)
 				return;
 			}
 		}
-	} else
+	}
+	else
 	{
 		dofn(L);
 		return;
 	}
 }
-
-
 
 int LuaListDirContent(lua_State* L)
 {
@@ -252,10 +250,23 @@ int LuaListDirContent(lua_State* L)
 	return 1;
 }
 
-map<string, function<void(lua_State*)>> setUserDataFns;
-map<string, function<void(lua_State*)>> getUserDataFns;
+map<string, function<void(lua_State*, char*)>> setUserDataFns;
+map<string, function<void(lua_State*, char*)>> getUserDataFns;
 map<string, function<void(lua_State*)>> newUserDataFns;
 map<string, function<void(lua_State*, char*)>> assignUserDataFns;
+
+map<string, int> userDataSizes;
+
+int luaExt_GetUserDataSize(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_SetUserDataValue", LUA_TSTRING)) return 0;
+
+	string type = lua_tostring(L, 1);
+
+	lua_pushinteger(L, userDataSizes[type]);
+
+	return 1;
+}
 
 int luaExt_SetUserDataValue(lua_State* L)
 {
@@ -265,7 +276,7 @@ int luaExt_SetUserDataValue(lua_State* L)
 	string ud_type = lua_tostring(L, -1);
 	lua_pop(L, 1);
 
-	setUserDataFns[ud_type](L);
+	setUserDataFns[ud_type](L, nullptr);
 
 	return 0;
 }
@@ -310,12 +321,210 @@ int luaExt_GetUserDataValue(lua_State* L)
 	string ud_type = lua_tostring(L, -1);
 	lua_pop(L, 1);
 
-	getUserDataFns[ud_type](L);
+	getUserDataFns[ud_type](L, nullptr);
 
 	if (index > 0)
 	{
 		lua_geti(L, -1, index);
 	}
+
+	return 1;
+}
+
+inline int StrLength(lua_State* L)
+{
+	string* str = GetUserData<string>(L);
+
+	lua_pushinteger(L, str->length());
+
+	return 1;
+}
+
+void MakeStringAccessor(lua_State* L)
+{
+	userDataSizes["string"] = sizeof(string);
+
+	auto ctor = [=](int index)
+	{
+		NewUserData<string>(L);
+
+		MakeMetatable ( L );
+		SetupMetatable<string> ( L );
+
+		AddMethod(L, StrLength, "StrLength");
+
+		return sizeof(string);
+	};
+
+	constructorList["string"][0] = ctor;
+
+	lua_getglobal(L, "MakeEasyConstructors");
+	lua_pushstring(L, "string");
+	lua_pcall(L, 1, 0, 0);
+
+	setUserDataFns["string"] = [=] ( lua_State* L_, char* address)
+	{
+		string* ud;
+		if(address == nullptr)
+		{
+			ud = GetUserData<string> ( L_, 1, "setUserDataFns" );
+			*ud = lua_tostring(L, -1);
+		}
+		else
+		{
+			int strlen = lua_rawlen(L, -1);
+			*((int*)address) = strlen;
+			sprintf(address+sizeof(int), "%s", lua_tostring(L, -1));
+		}
+	};
+
+	getUserDataFns["string"] = [=] ( lua_State* L_, char* address)
+	{
+		string* ud;
+		if(address == nullptr)
+		{
+			ud = GetUserData<string> ( L_, 1, "setUserDataFns" );
+			lua_pushstring(L, (*ud).c_str());
+		}
+		else
+		{
+			int strlen = *((int*) address);
+			lua_pushlstring(L, address+sizeof(int), strlen);
+		}
+	};
+
+	assignUserDataFns["string"] = [=] (lua_State* L_, char* addr)
+	{
+		string** ud = GetUserDataPtr<string> ( L_, 1, "assignUserDataFns" );
+		*ud = (string*) addr;
+	};
+}
+
+int SetMemoryBlock(lua_State* L, char* address)
+{
+	int struct_size = lua_rawlen(L, 1);
+
+	bool toUserData = false;
+	int totsize = 0;
+
+	lua_geti(L, 1, 1);
+
+	if (lua_type(L, -1) == LUA_TUSERDATA) toUserData = true;
+
+	lua_pop(L, 1);
+
+	for (int i = 0; i < struct_size; i++)
+	{
+		lua_geti(L, 1, i + 1);
+		string type;
+		int effectiveSize;
+		if (toUserData)
+		{
+			lua_getfield(L, -1, "type");
+			type = lua_tostring(L, -1);
+			lua_pop(L, 1);
+			lua_getfield(L, -1, "Get");
+			lua_insert(L, -2);
+			lua_pcall(L, 1, 1, 0);
+
+			if (type != "string") effectiveSize = userDataSizes[type];
+			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
+
+			setUserDataFns[type](L, address);
+		}
+		else
+		{
+			lua_geti(L, 2, i + 1);
+			type = lua_tostring(L, -1);
+			lua_pop(L, 1);
+
+			if (type != "string") effectiveSize = userDataSizes[type];
+			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
+
+			setUserDataFns[type](L, address);
+		}
+
+		address += effectiveSize;
+		totsize += effectiveSize;
+	}
+
+	return totsize;
+}
+
+void GetMemoryBlock(lua_State* L, char* address)
+{
+	int struct_size = lua_rawlen(L, 1);
+
+	bool toUserData = false;
+
+	lua_geti(L, 1, 1);
+
+	if (lua_type(L, -1) == LUA_TUSERDATA)
+	{
+		lua_pop(L, 1);
+		toUserData = true;
+	}
+	else
+	{
+		lua_pop(L, 1);
+		lua_newtable(L);
+	}
+
+	for (int i = 0; i < struct_size; i++)
+	{
+		lua_geti(L, 1, i + 1);
+		string type;
+		int effectiveSize;
+		if (toUserData)
+		{
+			lua_getfield(L, -1, "type");
+			type = lua_tostring(L, -1);
+			lua_pop(L, 1);
+			getUserDataFns[type](L, address);
+
+			if (type != "string") effectiveSize = userDataSizes[type];
+			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
+
+			lua_getfield(L, -2, "Set");
+			lua_insert(L, -3);
+			lua_pcall(L, 2, 0, 0);
+		}
+		else
+		{
+			type = lua_tostring(L, -1);
+			getUserDataFns[type](L, address);
+
+			if (type != "string") effectiveSize = userDataSizes[type];
+			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
+
+			lua_seti(L, 2, i + 1);
+			lua_pop(L, 1);
+		}
+
+		address += effectiveSize;
+	}
+}
+
+int luaExt_SetMemoryBlock(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_SetMemoryBlock", LUA_TUSERDATA, LUA_TTABLE)) return 0;
+
+	void** memblock = reinterpret_cast<void**>(lua_touserdata(L, 1));
+	lua_remove(L, 1);
+
+	SetMemoryBlock(L, (char*) *memblock);
+
+	return 0;
+}
+
+int luaExt_GetMemryBlock(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_GetMemryBlock", LUA_TUSERDATA, LUA_TTABLE)) return 0;
+
+	void** memblock = reinterpret_cast<void**>(lua_touserdata(L, 1));
+	lua_remove(L, 1);
+
+	GetMemoryBlock(L, (char*) *memblock);
 
 	return 1;
 }

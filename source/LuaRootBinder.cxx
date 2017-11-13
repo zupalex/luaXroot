@@ -187,6 +187,7 @@ extern "C" int luaopen_libLuaXRootlib(lua_State* L)
 	lua_getglobal(L, "_G");
 	luaL_setfuncs(L, luaXroot_lib, 0);
 	luaL_setfuncs(L, luaSysCall_lib, 0);
+	luaL_setfuncs(L, luaMsgq_lib, 0);
 	luaL_setfuncs(L, luaSem_lib, 0);
 	luaL_setfuncs(L, luaShMem_lib, 0);
 	luaL_setfuncs(L, luaMMap_lib, 0);
@@ -197,13 +198,14 @@ extern "C" int luaopen_libLuaXRootlib(lua_State* L)
 	lua_pop(L, 1);
 
 	InitializeBranchesFuncs(L);
+	MakeStringAccessor(L);
 
 	LuaRegisterSysOpenConsts(L);
+	LuaRegisterMsgqConsts(L);
 	LuaRegisterSemaphoresConsts(L);
 	LuaRegisterShMemConsts(L);
 	LuaRegisterMMFileConsts(L);
 	LuaRegisterSocketConsts(L);
-
 
 	return 0;
 }

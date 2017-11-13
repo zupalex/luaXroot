@@ -31,7 +31,7 @@ int LuaRegisterShMemConsts(lua_State* L)
 int LuaShmGet(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaShmGet argument table",
-		{ "key", "size", "flag" },
+		{ "key", "size", "flags" },
 		{ LUA_TNUMBER, LUA_TNUMBER, LUA_TSTRING },
 		{ true, true, false });
 
@@ -61,7 +61,7 @@ int LuaShmGet(lua_State* L)
 int LuaShmAt(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaShmAt argument table",
-		{ "buffer", "shmid", "flag" },
+		{ "buffer", "shmid", "flags" },
 		{ LUA_TUSERDATA, LUA_TNUMBER, LUA_TSTRING },
 		{ false, true, false });
 
@@ -172,4 +172,40 @@ int LuaAssignShmem(lua_State* L)
 	assignUserDataFns[btype](L, shmemList[shmid].address);
 
 	return 0;
+}
+
+int LuaShmSetMem(lua_State* L)
+{
+	lua_unpackarguments(L, 1, "LuaSgmSetMem argument table",
+		{ "shmid", "input", "format" },
+		{ LUA_TNUMBER, LUA_TTABLE, LUA_TTABLE },
+		{ true, true, true });
+
+	int shmid = lua_tointeger(L, -3);
+	lua_remove(L, 1);
+	lua_remove(L, 1);
+
+	char* shmem_address = shmemList[shmid].address;
+
+	SetMemoryBlock(L, shmem_address);
+
+	return 0;
+}
+
+int LuaShmGetMem(lua_State* L)
+{
+	lua_unpackarguments(L, 1, "LuaSgmSetMem argument table",
+		{ "shmid", "output"},
+		{ LUA_TNUMBER, LUA_TTABLE },
+		{ true, true });
+
+	int shmid = lua_tointeger(L, -2);
+	lua_remove(L, 1);
+	lua_remove(L, 1);
+
+	char* shmem_address = shmemList[shmid].address;
+
+	GetMemoryBlock(L, shmem_address);
+
+	return 1;
 }

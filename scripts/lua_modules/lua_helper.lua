@@ -156,43 +156,12 @@ function SplitTableKeyValue(tbl)
   return keys, values
 end
 
---------------------------------------------------------------------------------------------
-------------------Constructors and C++ Classes Method Calls Utilities-----------------------
---------------------------------------------------------------------------------------------
-
-function MakeEasyMethodCalls(obj)
-  if obj.methods == nil or obj.Call == nil then return end
-
-  for i, v in ipairs(obj.methods) do
-    obj[v] = function(self, ...)
-      return obj:Call(v, ...)
-    end
-  end
-end
-
-function MakeEasyConstructors(classname)
-  _G[classname] = function(...)
-    return _ctor(classname, ...)
-  end
-end
-
-function New(classname, ...)
-  if _G[classname] then
-    return _G[classname](...)
+local _SizeOf = SizeOf
+function SizeOf(data)
+  if type(data) == "string" then
+    return _SizeOf(data)
   else
-    return _ctor(classname, ...)
-  end
-end
-
--- Use this function to add stuffs to the metatable of a C++ Class --
-function AddPostInit(class, fn)
-  local constructor = _G[class]
-  _G[class] = function(...)
-    local obj = constructor(...)
-
-    fn(obj)
-
-    return obj
+    return data.StrLength == nil and data.sizeof or data:StrLength()
   end
 end
 

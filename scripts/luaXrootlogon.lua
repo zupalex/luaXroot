@@ -31,15 +31,16 @@ end
 
 -- Modules which wil be loaded upon starting a session of luaXroot --
 require("lua_classes")
-require("lua_helper")
-sem, shmem, mmap = table.unpack(require("lua_shmem"))
-socket = require("lua_sockets")
-require("lua_tree")
 
 -- Loading the wrapper between ROOT objects and lua
 LoadLib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib", true)
 
 LoadLib(LUAXROOTLIBPATH .. "/libRootBinderLib.so", "lua_root_classes")
+
+require("lua_helper")
+msgq, sem, shmem, mmap = table.unpack(require("lua_shmem"))
+socket = require("lua_sockets")
+require("lua_tree")
 
 require("lua_root_binder")
 
@@ -211,6 +212,11 @@ if IsMasterState then
   function exit() 
     print("")
     saveprompthistory(luaXrootParams.max_history_length)
+
+    for i, v in ipairs(msgq._activemsgqs) do if v.owner then MsgCtl({v.id, IPC_RMID}) end end
+    for i, v in ipairs(sem._activesems) do if v.owner then SemCtl({v.id, IPC_RMID}) end end
+    for i, v in ipairs(shmem._activeshmems) do if v.owner then ShmCtl({v.id, IPC_RMID}) end end
+
     theApp:Terminate() 
   end
 
