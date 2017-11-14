@@ -258,10 +258,6 @@ inline void AddMethod(lua_State* L, lua_CFunction func, const char* funcname)
 	lua_setfield(L, -2, funcname);
 }
 
-int luaExt_SetUserDataValue(lua_State* L);
-int luaExt_GetUserDataValue(lua_State* L);
-int luaExt_PushBackUserDataValue(lua_State* L);
-
 template<typename >
 struct is_std_vector: std::false_type {
 };
@@ -318,6 +314,160 @@ template<typename T> T** GetUserDataPtr(lua_State* L, int idx = 1, string errmsg
 	return obj;
 }
 
+template<typename T> void setUserDataFns(lua_State* L, char* address)
+{
+	T* ud;
+	if (address == nullptr) ud = GetUserData<T>(L, 1, "setUserDataFns");
+	else ud = (T*) address;
+	lua_autosetvalue(L, ud, -1);
+}
+
+template<typename T> int luaExt_SetUserDataValue(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_SetUserDataValue", LUA_TUSERDATA)) return 0;
+
+	lua_getfield(L, 1, "type");
+	string ud_type = lua_tostring(L, -1);
+	lua_pop(L, 1);
+
+	T* ud = GetUserData<T>(L, 1, "luaExt_SetUserDataValue");
+	lua_autosetvalue(L, ud);
+
+	return 0;
+}
+
+template<typename T> int luaExt_SetUserDataVector(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_SetUserDataValue", LUA_TUSERDATA)) return 0;
+
+	T* ud = GetUserData<T>(L, 1, "luaExt_SetUserDataValue");
+	lua_autosetvector(L, ud);
+
+	return 0;
+}
+
+template<typename T> int luaExt_SetUserDataArray(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_SetUserDataValue", LUA_TUSERDATA)) return 0;
+
+	lua_getfield(L, 1, "array_size");
+	int array_size = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+
+	T* ud = GetUserData<T>(L, 1, "luaExt_SetUserDataValue");
+	lua_autosetarray(L, ud, array_size);
+
+	return 0;
+}
+
+template<typename T> T getUserDataFns(lua_State* L, char* address)
+{
+	T* ud;
+	if (address == nullptr) ud = GetUserData<T>(L, 1, "getUserDataFns");
+	else ud = (T*) address;
+	lua_autogetvalue(L, *ud, -1);
+
+	return *ud;
+}
+
+template<typename T> int luaExt_GetUserDataValue(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_GetUserDataValue", LUA_TUSERDATA)) return 0;
+
+	T* ud = GetUserData<T>(L, 1, "luaExt_GetUserDataValue");
+	lua_autogetvalue(L, *ud);
+
+	return 1;
+}
+
+template<typename T> int luaExt_GetUserDataVector(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_GetUserDataValue", LUA_TUSERDATA)) return 0;
+
+	int index = lua_tointegerx(L, 2, nullptr);
+
+	T* ud = GetUserData<T>(L, 1, "luaExt_GetUserDataValue");
+	lua_autogetvector(L, *ud);
+
+	if (index > 0)
+	{
+		lua_geti(L, -1, index);
+	}
+
+	return 1;
+}
+
+template<typename T> int luaExt_GetUserDataArray(lua_State* L)
+{
+	if (!CheckLuaArgs(L, 1, true, "luaExt_GetUserDataValue", LUA_TUSERDATA)) return 0;
+
+	int index = lua_tointegerx(L, 2, nullptr);
+
+	lua_getfield(L, 1, "array_size");
+	int array_size = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+
+	T* ud = GetUserData<T>(L, 1, "luaExt_GetUserDataValue");
+	lua_autogetarray(L, ud, array_size);
+
+	if (index > 0)
+	{
+		lua_geti(L, -1, index);
+	}
+
+	return 1;
+}
+
+int luaExt_GetVectorSize(lua_State* L);
+
+template<typename T> int luaExt_PushBackUserDataValue(lua_State* L)
+{
+	if (lua_type(L, 2) == LUA_TNIL)
+	{
+		cerr << "Cannot push_back nil..." << endl;
+
+		return 0;
+	}
+
+	T* ud = GetUserData<T>(L, 1, "luaExt_PushBackUserDataValue");
+	lua_autopushback(L, ud);
+	return 0;
+}
+
+template<typename T> int luaExt_ClearUserDataValue(lua_State* L)
+{
+	T* obj_ = GetUserData<T>(L);
+	*obj_ = T();
+	return 0;
+}
+
+template<typename T> typename enable_if<is_std_vector<T>::value, int>::type luaExt_ClearUserDataVector(lua_State* L)
+{
+	T* obj_ = GetUserData<T>(L);
+
+	obj_->clear();
+	return 0;
+}
+
+template<typename T> typename enable_if<!is_std_vector<T>::value, int>::type luaExt_ClearUserDataVector(lua_State* L)
+{
+	return 0;
+}
+
+template<typename T> int luaExt_ClearUserDataArray(lua_State* L)
+{
+	T* obj_ = GetUserData<T>(L);
+
+	lua_getfield(L, 1, "array_size");
+	int array_size = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+
+	for (int i = 0; i < array_size; i++)
+		obj_[i] = T();
+
+	return 0;
+}
+
 template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::type SetupMetatable(lua_State* L)
 {
 	T* obj = GetUserData<T>(L, -1);
@@ -328,13 +478,28 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::typ
 		*obj_ += shift;
 		return 0;
 	}, "ShiftAddress");
+
+	lua_getfield(L, -1, "type");
+	string type = lua_tostring(L, -1);
+	lua_pop(L, 1);
+
+	if (type.find("vector") != string::npos)
+	{
+		AddMethod(L, luaExt_PushBackUserDataValue<T>, "PushBack");
+		AddMethod(L, luaExt_GetVectorSize, "GetSize");
+		AddMethod(L, luaExt_ClearUserDataVector<T>, "Reset");
+	}
+	else if (type.find("[]") != string::npos)
+	{
+		AddMethod(L, luaExt_GetVectorSize, "GetSize");
+		AddMethod(L, luaExt_ClearUserDataArray<T>, "Reset");
+	}
+
 	obj->SetupMetatable(L);
 }
 
 template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::type SetupMetatable(lua_State* L)
 {
-	AddMethod(L, luaExt_SetUserDataValue, "Set");
-	AddMethod(L, luaExt_GetUserDataValue, "Get");
 	AddMethod(L, [](lua_State* L_)
 	{
 		T** obj_ = GetUserDataPtr<T>(L_);
@@ -342,6 +507,32 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::ty
 		*obj_ += shift;
 		return 0;
 	}, "ShiftAddress");
+
+	lua_getfield(L, -1, "type");
+	string type = lua_tostring(L, -1);
+	lua_pop(L, 1);
+
+	if (type.find("vector") != string::npos)
+	{
+		AddMethod(L, luaExt_SetUserDataVector<T>, "Set");
+		AddMethod(L, luaExt_GetUserDataVector<T>, "Get");
+		AddMethod(L, luaExt_PushBackUserDataValue<T>, "PushBack");
+		AddMethod(L, luaExt_ClearUserDataVector<T>, "Reset");
+		AddMethod(L, luaExt_GetVectorSize, "GetSize");
+	}
+	else if (type.find("[]") != string::npos)
+	{
+		AddMethod(L, luaExt_SetUserDataArray<T>, "Set");
+		AddMethod(L, luaExt_GetUserDataArray<T>, "Get");
+		AddMethod(L, luaExt_ClearUserDataArray<T>, "Reset");
+		AddMethod(L, luaExt_GetVectorSize, "GetSize");
+	}
+	else
+	{
+		AddMethod(L, luaExt_SetUserDataValue<T>, "Set");
+		AddMethod(L, luaExt_GetUserDataValue<T>, "Get");
+		AddMethod(L, luaExt_ClearUserDataValue<T>, "Reset");
+	}
 }
 
 // ************************************************************************************************ //
@@ -509,6 +700,11 @@ inline int lua_autosetvalue(lua_State* L, char* dest, int type = -1, int index =
 	return 0;
 }
 
+template<typename T> int lua_autopushback(lua_State* L, T* dest, int type = -1, int index = -1, string errmsg = "Bad setter push_back vector")
+{
+	return 0;
+}
+
 template<typename T> int lua_autopushback(lua_State* L, vector<T>* dest, int type = -1, int index = -1, string errmsg = "Bad setter push_back vector")
 {
 	T new_elem;
@@ -520,22 +716,49 @@ template<typename T> int lua_autopushback(lua_State* L, vector<T>* dest, int typ
 	return 0;
 }
 
-template<typename T> typename enable_if<!is_std_vector<T>::value, int>::type lua_autopushback(lua_State* L, T* dest, int type = -1, int index = -1, string errmsg =
-		"Bad setter push_back vector")
+template<typename T> int lua_autopushback(lua_State* L, vector<vector<T>>* dest, int type = -1, int index = -1, string errmsg = "Bad setter push_back vector")
+{
+	if (lua_type(L, index) != LUA_TTABLE)
+	{
+		if (!CheckLuaArgs(L, index - 1, true, errmsg, LUA_TNUMBER)) return 0;
+
+		unsigned int pushat = lua_tointeger(L, index - 1) - 1;
+		if (dest->size() <= pushat) return 0;
+
+		T new_elem;
+		lua_autosetvalue(L, &new_elem, type, -1, errmsg);
+		dest->at(pushat).push_back(new_elem);
+		return 0;
+	}
+
+	vector<T> new_elem;
+
+	lua_autosetvector(L, &new_elem, type, index, errmsg);
+
+	dest->push_back(new_elem);
+
+	return 0;
+}
+
+template<typename T> int lua_autosetvector(lua_State* L, T* dest, int type = -1, int index = -1, string errmsg = "Bad setter push_back vector")
 {
 	return 0;
 }
 
-template<typename T> typename enable_if<!is_std_vector<T>::value, int>::type lua_autosetvector(lua_State* L, vector<T>* dest, int type = -1, int index = -1, string errmsg =
-		"Bad setter vector")
+template<typename T> int lua_autosetvector(lua_State* L, vector<T>* dest, int type = -1, int index = -1, string errmsg = "Bad setter vector")
 {
-	if (lua_gettop(L) == 1)
+	if (lua_type(L, index) != LUA_TTABLE)
 	{
-		dest->clear();
+		if (!CheckLuaArgs(L, index - 1, true, errmsg, LUA_TNUMBER)) return 0;
+
+		unsigned int setat = lua_tointeger(L, index - 1) - 1;
+		if (dest->size() <= setat) return 0;
+
+		T new_elem;
+		lua_autosetvalue(L, &new_elem, type, -1, errmsg);
+		dest->at(setat) = new_elem;
 		return 0;
 	}
-
-	if (!CheckLuaArgs(L, index, false, errmsg, LUA_TTABLE)) return lua_autopushback(L, dest, type, index, errmsg);
 
 	unsigned int length = lua_rawlen(L, index);
 
@@ -559,23 +782,22 @@ template<typename T> typename enable_if<!is_std_vector<T>::value, int>::type lua
 
 template<typename T> int lua_autosetvector(lua_State* L, vector<vector<T>>* dest, int type = -1, int index = -1, string errmsg = "Bad setter vector")
 {
-	if (lua_gettop(L) == 1)
-	{
-		dest->clear();
-		return 0;
-	}
-
 	if (lua_type(L, index) != LUA_TTABLE)
 	{
+		if (!CheckLuaArgs(L, index - 2, true, errmsg, LUA_TNUMBER, LUA_TNUMBER)) return 0;
+
+		unsigned int setat = lua_tointeger(L, index - 2) - 1;
+		if (dest->size() <= setat) return 0;
+
+		vector<T>* setelem = &(dest->at(setat));
+
+		setat = lua_tointeger(L, index - 1) - 1;
+		if (setelem->size() <= setat) return 0;
+
 		T new_elem;
 		lua_autosetvalue(L, &new_elem, type, -1, errmsg);
 
-		if (lua_type(L, index - 1) != LUA_TNUMBER) dest->back().push_back(new_elem);
-		else
-		{
-			int pushat = lua_tointeger(L, index - 1);
-			dest->at(pushat - 1).push_back(new_elem);
-		}
+		setelem->at(setat) = new_elem;
 
 		return 0;
 	}
@@ -589,8 +811,15 @@ template<typename T> int lua_autosetvector(lua_State* L, vector<vector<T>>* dest
 	{
 		lua_pop(L, 1);
 		new_elem.clear();
+
+		if (!CheckLuaArgs(L, index - 1, true, errmsg, LUA_TNUMBER)) return 0;
+
+		unsigned int setat = lua_tointeger(L, index - 1) - 1;
+		if (dest->size() <= setat) return 0;
+
 		lua_autosetvector(L, &new_elem, type, index, errmsg);
-		dest->push_back(new_elem);
+
+		dest->at(setat) = new_elem;
 		return 0;
 	}
 
@@ -614,32 +843,15 @@ template<typename T> int lua_autosetvector(lua_State* L, vector<vector<T>>* dest
 	return 0;
 }
 
-template<typename T> int lua_autosetvector(lua_State* L, T* dest, int type = -1, int index = -1, string errmsg = "Bad setter vector")
-{
-	return 0;
-}
-
 template<typename T> int lua_autosetarray(lua_State* L, T* dest, unsigned int size, int type = -1, int index = -1, string errmsg = "Bad setter array")
 {
-	if (lua_gettop(L) == 1)
-	{
-		T new_elem = T();
-
-		for (unsigned int i = 0; i < size; i++)
-		{
-			lua_pushinteger(L, 0);
-			lua_autosetvalue(L, &new_elem, type, -1, errmsg);
-			dest[i] = new_elem;
-		}
-		return 0;
-	}
-	else if (!CheckLuaArgs(L, index, false, errmsg, LUA_TTABLE))
+	if (lua_type(L, index) != LUA_TTABLE)
 	{
 		if (!CheckLuaArgs(L, index, false, errmsg, LUA_TNUMBER)) return 0;
 
-		unsigned int add_at = lua_tointeger(L, -1);
+		unsigned int add_at = lua_tointeger(L, -1) - 1;
 
-		if (add_at > size)
+		if (add_at >= size)
 		{
 			cerr << "Trying to assign value outside of array range..." << endl;
 			return 0;
@@ -650,7 +862,7 @@ template<typename T> int lua_autosetarray(lua_State* L, T* dest, unsigned int si
 		T new_elem = T();
 		lua_autosetvalue(L, &new_elem, type, -1, errmsg);
 
-		dest[add_at - 1] = new_elem;
+		dest[add_at] = new_elem;
 	}
 	else
 	{
@@ -736,8 +948,8 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value && i
 	*obj = src;
 
 	MakeMetatable(L);
-	AddMethod(L, luaExt_SetUserDataValue, "Set");
-	AddMethod(L, luaExt_GetUserDataValue, "Get");
+	AddMethod(L, luaExt_SetUserDataValue<T>, "Set");
+	AddMethod(L, luaExt_GetUserDataValue<T>, "Get");
 }
 
 template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value && !is_pointer<T>::value>::type lua_trypushuserdata(lua_State* L, T& src)
@@ -746,8 +958,8 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value && !
 	*obj = &src;
 
 	MakeMetatable(L);
-	AddMethod(L, luaExt_SetUserDataValue, "Set");
-	AddMethod(L, luaExt_GetUserDataValue, "Get");
+	AddMethod(L, luaExt_SetUserDataValue<T>, "Set");
+	AddMethod(L, luaExt_GetUserDataValue<T>, "Get");
 }
 
 inline void lua_trypushuserdata(lua_State* L, const char* src)
@@ -756,8 +968,8 @@ inline void lua_trypushuserdata(lua_State* L, const char* src)
 	sprintf(*obj, "%s", src);
 
 	MakeMetatable(L);
-	AddMethod(L, luaExt_SetUserDataValue, "Set");
-	AddMethod(L, luaExt_GetUserDataValue, "Get");
+	AddMethod(L, luaExt_SetUserDataValue<const char*>, "Set");
+	AddMethod(L, luaExt_GetUserDataValue<const char*>, "Get");
 }
 
 template<typename T> typename enable_if<!is_std_vector<T>::value, int>::type lua_autogetvalue(lua_State* L, T src, int type = -1, string errmsg = "Bad getter value")
@@ -792,6 +1004,11 @@ inline int lua_autogetvalue(lua_State* L, void* src, int type = -1, string errms
 	return 0;
 }
 
+template<typename T> int lua_autogetvector(lua_State* L, T src, int type = -1, string errmsg = "Bad getter vector")
+{
+	return 0;
+}
+
 template<typename T> int lua_autogetvector(lua_State* L, vector<T> src, int type = -1, string errmsg = "Bad getter vector")
 {
 	lua_newtable(L);
@@ -818,7 +1035,10 @@ template<typename T> int lua_autogetarray(lua_State* L, T* src, unsigned int siz
 	return 1;
 }
 
-int luaExt_GetVectorSize(lua_State* L);
+template<typename T> int lua_autogetarray(lua_State* L, T src, unsigned int size, int type = -1, string errmsg = "Bad getter array")
+{
+	return 0;
+}
 
 // --------------------------------------------------------------------------------------------------------- //
 // ----------------------- Multi-return/push from Lua and function call ------------------------------------ //
@@ -1032,6 +1252,10 @@ template<typename T, typename ... Args> void MakeDefaultConstructor(lua_State* L
 		NewUserData<T>(L);
 
 		MakeMetatable ( L );
+
+		lua_pushstring(L, name.c_str());
+		lua_setfield(L, -2, "type");
+
 		SetupMetatable<T> ( L );
 
 		return sizeof(T);
@@ -1058,6 +1282,10 @@ template<typename T, typename ... Args> void AddObjectConstructor(lua_State* L, 
 		obj = retrieved.DoCallFn();
 
 		MakeMetatable ( L );
+
+		lua_pushstring(L, name.c_str());
+		lua_setfield(L, -2, "type");
+
 		SetupMetatable<T> ( L );
 
 		return sizeof(T);
@@ -1086,9 +1314,6 @@ inline int LuaCtor(lua_State* L, int index = 1)
 
 	int type_size = (constructorList[classname][nargs])(index);
 
-	lua_pushstring(L, classname.c_str());
-	lua_setfield(L, -2, "type");
-
 	lua_pushinteger(L, type_size * (arraySize > 0 ? arraySize : 1));
 	lua_setfield(L, -2, "sizeof");
 
@@ -1101,12 +1326,6 @@ inline int LuaCtor(lua_State* L, int index = 1)
 		lua_getfield(L, -1, "Set");
 		lua_pushvalue(L, -2);
 		lua_pcall(L, 1, 0, 0);
-	}
-
-	if (classname.find("vector") != string::npos)
-	{
-		AddMethod(L, luaExt_PushBackUserDataValue, "PushBack");
-		AddMethod(L, luaExt_GetVectorSize, "GetSize");
 	}
 
 	return 1;
@@ -1122,8 +1341,6 @@ inline int luaExt_Ctor(lua_State* L)
 // --------------------------------------------------------------------------------------------------------- //
 
 extern map<string, function<void(lua_State*)>> newUserDataFns;
-extern map<string, function<void(lua_State*, char*)>> setUserDataFns;
-extern map<string, function<void(lua_State*, char*)>> getUserDataFns;
 extern map<string, function<void(lua_State*, char*)>> assignUserDataFns;
 
 extern map<string, int> userDataSizes;
@@ -1139,22 +1356,6 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 	MakeDefaultConstructor<T>(_lstate, finalType);
 	AddObjectConstructor<T, T>(_lstate, finalType);
 
-	setUserDataFns[finalType] = [=] ( lua_State* L, char* address)
-	{
-		T* ud;
-		if(address == nullptr) ud = GetUserData<T> ( L, 1, "setUserDataFns" );
-		else ud = (T*) address;
-		lua_autosetvalue ( L, ud, -1 );
-	};
-
-	getUserDataFns[finalType] = [=] ( lua_State* L, char* address)
-	{
-		T* ud;
-		if(address == nullptr) ud = GetUserData<T> ( L, 1, "getUserDataFns" );
-		else ud = (T*) address;
-		lua_autogetvalue ( L, *ud, -1 );
-	};
-
 	assignUserDataFns[finalType] = [=] (lua_State* L, char* addr)
 	{
 		T** ud = GetUserDataPtr<T> ( L, 1, "assignUserDataFns" );
@@ -1166,22 +1367,6 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 	MakeDefaultConstructor<vector<T>>(_lstate, finalType);
 	AddObjectConstructor<vector<T>, vector<T>>(_lstate, finalType);
 
-	setUserDataFns[finalType] = [=] ( lua_State* L, char* address)
-	{
-		vector<T>* ud;
-		if(address == nullptr) ud = GetUserData<vector<T>> ( L, 1, "setUserDataFns" );
-		else ud = (vector<T>*) address;
-		lua_autosetvector ( L, ud, -1 );
-	};
-
-	getUserDataFns[finalType] = [=] ( lua_State* L, char* address )
-	{
-		vector<T>* ud;
-		if(address == nullptr) ud = GetUserData<vector<T>> ( L, 1, "getUserDataFns" );
-		else ud = (vector<T>*) address;
-		lua_autogetvector ( L, *ud, -1 );
-	};
-
 	assignUserDataFns[finalType] = [=] (lua_State* L, char* addr)
 	{
 		vector<T>** ud = GetUserDataPtr<vector<T>> ( L, 1, "assignUserDataFns" );
@@ -1191,22 +1376,6 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 	finalType = "vector<vector<" + type + ">>";
 
 	MakeDefaultConstructor<vector<vector<T>>>(_lstate, finalType);
-
-	setUserDataFns[finalType] = [=] ( lua_State* L, char* address )
-	{
-		vector<vector<T>>* ud;
-		if(address == nullptr) ud = GetUserData<vector<vector<T>>> ( L, 1, "setUserDataFns" );
-		else ud = (vector<vector<T>>*) address;
-		lua_autosetvector ( L, ud, -1 );
-	};
-
-	getUserDataFns[finalType] = [=] ( lua_State* L, char* address )
-	{
-		vector<vector<T>>* ud;
-		if(address == nullptr) ud = GetUserData<vector<vector<T>>> ( L, 1, "getUserDataFns" );
-		else ud = (vector<vector<T>>*) address;
-		lua_autogetvector ( L, *ud, -1 );
-	};
 
 	assignUserDataFns[finalType] = [=] (lua_State* L, char* addr)
 	{
@@ -1219,33 +1388,33 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 	MakeDefaultConstructor<T>(_lstate, finalType);
 	AddObjectConstructor<T, T>(_lstate, finalType);
 
-	setUserDataFns[finalType] = [=] ( lua_State* L, char* address )
-	{
-		T* ud;
-		if(address == nullptr)
-		{
-			ud = GetUserData<T> ( L, 1, "setUserDataFns" );
-			lua_getfield ( L, 1, "array_size" );
-		}
-		else ud = (T*) address;
-		int array_size = lua_tointeger ( L, -1 );
-		lua_pop ( L, 1 );
-		lua_autosetarray ( L, ud, array_size, -1 );
-	};
+//	setUserDataFns[finalType] = [=] ( lua_State* L, char* address )
+//	{
+//		T* ud;
+//		if(address == nullptr)
+//		{
+//			ud = GetUserData<T> ( L, 1, "setUserDataFns" );
+//			lua_getfield ( L, 1, "array_size" );
+//		}
+//		else ud = (T*) address;
+//		int array_size = lua_tointeger ( L, -1 );
+//		lua_pop ( L, 1 );
+//		lua_autosetarray ( L, ud, array_size, -1 );
+//	};
 
-	getUserDataFns[finalType] = [=] ( lua_State* L, char* address )
-	{
-		T* ud;
-		if(address == nullptr)
-		{
-			ud = GetUserData<T> ( L, 1, "getUserDataFns" );
-			lua_getfield ( L, 1, "array_size" );
-		}
-		else ud = (T*) address;
-		int array_size = lua_tointeger ( L, -1 );
-		lua_pop ( L, 1 );
-		lua_autogetarray ( L, ud, array_size, -1 );
-	};
+//	getUserDataFns[finalType] = [=] ( lua_State* L, char* address )
+//	{
+//		T* ud;
+//		if(address == nullptr)
+//		{
+//			ud = GetUserData<T> ( L, 1, "getUserDataFns" );
+//			lua_getfield ( L, 1, "array_size" );
+//		}
+//		else ud = (T*) address;
+//		int array_size = lua_tointeger ( L, -1 );
+//		lua_pop ( L, 1 );
+//		lua_autogetarray ( L, ud, array_size, -1 );
+//	};
 
 	assignUserDataFns[finalType] = [=] (lua_State* L, char* addr)
 	{

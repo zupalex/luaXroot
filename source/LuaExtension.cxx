@@ -72,7 +72,7 @@ int clearprompthistory(lua_State* L)
 int luaExt_gettime(lua_State* L)
 {
 	int clock_id = lua_tonumberx(L, 1, nullptr);
-	if(clock_id == 0) clock_id = CLOCK_REALTIME;
+	if (clock_id == 0) clock_id = CLOCK_REALTIME;
 
 	timespec ts;
 	clock_gettime(clock_id, &ts);
@@ -354,8 +354,6 @@ int LuaListDirContent(lua_State* L)
 	return 1;
 }
 
-map<string, function<void(lua_State*, char*)>> setUserDataFns;
-map<string, function<void(lua_State*, char*)>> getUserDataFns;
 map<string, function<void(lua_State*)>> newUserDataFns;
 map<string, function<void(lua_State*, char*)>> assignUserDataFns;
 
@@ -372,31 +370,6 @@ int luaExt_GetUserDataSize(lua_State* L)
 	return 1;
 }
 
-int luaExt_SetUserDataValue(lua_State* L)
-{
-	if (!CheckLuaArgs(L, 1, true, "luaExt_SetUserDataValue", LUA_TUSERDATA)) return 0;
-
-	lua_getfield(L, 1, "type");
-	string ud_type = lua_tostring(L, -1);
-	lua_pop(L, 1);
-
-	setUserDataFns[ud_type](L, nullptr);
-
-	return 0;
-}
-
-int luaExt_PushBackUserDataValue(lua_State* L)
-{
-	if (lua_type(L, 2) == LUA_TNIL)
-	{
-		cerr << "Cannot push_back nil..." << endl;
-
-		return 0;
-	}
-
-	return luaExt_SetUserDataValue(L);
-}
-
 int luaExt_GetVectorSize(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 1, true, "luaExt_GetVectorSize", LUA_TUSERDATA)) return 0;
@@ -411,26 +384,6 @@ int luaExt_GetVectorSize(lua_State* L)
 	if (!CheckLuaArgs(L, -1, true, "luaExt_GetVectorSize: tried to call on invalid userdata", LUA_TTABLE)) return 0;
 
 	lua_pushinteger(L, lua_rawlen(L, -1));
-
-	return 1;
-}
-
-int luaExt_GetUserDataValue(lua_State* L)
-{
-	if (!CheckLuaArgs(L, 1, true, "luaExt_GetUserDataValue", LUA_TUSERDATA)) return 0;
-
-	int index = lua_tointegerx(L, 2, nullptr);
-
-	lua_getfield(L, 1, "type");
-	string ud_type = lua_tostring(L, -1);
-	lua_pop(L, 1);
-
-	getUserDataFns[ud_type](L, nullptr);
-
-	if (index > 0)
-	{
-		lua_geti(L, -1, index);
-	}
 
 	return 1;
 }
@@ -462,36 +415,36 @@ void MakeStringAccessor(lua_State* L)
 
 	constructorList["string"][0] = ctor;
 
-	setUserDataFns["string"] = [=] ( lua_State* L_, char* address)
-	{
-		string* ud;
-		if(address == nullptr)
-		{
-			ud = GetUserData<string> ( L_, 1, "setUserDataFns" );
-			*ud = lua_tostring(L, -1);
-		}
-		else
-		{
-			int strlen = lua_rawlen(L, -1);
-			*((int*)address) = strlen;
-			sprintf(address+sizeof(int), "%s", lua_tostring(L, -1));
-		}
-	};
+//	setUserDataFns["string"] = [=] ( lua_State* L_, char* address)
+//	{
+//		string* ud;
+//		if(address == nullptr)
+//		{
+//			ud = GetUserData<string> ( L_, 1, "setUserDataFns" );
+//			*ud = lua_tostring(L, -1);
+//		}
+//		else
+//		{
+//			int strlen = lua_rawlen(L, -1);
+//			*((int*)address) = strlen;
+//			sprintf(address+sizeof(int), "%s", lua_tostring(L, -1));
+//		}
+//	};
 
-	getUserDataFns["string"] = [=] ( lua_State* L_, char* address)
-	{
-		string* ud;
-		if(address == nullptr)
-		{
-			ud = GetUserData<string> ( L_, 1, "setUserDataFns" );
-			lua_pushstring(L, (*ud).c_str());
-		}
-		else
-		{
-			int strlen = *((int*) address);
-			lua_pushlstring(L, address+sizeof(int), strlen);
-		}
-	};
+//	getUserDataFns["string"] = [=] ( lua_State* L_, char* address)
+//	{
+//		string* ud;
+//		if(address == nullptr)
+//		{
+//			ud = GetUserData<string> ( L_, 1, "setUserDataFns" );
+//			lua_pushstring(L, (*ud).c_str());
+//		}
+//		else
+//		{
+//			int strlen = *((int*) address);
+//			lua_pushlstring(L, address+sizeof(int), strlen);
+//		}
+//	};
 
 	assignUserDataFns["string"] = [=] (lua_State* L_, char* addr)
 	{
@@ -530,7 +483,7 @@ int SetMemoryBlock(lua_State* L, char* address)
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
 
-			setUserDataFns[type](L, address);
+//			setUserDataFns[type](L, address);
 		}
 		else
 		{
@@ -541,7 +494,7 @@ int SetMemoryBlock(lua_State* L, char* address)
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
 
-			setUserDataFns[type](L, address);
+//			setUserDataFns[type](L, address);
 		}
 
 		address += effectiveSize;
@@ -580,7 +533,7 @@ void GetMemoryBlock(lua_State* L, char* address)
 			lua_getfield(L, -1, "type");
 			type = lua_tostring(L, -1);
 			lua_pop(L, 1);
-			getUserDataFns[type](L, address);
+//			getUserDataFns[type](L, address);
 
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
@@ -592,7 +545,7 @@ void GetMemoryBlock(lua_State* L, char* address)
 		else
 		{
 			type = lua_tostring(L, -1);
-			getUserDataFns[type](L, address);
+//			getUserDataFns[type](L, address);
 
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);

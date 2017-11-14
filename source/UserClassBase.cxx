@@ -2,10 +2,25 @@
 
 void LuaUserClass::SetupMetatable(lua_State* L)
 {
-	AddMethod(L, GetMember, "Get");
-	AddMethod(L, SetMember, "Set");
-	AddMethod(L, GetMemberValue, "Value");
-	AddMethod(L, ResetValues, "Reset");
+//	AddMethod(L, GetMember, "Get");
+//	AddMethod(L, SetMember, "Set");
+//	AddMethod(L, GetMemberValue, "Value");
+
+	TryGetGlobalField(L, "_LuaRootObj.Set");
+	lua_setfield(L, -2, "Set");
+
+	TryGetGlobalField(L, "_LuaRootObj.Get");
+	lua_setfield(L, -2, "Get");
+
+	TryGetGlobalField(L, "_LuaRootObj.Value");
+	lua_setfield(L, -2, "Value");
+
+	AddMethod(L, [](lua_State* _lstate)->int
+	{
+		LuaUserClass* obj_ = GetUserData<LuaUserClass>(_lstate);
+		obj_->Reset();
+		return 0;
+	}, "Reset");
 	AddMethod(L, CallMethod, "Call");
 
 	AddNonClassMethods(L);
@@ -65,14 +80,17 @@ int SetMember(lua_State* L)
 	{
 		lua_getfield(L, 1, "members");
 		lua_getfield(L, -1, member.c_str());
+		lua_getfield(L, -1, "Set");
 		lua_remove(L, 1);
 		lua_insert(L, 1);
+		lua_insert(L, 2);
 		lua_pop(L, 1);
-		luaExt_SetUserDataValue(L);
+		lua_pcall(L, lua_gettop(L) - 1, 0, 0);
+//		luaExt_SetUserDataValue(L);
 	}
 	else
 	{
-		luaExt_SetUserDataValue(L);
+//		luaExt_SetUserDataValue(L);
 	}
 
 	return 0;
