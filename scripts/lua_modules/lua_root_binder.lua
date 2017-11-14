@@ -1,3 +1,18 @@
+
+_LuaRootObj = {}
+
+function _LuaRootObj.Set(self, member, value)
+  return self.members[member]:Set(value)
+end
+
+function _LuaRootObj.Get(self, member, value)
+  return self.members[member]
+end
+
+function _LuaRootObj.Value(self, member, value)
+  return self.members[member]:Get()
+end
+
 ---------------------------------------------------------------------
 ------------------------------- TFile -------------------------------
 ---------------------------------------------------------------------
@@ -326,7 +341,7 @@ AddPostInit("TTree", function(self)
 
     function self:Reset()
       for k, v in pairs(self.branches_list) do
-        v:Set()
+        v:Reset()
       end
     end
   end)

@@ -58,7 +58,7 @@ template<typename T> class LuaROOTBase: public LuaUserClass {
 			rootObj->Draw(varexp.c_str());
 		}
 
-		virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = TTree::kMaxEntries, unsigned long long firstentry = 0)
+		virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = numeric_limits<unsigned long long>::max(), unsigned long long firstentry = 0)
 		{
 			theApp->NotifyUpdatePending();
 

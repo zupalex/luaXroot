@@ -18,7 +18,7 @@ void LuaTTree::GetEntry(unsigned long long entry)
 
 void LuaTTree::Draw(string varexp, string cond, string opts, unsigned long long nentries, unsigned long long firstentry)
 {
-	if(nentries == 0) nentries = TTree::kMaxEntries;
+	if(nentries == 0) nentries = numeric_limits<unsigned long long>::max();
 	((TTree*) rootObj)->Draw(varexp.c_str(), cond.c_str(), opts.c_str(), nentries, firstentry);
 }
 

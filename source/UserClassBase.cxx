@@ -2,10 +2,22 @@
 
 void LuaUserClass::SetupMetatable(lua_State* L)
 {
-	AddMethod(L, GetMember, "Get");
-	AddMethod(L, SetMember, "Set");
-	AddMethod(L, GetMemberValue, "Value");
-	AddMethod(L, ResetValues, "Reset");
+	TryGetGlobalField(L, "_LuaRootObj.Set");
+	lua_setfield(L, -2, "Set");
+
+	TryGetGlobalField(L, "_LuaRootObj.Get");
+	lua_setfield(L, -2, "Get");
+
+	TryGetGlobalField(L, "_LuaRootObj.Value");
+	lua_setfield(L, -2, "Value");
+
+	AddMethod(L, [](lua_State* _lstate)->int
+	{
+		LuaUserClass* obj_ = GetUserData<LuaUserClass>(_lstate);
+		obj_->Reset();
+		return 0;
+	}, "Reset");
+
 	AddMethod(L, CallMethod, "Call");
 
 	AddNonClassMethods(L);
