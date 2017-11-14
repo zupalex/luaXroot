@@ -192,21 +192,21 @@ end
 function ClockTimeDiff(origin, format)
   local clockid = origin.clockid
 
-  local sec, nsec = GetClockTime(clockid)
+  local clock_data = GetClockTime(clockid)
 
-  sec = sec-origin.sec
-  nsec = nsec-origin.nsec
+  clock_data.sec = clock_data.sec-origin.sec
+  clock_data.nsec = clock_data.nsec-origin.nsec
 
   if format == nil then
-    return {clockid=clockid, sec=sec, nsec=nsec}
+    return clock_data
   elseif format == "second" then
-    return _utilities.roundnumber(sec+nsec*10^-9)
+    return _utilities.roundnumber(clock_data.sec+clock_data.nsec*10^-9)
   elseif format == "millisecond" then
-    return _utilities.roundnumber(sec*10^3+nsec*10^-6)
+    return _utilities.roundnumber(clock_data.sec*10^3+clock_data.nsec*10^-6)
   elseif format == "microsecond" then
-    return _utilities.roundnumber(sec*10^6+nsec*10^-3)
+    return _utilities.roundnumber(clock_data.sec*10^6+clock_data.nsec*10^-3)
   elseif format == "nanosecond" then
-    return _utilities.roundnumber(sec*10^9+nsec)
+    return _utilities.roundnumber(clock_data.sec*10^9+clock_data.nsec)
   end
 end
 
