@@ -229,8 +229,8 @@ end
 
 -- Create a sleep function
 function sleep(s)
-  local t0 = os.clock()
-  while os.clock() - t0 <= s do end
+  local t0 = GetClockTime("second")
+  while GetClockTime("second") - t0 <= s do end
 end
 
 -- Support function to setup new threads

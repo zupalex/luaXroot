@@ -299,6 +299,7 @@ inline void SetupTObjectMetatable(lua_State* L)
 
 static const luaL_Reg luaXroot_lib[] =
 	{
+		{ "GetClockTime", luaExt_gettime },
 		{ "SizeOf", luaExt_GetUserDataSize },
 
 		{ "TasksList_C", TasksList_C },

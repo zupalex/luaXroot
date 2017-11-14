@@ -36,6 +36,110 @@ lua_State* InitLuaEnv()
 	return L;
 }
 
+int appendtohist(lua_State* L)
+{
+	append_history(1, histPath);
+	return 0;
+}
+
+int trunctehistoryfile(lua_State* L)
+{
+	if (lua_type(L, 1) != LUA_TNUMBER) return 0;
+
+	int maxHistLength = lua_tointeger(L, 1);
+
+	history_truncate_file(histPath, maxHistLength);
+	return 0;
+}
+
+int saveprompthistory(lua_State* L)
+{
+	HIST_ENTRY* hentry = current_history();
+	if (hentry != nullptr && (((string) hentry->line) == "q()" || ((string) hentry->line) == "exit()")) remove_history(where_history());
+
+	write_history(histPath);
+	trunctehistoryfile(L);
+	return 0;
+}
+
+int clearprompthistory(lua_State* L)
+{
+	clear_history();
+	history_truncate_file(histPath, 0);
+	return 0;
+}
+
+int luaExt_gettime(lua_State* L)
+{
+	int clock_id = lua_tonumberx(L, 1, nullptr);
+	if(clock_id == 0) clock_id = CLOCK_REALTIME;
+
+	timespec ts;
+	clock_gettime(clock_id, &ts);
+
+	lua_pushinteger(L, ts.tv_sec);
+	lua_pushinteger(L, ts.tv_nsec);
+
+	return 2;
+}
+
+string GetLuaTypename(int type_)
+{
+	if (type_ == LUA_TNUMBER) return "number";
+	else if (type_ == LUA_TFUNCTION) return "function";
+	else if (type_ == LUA_TBOOLEAN) return "boolean";
+	else if (type_ == LUA_TSTRING) return "string";
+	else if (type_ == LUA_TUSERDATA) return "userdata";
+	else if (type_ == LUA_TLIGHTUSERDATA) return "light userdata";
+	else if (type_ == LUA_TTHREAD) return "thread";
+	else if (type_ == LUA_TTABLE) return "table";
+	else if (type_ == LUA_TNIL) return "nil";
+	else return "unknown";
+}
+
+void DumpLuaStack(lua_State* L)
+{
+	cout << ":::::::::: Lua Stack Dump :::::::::::::" << endl;
+
+	for (int i = 0; i < lua_gettop(L); i++)
+	{
+		cout << "Stack pos " << i + 1 << " : type = " << GetLuaTypename(lua_type(L, i + 1)) << " / value = ";
+		lua_getglobal(L, "print");
+		lua_pushvalue(L, i + 1);
+		lua_pcall(L, 1, 0, 0);
+	}
+}
+
+bool CheckLuaArgs(lua_State* L, int argIdx, bool abortIfError, string funcName)
+{
+	(void) L;
+	(void) argIdx;
+	(void) abortIfError;
+	(void) funcName;
+	return true;
+}
+
+bool CheckLuaArgs(lua_State* L, int argIdx, bool abortIfError, string funcName, int arg)
+{
+	if (lua_type(L, argIdx) != arg)
+	{
+		if (abortIfError)
+		{
+			if (argIdx > 0)
+			{
+				cerr << "ERROR in " << funcName << " : argument #" << argIdx << " => " << GetLuaTypename(arg) << " expected, got " << lua_typename(L, lua_type(L, argIdx)) << endl;
+			}
+			else
+			{
+				cerr << "ERROR in " << funcName << " : index " << argIdx << " => " << GetLuaTypename(arg) << " expected, got " << lua_typename(L, lua_type(L, argIdx)) << endl;
+			}
+			lua_settop(L, 0);
+		}
+		return false;
+	}
+	return true;
+}
+
 void TryGetGlobalField(lua_State *L, string gfield)
 {
 	if (gfield.empty())
@@ -283,7 +387,7 @@ int luaExt_SetUserDataValue(lua_State* L)
 
 int luaExt_PushBackUserDataValue(lua_State* L)
 {
-	if (lua_type(L, -1) == LUA_TNIL)
+	if (lua_type(L, 2) == LUA_TNIL)
 	{
 		cerr << "Cannot push_back nil..." << endl;
 
@@ -357,10 +461,6 @@ void MakeStringAccessor(lua_State* L)
 	};
 
 	constructorList["string"][0] = ctor;
-
-	lua_getglobal(L, "MakeEasyConstructors");
-	lua_pushstring(L, "string");
-	lua_pcall(L, 1, 0, 0);
 
 	setUserDataFns["string"] = [=] ( lua_State* L_, char* address)
 	{

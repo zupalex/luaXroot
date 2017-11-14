@@ -169,10 +169,61 @@ end
 ----------------------------------Misc. Utilities-------------------------------------------
 --------------------------------------------------------------------------------------------
 
-_utilities = {}
+local _GetClockTime = GetClockTime
+function GetClockTime(format, clockid)
+  if format == nil or type(format) == "number" then 
+    local sec, nsec = _GetClockTime(format)
+    return {clockid=format, sec=sec, nsec=nsec}
+  end
+
+  local sec, nsec = _GetClockTime(clockid)
+
+  if format == "second" then
+    return _utilities.roundnumber(sec+nsec*10^-9)
+  elseif format == "millisecond" then
+    return _utilities.roundnumber(sec*10^3+nsec*10^-6)
+  elseif format == "microsecond" then
+    return _utilities.roundnumber(sec*10^6+nsec*10^-3)
+  elseif format == "nanosecond" then
+    return _utilities.roundnumber(sec*10^9+nsec)
+  end
+end
+
+function ClockTimeDiff(origin, format)
+  local clockid = origin.clockid
+
+  local sec, nsec = GetClockTime(clockid)
+
+  sec = sec-origin.sec
+  nsec = nsec-origin.nsec
+
+  if format == nil then
+    return {clockid=clockid, sec=sec, nsec=nsec}
+  elseif format == "second" then
+    return _utilities.roundnumber(sec+nsec*10^-9)
+  elseif format == "millisecond" then
+    return _utilities.roundnumber(sec*10^3+nsec*10^-6)
+  elseif format == "microsecond" then
+    return _utilities.roundnumber(sec*10^6+nsec*10^-3)
+  elseif format == "nanosecond" then
+    return _utilities.roundnumber(sec*10^9+nsec)
+  end
+end
 
 function isint(x)
   return x == math.floor(x)
+end
+
+_utilities = {}
+
+function _utilities.roundnumber(num)
+  local num_int = math.floor(num)
+  local tenth = math.floor((num-num_int)*10)
+  if tenth >= 5 then
+    return num_int+1
+  else
+    return num_int
+  end
 end
 
 function  _utilities.removetrailingspaces(str)

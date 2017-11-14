@@ -77,7 +77,7 @@ int LuaMsgSnd(lua_State* L)
 int LuaMsgRcv(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaAssignMsgq argument table",
-		{ "format", "msgqid", "mtype", "size", "flags" },
+		{ "format", "msgqid", "mtype", "flags" },
 		{ LUA_TTABLE, LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER, LUA_TSTRING },
 		{ true, true, false, true, false });
 	lua_remove(L, 1);
@@ -86,7 +86,6 @@ int LuaMsgRcv(lua_State* L)
 
 	int msgid = lua_tointeger(L, -4);
 
-	int msgsize = lua_tointeger(L, -2);
 	string msgflags_str = lua_tostringx(L, -1);
 	lua_pop(L, 4);
 

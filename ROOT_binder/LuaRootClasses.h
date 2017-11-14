@@ -188,6 +188,9 @@ class LuaTFile: public LuaROOTBase<TFile> {
 		virtual void MakeActive();
 		virtual void ListContent();
 
+		void Close();
+		void Open(string path, string opts);
+
 		void GetObject(string type, string name);
 
 		virtual void MakeAccessors(lua_State* L);

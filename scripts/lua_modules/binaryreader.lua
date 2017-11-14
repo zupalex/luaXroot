@@ -18,7 +18,7 @@ end
 
 function GetPackSize(fmt)
   if fmt:find("c") then
-    return tonumber(fmt:sub(fmt:find("c")+1))
+    return 
   elseif fmt:find("z") then
     return
   else
@@ -28,27 +28,14 @@ end
 
 function ReadBytes(file, fmt, tohexa)
   if file then
-    local size = GetPackSize(fmt)
+    local special_case = fmd:match("[cz]")
 
-    if fmt:find("c") then
---      print("reading string of length", size, "starting at", file:seek("cur"))
+    local size
 
-      if size then
-        local str = file:read(size)
-        return str
-      end
-    elseif fmt:find("z") then
-      local char = file:read(1)
-      local str = {}
+    if special_case == nil then 
+      size = string.packsize(fmt)
 
-      while char ~= '\0' do
-        table.insert(str, char)
-        char = file:read(1)
-      end
-
-      return table.concat(str)
-    else
---      print("reading data of length", size, "starting at", file:seek("cur"))
+      --      print("reading data of length", size, "starting at", file:seek("cur"))
 
       if size then
         local bdata = file:read(size)
@@ -66,6 +53,24 @@ function ReadBytes(file, fmt, tohexa)
           return data
         end
       end
+    elseif special_case == 'c' then
+      size = tonumber(fmt:sub(fmt:find("c")+1))
+--      print("reading string of length", size, "starting at", file:seek("cur"))
+
+      if size then
+        local str = file:read(size)
+        return str
+      end
+    elseif special_case == 'z' then
+      local char = file:read(1)
+      local str = {}
+
+      while char ~= '\0' do
+        table.insert(str, char)
+        char = file:read(1)
+      end
+
+      return table.concat(str)
     end
   end
 end
@@ -83,9 +88,7 @@ end
 function DecodeBytes(str, fmt, first, tohexa)
   if not str or not fmt then return end
 
-  if not first then first = 1 end
-
-  local status, decoded, offset = pcall(string.unpack, fmt, str:sub(first))
+  local status, decoded, offset = pcall(string.unpack, fmt, str, first)
 
   if not status then
     print("ERROR in DecodeBytes:", decoded)
@@ -93,10 +96,10 @@ function DecodeBytes(str, fmt, first, tohexa)
   end
 
   if tohexa then 
-    return PrintHexa(decoded, offset-first), (first+offset-1)
+    return PrintHexa(decoded, offset-first), offset
   end
 
-  return decoded, (first+offset-1)
+  return decoded, offset
 end
 
 

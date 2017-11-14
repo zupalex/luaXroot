@@ -5,8 +5,8 @@
 
 using namespace std;
 
-class MyLateClass: public LuaUserClass, public TObject {  // Don't forget to make your class derived from LuaUserClass (required to use some wrapper function below)
-														  // You can also make it a derived class from TObject or any other ROOT class
+class MyLateClass: public LuaUserClass {// Don't forget to make your class derived from LuaUserClass (required to use some wrapper function below)
+										// Instead of adding dependencies to ROOT classes, it is best to add a member pointer to the class you want (see sources in ROOT_binder for examples)
 private:
 
 public:

@@ -224,6 +224,20 @@ int LuaRegisterSysOpenConsts(lua_State* L)
 	lua_pushinteger(L, S_ISVTX);
 	lua_setglobal(L, "S_ISVTX");
 
+	// CLOCK CONSTS
+
+	lua_pushinteger(L, CLOCK_REALTIME);
+	lua_setglobal(L, "CLOCK_REALTIME");
+
+	lua_pushinteger(L, CLOCK_MONOTONIC);
+	lua_setglobal(L, "CLOCK_MONOTONIC");
+
+	lua_pushinteger(L, CLOCK_PROCESS_CPUTIME_ID);
+	lua_setglobal(L, "CLOCK_PROCESS_CPUTIME_ID");
+
+	lua_pushinteger(L, CLOCK_THREAD_CPUTIME_ID);
+	lua_setglobal(L, "CLOCK_THREAD_CPUTIME_ID");
+
 	return 0;
 }
 
@@ -270,7 +284,7 @@ int LuaSysFtruncate(lua_State* L)
 
 	int success = ftruncate(fd, size);
 
-	if(success == -1) cerr << "Failed to truncate the file: " << errno << endl;
+	if (success == -1) cerr << "Failed to truncate the file: " << errno << endl;
 
 	return 0;
 }

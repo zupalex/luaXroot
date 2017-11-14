@@ -2,18 +2,31 @@
 
 void LuaTFile::MakeActive()
 {
-	((TFile*)rootObj)->cd();
+	((TFile*) rootObj)->cd();
 }
 
 void LuaTFile::ListContent()
 {
-	((TFile*)rootObj)->ls();
+	((TFile*) rootObj)->ls();
+}
+
+void LuaTFile::Close()
+{
+	((TFile*) rootObj)->Close();
+}
+
+void LuaTFile::Open(string path, string opts)
+{
+	((TFile*) rootObj)->Open(path.c_str(), opts.c_str());
 }
 
 void LuaTFile::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTFile::MakeActive, "cd");
 	AddClassMethod(L, &LuaTFile::ListContent, "ls");
+
+	AddClassMethod(L, &LuaTFile::Close, "Close");
+	AddClassMethod(L, &LuaTFile::Open, "Open");
 
 	AddClassMethod(L, &LuaTFile::DoWrite, "Write");
 }
