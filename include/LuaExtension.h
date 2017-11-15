@@ -1218,7 +1218,7 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		else ud = (T*) address;
 		int array_size = lua_tointeger ( L, -1 );
 		lua_pop ( L, 1 );
-		lua_autosetarray ( L, ud, array_size, -1 );
+		lua_autogetarray ( L, ud, array_size, -1 );
 	};
 
 	RegisterMethodInTable(_lstate, ArrayGetterFn<T>, finalType.c_str(), "_getterfns");

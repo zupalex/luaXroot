@@ -561,6 +561,16 @@ int SetMemoryBlock(lua_State* L, char* address)
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
 
+			int array_size = 1;
+			if (lua_type(L, -1) == LUA_TTABLE)
+			{
+				array_size = lua_rawlen(L, -1);
+				effectiveSize *= array_size;
+				lua_pushinteger(L, array_size);
+			}
+
+			effectiveSize *= array_size;
+
 			setUserDataFns[type](L, address);
 		}
 		else
@@ -569,8 +579,23 @@ int SetMemoryBlock(lua_State* L, char* address)
 			type = lua_tostring(L, -1);
 			lua_pop(L, 1);
 
+			int array_size = 1;
+			size_t arrayPos = type.find("[");
+			if (arrayPos != string::npos)
+			{
+				size_t endArrSize = type.find("]", arrayPos + 1);
+				if (endArrSize > arrayPos + 1) type = type.substr(0, arrayPos+1) + "]";
+			}
+
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
+
+			if (lua_type(L, -1) == LUA_TTABLE)
+			{
+				array_size = lua_rawlen(L, -1);
+				effectiveSize *= array_size;
+				lua_pushinteger(L, array_size);
+			}
 
 			setUserDataFns[type](L, address);
 		}
@@ -611,10 +636,15 @@ void GetMemoryBlock(lua_State* L, char* address)
 			lua_getfield(L, -1, "type");
 			type = lua_tostring(L, -1);
 			lua_pop(L, 1);
+			lua_getfield(L, -1, "array_size");
+			int array_size = lua_tointegerx(L, -1, nullptr);
+			if (lua_type(L, -1) == LUA_TNIL) lua_pop(L, 1);
 			getUserDataFns[type](L, address);
 
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
+
+			if (array_size > 0) effectiveSize *= array_size;
 
 			lua_getfield(L, -2, "Set");
 			lua_insert(L, -3);
@@ -623,10 +653,23 @@ void GetMemoryBlock(lua_State* L, char* address)
 		else
 		{
 			type = lua_tostring(L, -1);
+
+			int array_size = 1;
+			size_t arrayPos = type.find("[");
+			if (arrayPos != string::npos)
+			{
+				size_t endArrSize = type.find("]");
+				array_size = stoi(type.substr(arrayPos + 1, endArrSize - arrayPos - 1));
+				lua_pushinteger(L, array_size);
+				type = type.substr(0, arrayPos+1) + "]";
+			}
+
 			getUserDataFns[type](L, address);
 
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
+
+			effectiveSize *= array_size;
 
 			lua_seti(L, 2, i + 1);
 			lua_pop(L, 1);
