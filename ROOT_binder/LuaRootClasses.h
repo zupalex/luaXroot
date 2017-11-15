@@ -4,111 +4,112 @@
 #include "UserClassBase.h"
 
 template<typename T> class LuaROOTBase: public LuaUserClass {
-	private:
+private:
 
-	public:
-		LuaROOTBase()
+public:
+	LuaROOTBase()
+	{
+	}
+
+	virtual ~LuaROOTBase()
+	{
+	}
+
+	TObject* rootObj = 0;
+	typedef T type;
+
+	virtual TObject* GetROOTObject()
+	{
+		return rootObj;
+	}
+
+	virtual void SetROOTObject(TObject* obj)
+	{
+		rootObj = obj;
+	}
+
+	void SetTitle(string title)
+	{
+		((T*) rootObj)->SetTitle(title.c_str());
+	}
+
+	string GetTitle()
+	{
+		return ((T*) rootObj)->GetTitle();
+	}
+
+	TAxis* GetXaxis()
+	{
+		return ((T*) rootObj)->GetXaxis();
+	}
+
+	void Fit(TF1* fitfunc, const char* opts = "", const char* gopts = "", double xmin = 0, double xmax = 0)
+	{
+		((T*) rootObj)->Fit(fitfunc, opts, gopts, xmin, xmax);
+	}
+
+	void Add(LuaROOTBase<T>* h2, double s)
+	{
+		((T*) rootObj)->Add((T*) (h2->rootObj), s);
+	}
+
+	virtual void Draw(string varexp, string cond, string opts, unsigned long long nentries, unsigned long long firstentry)
+	{
+		rootObj->Draw(varexp.c_str());
+	}
+
+	virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = numeric_limits<unsigned long long>::max(), unsigned long long firstentry =
+			0)
+	{
+		theApp->NotifyUpdatePending();
+
+		if (!is_same<T, TTree>::value) opts = varexp;
+
+		if (canvasTracker[rootObj] != nullptr && ((string) canvasTracker[rootObj]->GetName()).empty()) delete canvasTracker[rootObj];
+
+		if (canvasTracker[rootObj] == nullptr || ((string) canvasTracker[rootObj]->GetName()).empty())
 		{
-		}
-
-		virtual ~LuaROOTBase()
-		{
-		}
-
-		TObject* rootObj = 0;
-		typedef T type;
-
-		virtual TObject* GetROOTObject()
-		{
-			return rootObj;
-		}
-
-		virtual void SetROOTObject(TObject* obj)
-		{
-			rootObj = obj;
-		}
-
-		void SetTitle(string title)
-		{
-			((T*) rootObj)->SetTitle(title.c_str());
-		}
-
-		string GetTitle()
-		{
-			return ((T*) rootObj)->GetTitle();
-		}
-
-		TAxis* GetXaxis()
-		{
-			return ((T*) rootObj)->GetXaxis();
-		}
-
-		void Fit(TF1* fitfunc, const char* opts = "", const char* gopts = "", double xmin = 0, double xmax = 0)
-		{
-			((T*) rootObj)->Fit(fitfunc, opts, gopts, xmin, xmax);
-		}
-
-		void Add(LuaROOTBase<T>* h2, double s)
-		{
-			((T*) rootObj)->Add((T*) (h2->rootObj), s);
-		}
-
-		virtual void Draw(string varexp, string cond, string opts, unsigned long long nentries, unsigned long long firstentry)
-		{
-			rootObj->Draw(varexp.c_str());
-		}
-
-		virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = numeric_limits<unsigned long long>::max(), unsigned long long firstentry = 0)
-		{
-			theApp->NotifyUpdatePending();
-
-			if(!is_same<T, TTree>::value) opts = varexp;
-
-			if (canvasTracker[rootObj] != nullptr && ((string) canvasTracker[rootObj]->GetName()).empty()) delete canvasTracker[rootObj];
-
-			if (canvasTracker[rootObj] == nullptr || ((string) canvasTracker[rootObj]->GetName()).empty())
+			if (opts.find("same") == string::npos && opts.find("SAME") == string::npos)
 			{
-				if (opts.find("same") == string::npos && opts.find("SAME") == string::npos)
-				{
-					LuaCanvas* disp = new LuaCanvas();
-					disp->cd();
-					canvasTracker[rootObj] = disp;
-				}
-				else
-				{
-					canvasTracker[rootObj] = (LuaCanvas*) gPad->GetCanvas();
-				}
-
-				Draw(varexp, cond, opts, nentries, firstentry);
-				canvasTracker[rootObj]->Update();
+				LuaCanvas* disp = new LuaCanvas();
+				disp->cd();
+				canvasTracker[rootObj] = disp;
 			}
 			else
 			{
-				if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
-				canvasTracker[rootObj]->Modified();
-				canvasTracker[rootObj]->Update();
+				canvasTracker[rootObj] = (LuaCanvas*) gPad->GetCanvas();
 			}
 
-			theApp->NotifyUpdateDone();
+			Draw(varexp, cond, opts, nentries, firstentry);
+			canvasTracker[rootObj]->Update();
 		}
-
-		void DoUpdate()
+		else
 		{
-			theApp->NotifyUpdatePending();
-
-			if (canvasTracker[rootObj] != nullptr)
-			{
-				canvasTracker[rootObj]->Modified();
-				canvasTracker[rootObj]->Update();
-			}
-
-			theApp->NotifyUpdateDone();
+			if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
+			canvasTracker[rootObj]->Modified();
+			canvasTracker[rootObj]->Update();
 		}
 
-		void DoWrite()
+		theApp->NotifyUpdateDone();
+	}
+
+	void DoUpdate()
+	{
+		theApp->NotifyUpdatePending();
+
+		if (canvasTracker[rootObj] != nullptr)
 		{
-			((T*) rootObj)->Write();
+			canvasTracker[rootObj]->Modified();
+			canvasTracker[rootObj]->Update();
 		}
+
+		theApp->NotifyUpdateDone();
+	}
+
+	void DoWrite()
+	{
+		((T*) rootObj)->Write();
+	}
 };
 
 extern "C" int openlib_lua_root_classes(lua_State* L);
@@ -168,33 +169,33 @@ int luaExt_GetGDirContent(lua_State* L);
 extern "C" void LoadLuaTFileLib(lua_State* L);
 
 class LuaTFile: public LuaROOTBase<TFile> {
-	private:
+private:
 
-	public:
-		LuaTFile()
-		{
-			rootObj = new TFile("temp", "recreate");
-		}
+public:
+	LuaTFile()
+	{
+		rootObj = new TFile("temp", "recreate");
+	}
 
-		LuaTFile(string name, string opts)
-		{
-			rootObj = new TFile(name.c_str(), opts.c_str());
-		}
+	LuaTFile(string name, string opts)
+	{
+		rootObj = new TFile(name.c_str(), opts.c_str());
+	}
 
-		~LuaTFile()
-		{
-		}
+	~LuaTFile()
+	{
+	}
 
-		virtual void MakeActive();
-		virtual void ListContent();
+	virtual void MakeActive();
+	virtual void ListContent();
 
-		void Close();
-		void Open(string path, string opts);
+	void Close();
+	void Open(string path, string opts);
 
-		void GetObject(string type, string name);
+	void GetObject(string type, string name);
 
-		virtual void MakeAccessors(lua_State* L);
-		virtual void AddNonClassMethods(lua_State* L);
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
 };
 
 // _____________________________________________________________________________ //
@@ -205,49 +206,49 @@ class LuaTFile: public LuaROOTBase<TFile> {
 extern "C" void LoadLuaTF1Lib(lua_State* L);
 
 class LuaTF1: public LuaROOTBase<TF1> {
-	private:
+private:
 
-	public:
-		LuaTF1()
-		{
-			rootObj = new TF1();
-		}
+public:
+	LuaTF1()
+	{
+		rootObj = new TF1();
+	}
 
-		LuaTF1(const char* name, const char* formula)
-		{
-			rootObj = new TF1(name, formula);
-		}
+	LuaTF1(const char* name, const char* formula)
+	{
+		rootObj = new TF1(name, formula);
+	}
 
-		LuaTF1(const char* name, const char* formula, double xmin, double xmax)
-		{
-			rootObj = new TF1(name, formula, xmin, xmax);
-		}
+	LuaTF1(const char* name, const char* formula, double xmin, double xmax)
+	{
+		rootObj = new TF1(name, formula, xmin, xmax);
+	}
 
-		LuaTF1(const char* name, const char* fnname, double xmin, double xmax, int npar)
-		{
-			rootObj = new TF1(name, registeredTF1fns[fnname], xmin, xmax, npar);
-		}
+	LuaTF1(const char* name, const char* fnname, double xmin, double xmax, int npar)
+	{
+		rootObj = new TF1(name, registeredTF1fns[fnname], xmin, xmax, npar);
+	}
 
-		LuaTF1(const char* name, const char* fnname, double xmin, double xmax, int npar, int ndim)
-		{
-			rootObj = new TF1(name, registeredTF1fns[fnname], xmin, xmax, npar, ndim);
-		}
+	LuaTF1(const char* name, const char* fnname, double xmin, double xmax, int npar, int ndim)
+	{
+		rootObj = new TF1(name, registeredTF1fns[fnname], xmin, xmax, npar, ndim);
+	}
 
-		~LuaTF1()
-		{
-		}
+	~LuaTF1()
+	{
+	}
 
-		virtual void SetParameter(int param, double value);
-		virtual void SetParameters(vector<double> params);
+	virtual void SetParameter(int param, double value);
+	virtual void SetParameters(vector<double> params);
 
-		virtual double GetParameter(int param);
-		virtual vector<double> GetParameters();
-		double GetChi2();
+	virtual double GetParameter(int param);
+	virtual vector<double> GetParameters();
+	double GetChi2();
 
-		virtual double Eval(double x);
+	virtual double Eval(double x);
 
-		virtual void MakeAccessors(lua_State* L);
-		virtual void AddNonClassMethods(lua_State* L);
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
 };
 
 template<typename T> int LuaTFit(lua_State* L)
@@ -306,47 +307,53 @@ template<typename T> int LuaTFit(lua_State* L)
 extern "C" void LoadLuaTGraphLib(lua_State* L);
 
 class LuaGraphError: public LuaROOTBase<TGraphErrors> {
-	private:
+private:
 
-	public:
-		LuaGraphError()
-		{
-			rootObj = new TGraphErrors();
-		}
+public:
+	LuaGraphError()
+	{
+		rootObj = new TGraphErrors();
+		SetGraphStyle();
+	}
 
-		LuaGraphError(int i)
-		{
-			rootObj = new TGraphErrors(i);
-		}
+	LuaGraphError(int i)
+	{
+		rootObj = new TGraphErrors(i);
+		SetGraphStyle();
+	}
 
-		LuaGraphError(int i, vector<double> xs, vector<double> ys)
-		{
-			rootObj = new TGraphErrors(i, &xs[0], &ys[0]);
-		}
+	LuaGraphError(int i, vector<double> xs, vector<double> ys)
+	{
+		rootObj = new TGraphErrors(i, &xs[0], &ys[0]);
+		SetGraphStyle();
+	}
 
-		LuaGraphError(int i, vector<double> xs, vector<double> ys, vector<double> errxs, vector<double> errys)
-		{
-			rootObj = new TGraphErrors(i, &xs[0], &ys[0], &errxs[0], &errys[0]);
-		}
+	LuaGraphError(int i, vector<double> xs, vector<double> ys, vector<double> errxs, vector<double> errys)
+	{
+		rootObj = new TGraphErrors(i, &xs[0], &ys[0], &errxs[0], &errys[0]);
+		SetGraphStyle();
+	}
 
-		~LuaGraphError()
-		{
-		}
+	~LuaGraphError()
+	{
+	}
 
-		virtual void Set(int n);
-		int GetMaxSize();
+	void SetGraphStyle();
 
-		tuple<double, double> GetPointVals(int i);
-		tuple<double, double> GetPointErrors(int i);
-		void SetPointVals(int i, double x, double y);
-		void SetPointErrors(int i, double errx, double erry);
+	virtual void Set(int n);
+	int GetMaxSize();
 
-		int RemovePoint(int i);
+	tuple<double, double> GetPointVals(int i);
+	tuple<double, double> GetPointErrors(int i);
+	void SetPointVals(int i, double x, double y);
+	void SetPointErrors(int i, double errx, double erry);
 
-		double Eval(double x);
+	int RemovePoint(int i);
 
-		virtual void MakeAccessors(lua_State* L);
-		virtual void AddNonClassMethods(lua_State* L);
+	double Eval(double x);
+
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
 };
 
 // _____________________________________________________________________________ //
@@ -371,61 +378,61 @@ template<typename T> int LuaAddHist(lua_State* L)
 extern "C" void LoadLuaTHistLib(lua_State* L);
 
 class LuaTH1: public LuaROOTBase<TH1D> {
-	private:
+private:
 
-	public:
-		LuaTH1()
-		{
-			rootObj = new TH1D();
-		}
+public:
+	LuaTH1()
+	{
+		rootObj = new TH1D();
+	}
 
-		LuaTH1(string name, string title, int nbinsx, int xmin, int xmax)
-		{
-			rootObj = new TH1D(name.c_str(), title.c_str(), nbinsx, xmin, xmax);
-		}
+	LuaTH1(string name, string title, int nbinsx, int xmin, int xmax)
+	{
+		rootObj = new TH1D(name.c_str(), title.c_str(), nbinsx, xmin, xmax);
+	}
 
-		~LuaTH1()
-		{
-		}
+	~LuaTH1()
+	{
+	}
 
-		void DoFill(double x, double w);
-		void Reset();
-		void Rebuild();
-		void Scale(double s);
-		void SetRangeUserX(double xmin, double xmax);
-		void SetRangeUserY(double ymin, double ymax);
+	void DoFill(double x, double w);
+	void Reset();
+	void Rebuild();
+	void Scale(double s);
+	void SetRangeUserX(double xmin, double xmax);
+	void SetRangeUserY(double ymin, double ymax);
 
-		virtual void MakeAccessors(lua_State* L);
-		virtual void AddNonClassMethods(lua_State* L);
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
 };
 
 class LuaTH2: public LuaROOTBase<TH2D> {
-	private:
+private:
 
-	public:
-		LuaTH2()
-		{
-			rootObj = new TH2D();
-		}
+public:
+	LuaTH2()
+	{
+		rootObj = new TH2D();
+	}
 
-		LuaTH2(string name, string title, int nbinsx, int xmin, int xmax, int nbinsy, int ymin, int ymax)
-		{
-			rootObj = new TH2D(name.c_str(), title.c_str(), nbinsx, xmin, xmax, nbinsy, ymin, ymax);
-		}
+	LuaTH2(string name, string title, int nbinsx, int xmin, int xmax, int nbinsy, int ymin, int ymax)
+	{
+		rootObj = new TH2D(name.c_str(), title.c_str(), nbinsx, xmin, xmax, nbinsy, ymin, ymax);
+	}
 
-		~LuaTH2()
-		{
-		}
+	~LuaTH2()
+	{
+	}
 
-		void DoFill(double x, double y, double w);
-		void Reset();
-		void Rebuild();
-		void Scale(double s);
-		void SetRangeUserX(double xmin, double xmax);
-		void SetRangeUserY(double ymin, double ymax);
+	void DoFill(double x, double y, double w);
+	void Reset();
+	void Rebuild();
+	void Scale(double s);
+	void SetRangeUserX(double xmin, double xmax);
+	void SetRangeUserY(double ymin, double ymax);
 
-		virtual void MakeAccessors(lua_State* L);
-		virtual void AddNonClassMethods(lua_State* L);
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
 };
 
 // _____________________________________________________________________________ //
@@ -436,22 +443,22 @@ class LuaTH2: public LuaROOTBase<TH2D> {
 extern "C" void LoadLuaTCutGLib(lua_State* L);
 
 class LuaTCutG: public LuaROOTBase<TCutG> {
-	private:
+private:
 
-	public:
-		LuaTCutG()
-		{
-			rootObj = new TCutG();
-		}
+public:
+	LuaTCutG()
+	{
+		rootObj = new TCutG();
+	}
 
-		~LuaTCutG()
-		{
-		}
+	~LuaTCutG()
+	{
+	}
 
-		virtual int IsInside(double x, double y);
+	virtual int IsInside(double x, double y);
 
-		virtual void MakeAccessors(lua_State* L);
-		virtual void AddNonClassMethods(lua_State* L);
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
 };
 
 // _____________________________________________________________________________ //
@@ -465,33 +472,33 @@ int luaExt_TTree_NewBranch_Interface(lua_State* L);
 int luaExt_TTree_GetBranch_Interface(lua_State* L);
 
 class LuaTTree: public LuaROOTBase<TTree> {
-	private:
+private:
 
-	public:
-		LuaTTree()
-		{
-			rootObj = new TTree("tree", "tree");
-		}
+public:
+	LuaTTree()
+	{
+		rootObj = new TTree("tree", "tree");
+	}
 
-		LuaTTree(string name, string title)
-		{
-			rootObj = new TTree(name.c_str(), title.c_str());
-		}
+	LuaTTree(string name, string title)
+	{
+		rootObj = new TTree(name.c_str(), title.c_str());
+	}
 
-		~LuaTTree()
-		{
-		}
+	~LuaTTree()
+	{
+	}
 
-		unsigned long long GetEntries();
+	unsigned long long GetEntries();
 
-		void Fill();
+	void Fill();
 
-		void GetEntry(unsigned long long entry);
+	void GetEntry(unsigned long long entry);
 
-		virtual void Draw(string varexp, string cond, string opts, unsigned long long nentries, unsigned long long firstentry);
+	virtual void Draw(string varexp, string cond, string opts, unsigned long long nentries, unsigned long long firstentry);
 
-		virtual void MakeAccessors(lua_State* L);
-		virtual void AddNonClassMethods(lua_State* L);
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
 };
 
 #endif

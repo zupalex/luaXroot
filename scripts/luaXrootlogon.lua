@@ -2,6 +2,10 @@
 
 local defaultPackages = {}
 
+_setterfns = {}
+_getterfns = {}
+_pushbackfns = {}
+
 luaXrootParams = {}
 luaXrootParams.max_history_length = 500
 

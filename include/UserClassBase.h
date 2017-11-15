@@ -71,7 +71,8 @@ class LuaUserClass {
 
 				StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
 				{	func, args, obj};
-				return lua_autogetvalue(L, retrieved.DoCallMemFn(), -1);
+				LuaPushValue<R>(L, retrieved.DoCallMemFn());
+				return 1;
 			};
 		}
 
@@ -114,7 +115,8 @@ class LuaUserClass {
 
 				StoreArgsAndCallMemberFn<sizeof...(Args), T, R, Args...> retrieved =
 				{	func, args, obj};
-				return lua_autogetvalue(L, retrieved.DoCallMemFnConst(), -1);
+				LuaPushValue<R>(L, retrieved.DoCallMemFnConst());
+				return 1;
 			};
 		}
 
@@ -141,10 +143,6 @@ class LuaUserClass {
 		}
 };
 
-int GetMember(lua_State* L);
-int SetMember(lua_State* L);
-int GetMemberValue(lua_State* L);
-int ResetValues(lua_State* L);
 int CallMethod(lua_State* L);
 
 template<typename T> void MakeAccessFunctions(lua_State* L, string type_name)

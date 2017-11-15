@@ -653,10 +653,8 @@ int luaExt_NewTApplication(lua_State* L)
 		lua_setglobal(L, "_stdfunctions");
 
 		gSystem->AddDynamicPath("${LUAXROOTLIBPATH}");
-		gSystem->AddIncludePath("-I/usr/include/readline");
 		gSystem->AddIncludePath("-I$LUAXROOTLIBPATH/../include");
 		gSystem->AddIncludePath("-I$LUAXROOTLIBPATH/../lua");
-		gSystem->Load("libguilereadline-v-18.so");
 		gSystem->Load("liblualib.so");
 		gSystem->Load("libLuaXRootlib.so");
 		gSystem->Load("libRootBinderLib.so");

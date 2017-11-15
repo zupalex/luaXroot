@@ -72,7 +72,7 @@ int clearprompthistory(lua_State* L)
 int luaExt_gettime(lua_State* L)
 {
 	int clock_id = lua_tonumberx(L, 1, nullptr);
-	if(clock_id == 0) clock_id = CLOCK_REALTIME;
+	if (clock_id == 0) clock_id = CLOCK_REALTIME;
 
 	timespec ts;
 	clock_gettime(clock_id, &ts);
@@ -108,6 +108,57 @@ void DumpLuaStack(lua_State* L)
 		lua_pushvalue(L, i + 1);
 		lua_pcall(L, 1, 0, 0);
 	}
+}
+
+void MakeMetatable(lua_State* L)
+{
+	lua_newtable(L);
+
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index");
+
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__newindex");
+
+	lua_setmetatable(L, -2);
+}
+
+void AddMethod(lua_State* L, lua_CFunction func, const char* funcname)
+{
+	lua_pushcfunction(L, func);
+	lua_setfield(L, -2, funcname);
+}
+
+void RegisterMethodInTable(lua_State* L, lua_CFunction func, const char* funcname, const char* dest_table)
+{
+	lua_getglobal(L, dest_table);
+	lua_pushcfunction(L, func);
+	lua_setfield(L, -2, funcname);
+}
+
+bool lua_unpackarguments(lua_State* L, int index, string errmsg, vector<const char*> arg_names, vector<int> arg_types, vector<bool> arg_required)
+{
+	if (arg_names.size() != arg_types.size() || arg_names.size() != arg_required.size())
+	{
+		cerr << "Error in arguments vectors in lua_unpackarguments..." << endl;
+		return false;
+	}
+
+	int const_idx = index;
+
+	if (const_idx < 0) const_idx = lua_gettop(L) + const_idx + 1;
+
+	for (unsigned int i = 0; i < arg_names.size(); i++)
+	{
+		lua_getfield(L, const_idx, arg_names[i]);
+		if (arg_required[i] && !CheckLuaArgs(L, -1, true, errmsg, arg_types[i]))
+		{
+			cerr << "Missing or invalid field: " << arg_names[i] << endl;
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool CheckLuaArgs(lua_State* L, int argIdx, bool abortIfError, string funcName)
@@ -363,8 +414,6 @@ map<string, int> userDataSizes;
 
 int luaExt_GetUserDataSize(lua_State* L)
 {
-	if (!CheckLuaArgs(L, 1, true, "luaExt_SetUserDataValue", LUA_TSTRING)) return 0;
-
 	string type = lua_tostring(L, 1);
 
 	lua_pushinteger(L, userDataSizes[type]);
@@ -374,8 +423,6 @@ int luaExt_GetUserDataSize(lua_State* L)
 
 int luaExt_SetUserDataValue(lua_State* L)
 {
-	if (!CheckLuaArgs(L, 1, true, "luaExt_SetUserDataValue", LUA_TUSERDATA)) return 0;
-
 	lua_getfield(L, 1, "type");
 	string ud_type = lua_tostring(L, -1);
 	lua_pop(L, 1);
@@ -397,28 +444,8 @@ int luaExt_PushBackUserDataValue(lua_State* L)
 	return luaExt_SetUserDataValue(L);
 }
 
-int luaExt_GetVectorSize(lua_State* L)
-{
-	if (!CheckLuaArgs(L, 1, true, "luaExt_GetVectorSize", LUA_TUSERDATA)) return 0;
-
-	lua_settop(L, 1);
-
-	lua_getfield(L, 1, "Get");
-	lua_insert(L, 1);
-
-	lua_pcall(L, 1, 1, 0);
-
-	if (!CheckLuaArgs(L, -1, true, "luaExt_GetVectorSize: tried to call on invalid userdata", LUA_TTABLE)) return 0;
-
-	lua_pushinteger(L, lua_rawlen(L, -1));
-
-	return 1;
-}
-
 int luaExt_GetUserDataValue(lua_State* L)
 {
-	if (!CheckLuaArgs(L, 1, true, "luaExt_GetUserDataValue", LUA_TUSERDATA)) return 0;
-
 	int index = lua_tointegerx(L, 2, nullptr);
 
 	lua_getfield(L, 1, "type");
@@ -446,7 +473,7 @@ inline int StrLength(lua_State* L)
 
 void MakeStringAccessor(lua_State* L)
 {
-	userDataSizes["string"] = sizeof(string);
+	userDataSizes["cstring"] = sizeof(string);
 
 	auto ctor = [=](int index)
 	{
@@ -460,9 +487,13 @@ void MakeStringAccessor(lua_State* L)
 		return sizeof(string);
 	};
 
-	constructorList["string"][0] = ctor;
+	constructorList["cstring"][0] = ctor;
 
-	setUserDataFns["string"] = [=] ( lua_State* L_, char* address)
+	lua_getglobal(L, "MakeEasyConstructors");
+	lua_pushstring(L, "cstring");
+	lua_pcall(L, 1, 0, 0);
+
+	setUserDataFns["cstring"] = [=] ( lua_State* L_, char* address)
 	{
 		string* ud;
 		if(address == nullptr)
@@ -478,7 +509,7 @@ void MakeStringAccessor(lua_State* L)
 		}
 	};
 
-	getUserDataFns["string"] = [=] ( lua_State* L_, char* address)
+	getUserDataFns["cstring"] = [=] ( lua_State* L_, char* address)
 	{
 		string* ud;
 		if(address == nullptr)
@@ -493,7 +524,7 @@ void MakeStringAccessor(lua_State* L)
 		}
 	};
 
-	assignUserDataFns["string"] = [=] (lua_State* L_, char* addr)
+	assignUserDataFns["cstring"] = [=] (lua_State* L_, char* addr)
 	{
 		string** ud = GetUserDataPtr<string> ( L_, 1, "assignUserDataFns" );
 		*ud = (string*) addr;
@@ -627,5 +658,148 @@ int luaExt_GetMemryBlock(lua_State* L)
 	GetMemoryBlock(L, (char*) *memblock);
 
 	return 1;
+}
+
+template<> void LuaPopValue<bool>(lua_State* L, bool* dest, int index)
+{
+	*dest = lua_toboolean(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<char>(lua_State* L, char* dest, int index)
+{
+	sprintf(dest, "%s", lua_tostringx(L, index));
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<short>(lua_State* L, short* dest, int index)
+{
+	*dest = lua_tointeger(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<unsigned short>(lua_State* L, unsigned short* dest, int index)
+{
+	*dest = lua_tointeger(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<int>(lua_State* L, int* dest, int index)
+{
+	*dest = lua_tointeger(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<unsigned int>(lua_State* L, unsigned int* dest, int index)
+{
+	*dest = lua_tointeger(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<long>(lua_State* L, long* dest, int index)
+{
+	*dest = lua_tointeger(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<unsigned long>(lua_State* L, unsigned long* dest, int index)
+{
+	*dest = lua_tointeger(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<long long>(lua_State* L, long long* dest, int index)
+{
+	*dest = lua_tointeger(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<unsigned long long>(lua_State* L, unsigned long long* dest, int index)
+{
+	*dest = lua_tointeger(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<float>(lua_State* L, float* dest, int index)
+{
+	*dest = lua_tonumber(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<double>(lua_State* L, double* dest, int index)
+{
+	*dest = lua_tonumber(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPopValue<string>(lua_State* L, string* dest, int index)
+{
+	*dest = lua_tostringx(L, index);
+	lua_remove(L, index);
+}
+
+template<> void LuaPushValue<bool>(lua_State* L, bool src)
+{
+	lua_pushboolean(L, src);
+}
+
+template<> void LuaPushValue<char>(lua_State* L, char src)
+{
+	lua_pushstring(L, &src);
+}
+
+template<> void LuaPushValue<short>(lua_State* L, short src)
+{
+	lua_pushinteger(L, src);
+}
+
+template<> void LuaPushValue<unsigned short>(lua_State* L, unsigned short src)
+{
+	lua_pushinteger(L, src);
+}
+
+template<> void LuaPushValue<int>(lua_State* L, int src)
+{
+	lua_pushinteger(L, src);
+}
+
+template<> void LuaPushValue<unsigned int>(lua_State* L, unsigned int src)
+{
+	lua_pushinteger(L, src);
+}
+
+template<> void LuaPushValue<long>(lua_State* L, long src)
+{
+	lua_pushinteger(L, src);
+}
+
+template<> void LuaPushValue<unsigned long>(lua_State* L, unsigned long src)
+{
+	lua_pushinteger(L, src);
+}
+
+template<> void LuaPushValue<long long>(lua_State* L, long long src)
+{
+	lua_pushinteger(L, src);
+}
+
+template<> void LuaPushValue<unsigned long long>(lua_State* L, unsigned long long src)
+{
+	lua_pushinteger(L, src);
+}
+
+template<> void LuaPushValue<float>(lua_State* L, float src)
+{
+	lua_pushnumber(L, src);
+}
+
+template<> void LuaPushValue<double>(lua_State* L, double src)
+{
+	lua_pushnumber(L, src);
+}
+
+template<> void LuaPushValue<string>(lua_State* L, string src)
+{
+	lua_pushstring(L, src.c_str());
 }
 

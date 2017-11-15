@@ -5,6 +5,11 @@
 
 using namespace std;
 
+void LuaGraphError::SetGraphStyle()
+{
+	((TGraphErrors*) rootObj)->SetMarkerStyle(3);
+}
+
 void LuaGraphError::Set(int n)
 {
 	((TGraphErrors*) rootObj)->Set(n);
@@ -18,23 +23,23 @@ int LuaGraphError::GetMaxSize()
 tuple<double, double> LuaGraphError::GetPointVals(int i)
 {
 	double x, y;
-	((TGraphErrors*) rootObj)->GetPoint(i, x, y);
+	((TGraphErrors*) rootObj)->GetPoint(i-1, x, y);
 	return make_tuple(x, y);
 }
 
 tuple<double, double> LuaGraphError::GetPointErrors(int i)
 {
-	return make_tuple(((TGraphErrors*) rootObj)->GetErrorX(i), ((TGraphErrors*) rootObj)->GetErrorY(i));
+	return make_tuple(((TGraphErrors*) rootObj)->GetErrorX(i-1), ((TGraphErrors*) rootObj)->GetErrorY(i-1));
 }
 
 void LuaGraphError::SetPointVals(int i, double x, double y)
 {
-	((TGraphErrors*) rootObj)->SetPoint(i, x, y);
+	((TGraphErrors*) rootObj)->SetPoint(i-1, x, y);
 }
 
 void LuaGraphError::SetPointErrors(int i, double errx, double erry)
 {
-	((TGraphErrors*) rootObj)->SetPointError(i, errx, erry);
+	((TGraphErrors*) rootObj)->SetPointError(i-1, errx, erry);
 }
 
 int LuaGraphError::RemovePoint(int i)

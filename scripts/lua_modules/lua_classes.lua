@@ -156,6 +156,43 @@ function AddPostInit(class, fn)
   end
 end
 
+function SetupCommonMetatable(obj)
+  obj.Set = _setterfns[obj.type]
+  obj.Get = _getterfns[obj.type]
+
+  function obj:Reset() 
+    obj:Set(nil)
+  end
+end
+
+function SetupStandardMetatable(obj)
+  SetupCommonMetatable(obj)
+end
+
+function SetupVectorMetatable(obj)
+  SetupCommonMetatable(obj)
+
+  obj.PushBack = _pushbackfns[obj.type]
+
+  function obj:GetSize(index)
+    return #(obj:Get(index))
+  end
+end
+
+function SetupArrayMetatable(obj)
+  SetupCommonMetatable(obj)
+end
+
+function SetupMetatable(obj)  
+  if obj.type:find("vector") then
+    SetupVectorMetatable(obj)
+  elseif obj.type:find("%[%]") then
+    SetupArrayMetatable(obj)
+  else
+    SetupStandardMetatable(obj)
+  end
+end
+
 ---------------------------------------- Base "Class" Object ----------------------------------------
 
 local LuaObject = LuaClass("LuaObject", function(self, data)
