@@ -157,19 +157,20 @@ int LuaShmDt(lua_State* L)
 int LuaAssignShmem(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaAssignShmem argument table",
-		{ "buffer", "shmid" },
+		{ "buffer", "shmid", "offset" },
 		{ LUA_TUSERDATA, LUA_TNUMBER },
-		{ true, true });
+		{ true, true, false });
 	lua_remove(L, 1);
 
-	int shmid = lua_tointeger(L, -1);
-	lua_pop(L, 1);
+	int shmid = lua_tointeger(L, -2);
+	int offset = lua_tointegerx(L, -1, nullptr);
+	lua_pop(L, 2);
 
 	lua_getfield(L, 1, "type");
 	string btype = lua_tostring(L, -1);
 	lua_pop(L, 1);
 
-	assignUserDataFns[btype](L, shmemList[shmid].address);
+	assignUserDataFns[btype](L, shmemList[shmid].address + offset);
 
 	return 0;
 }
@@ -195,7 +196,7 @@ int LuaShmSetMem(lua_State* L)
 int LuaShmGetMem(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaSgmSetMem argument table",
-		{ "shmid", "output"},
+		{ "shmid", "output" },
 		{ LUA_TNUMBER, LUA_TTABLE },
 		{ true, true });
 
@@ -206,6 +207,25 @@ int LuaShmGetMem(lua_State* L)
 	char* shmem_address = shmemList[shmid].address;
 
 	GetMemoryBlock(L, shmem_address);
+
+	return 1;
+}
+
+int LuaShmRawRead(lua_State* L)
+{
+	lua_unpackarguments(L, 1, "LuaShmRawRead argument table",
+		{ "shmid", "size", "offset" },
+		{ LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER },
+		{ true, true, false });
+
+	int shmid = lua_tointeger(L, -3);
+	int size = lua_tointeger(L, -2);
+	int offset = lua_tointegerx(L, -1, nullptr);
+
+	char* rbuf = new char[size];
+	rbuf = shmemList[shmid].address + offset;
+
+	lua_pushlstring(L, rbuf, size);
 
 	return 1;
 }

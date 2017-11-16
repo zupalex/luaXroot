@@ -34,7 +34,8 @@ local SocketObject = LuaClass("SocketObject", "PipeObject", function(self, data)
     end
 
     function self:Receive(size, wait)
-      return SocketReceive({sockfd=self.sockfd, size=size, flags=(wait and MSG_WAITALL or 0)})
+      self.last_rec = SocketReceive({sockfd=self.sockfd, size=size, flags=(wait and MSG_WAITALL or 0)})
+      return self.last_rec
     end
 
     function self:SendResponse(data, size)
@@ -42,7 +43,8 @@ local SocketObject = LuaClass("SocketObject", "PipeObject", function(self, data)
     end
 
     function self:ReadResponse(fd, size)
-      return SocketReceive({sockfd=fd, size=size})
+      self.last_rec = SocketReceive({sockfd=fd, size=size})
+      return self.last_rec
     end
 
     if self.type == "client" then

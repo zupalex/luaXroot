@@ -38,6 +38,8 @@ int LuaShmAt(lua_State* L);
 int LuaShmCtl(lua_State* L);
 int LuaShmDt(lua_State* L);
 
+int LuaShmRawRead(lua_State* L);
+
 int LuaAssignShmem(lua_State* L);
 
 int LuaShmSetMem(lua_State* L);
@@ -52,6 +54,8 @@ static const luaL_Reg luaShMem_lib[] =
 
 		{ "ShmSetMem", LuaShmSetMem },
 		{ "ShmGetMem", LuaShmGetMem },
+
+		{ "ShmRawRead", LuaShmRawRead },
 
 		{ "AssignShmem", LuaAssignShmem },
 

@@ -480,6 +480,10 @@ void MakeStringAccessor(lua_State* L)
 		NewUserData<string>(L);
 
 		MakeMetatable ( L );
+
+		lua_pushstring(L, "cstring");
+		lua_setfield(L, -2, "type");
+
 		SetupMetatable<string> ( L );
 
 		AddMethod(L, StrLength, "StrLength");
@@ -509,6 +513,8 @@ void MakeStringAccessor(lua_State* L)
 		}
 	};
 
+	RegisterMethodInTable(L, StandardSetterFn<string>, "cstring", "_setterfns");
+
 	getUserDataFns["cstring"] = [=] ( lua_State* L_, char* address)
 	{
 		string* ud;
@@ -523,6 +529,8 @@ void MakeStringAccessor(lua_State* L)
 			lua_pushlstring(L, address+sizeof(int), strlen);
 		}
 	};
+
+	RegisterMethodInTable(L, StandardGetterFn<string>, "cstring", "_getterfns");
 
 	assignUserDataFns["cstring"] = [=] (lua_State* L_, char* addr)
 	{

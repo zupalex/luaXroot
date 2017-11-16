@@ -127,3 +127,22 @@ int LuaAssignMMap(lua_State* L)
 	lua_pushinteger(L, offset);
 	return 1;
 }
+
+int LuaMMapRawRead(lua_State* L)
+{
+	lua_unpackarguments(L, 1, "LuaMMapRawRead argument table",
+		{ "mapid", "size", "offset" },
+		{ LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER },
+		{ true, true, false });
+
+	int mapid = lua_tointeger(L, -3);
+	int size = lua_tointeger(L, -2);
+	int offset = lua_tointegerx(L, -1, nullptr);
+
+	char* rbuf = new char[size];
+	rbuf = mmapList[mapid].address + offset;
+
+	lua_pushlstring(L, rbuf, size);
+
+	return 1;
+}

@@ -17,11 +17,12 @@ end
 
 function PrintMessagesQueueHelp()
   print("To create a Messages Queue:")
-  print("msgq.CreateMsgq(path, flags)")
+  print("msgq.CreateMsgq([path or key], flags)")
   print("To get an existing Messages Queue:")
-  print("msgq.GetMsgq(path)")
+  print("msgq.GetMsgq([path or key])")
   print("")
   print("  -> path : a string, path to the Messages Queue file")
+  print("  -> key : an integer, the key to the Messages Queue")
   print("  -> flags : a string, creation mode")
   print("       * \"recreate\" = if the Messages Queue file already exists, it is deleted and regenerated")
   print("       * \"protected\" = if the Messages Queue file already exists, the creation will fail")
@@ -45,7 +46,8 @@ local MsgqObject = LuaClass("MsgqObject", function(self, data)
 
       if mtype == nil then mtype = 0 end
 
-      return MsgRcv({format=format, msgqid=self.id, mtype=mtype, size=msgsize, flags=flags})
+      self.last_msg = MsgRcv({format=format, msgqid=self.id, mtype=mtype, size=msgsize, flags=flags})
+      return self.last_msg
     end
 
     function self:Send(format, message, mtype, flags)
@@ -59,17 +61,27 @@ local MsgqObject = LuaClass("MsgqObject", function(self, data)
 
       return MsgSnd({data={values=message, format=format}, msgqid=self.id, mtype=mtype, size=msgsize, flags=flags})
     end
+
+    function self:GetLast()
+      return self.last_msg
+    end
   end)
 
 function msgq.CreateMsgq(path, flag)
-  local openfile_flags = "O_CREAT | O_RDWR | O_NONBLOCK"
-  local msgfileid = SysOpen({name=path, flags=openfile_flags})
+  local msgkey
 
-  local maxsize = 4096
+  if type(path) == "string" then
+    local openfile_flags = "O_CREAT | O_RDWR | O_NONBLOCK"
+    local msgfileid = SysOpen({name=path, flags=openfile_flags})
 
-  SysFtruncate({fd=msgfileid, size=maxsize})
+    local maxsize = 4096
 
-  local msgkey = SysFtok({pathname=path})
+    SysFtruncate({fd=msgfileid, size=maxsize})
+
+    msgkey = SysFtok({pathname=path})
+  else
+    msgkey = path
+  end
 
   if flag == nil or flag == "recreate" then 
     flag = "IPC_CREAT | 0666"
@@ -88,7 +100,13 @@ function msgq.CreateMsgq(path, flag)
 end
 
 function msgq.GetMsgq(path, flag)
-  local msgkey = SysFtok({pathname=path})
+  local msgkey 
+
+  if type(path) == "string" then
+    msgkey = SysFtok({pathname=path})
+  else
+    msgkey = path
+  end
 
   if flag == nil or flag == "open" then 
     flag = "0666"
@@ -130,11 +148,12 @@ end
 
 function PrintSemaphoresHelp()
   print("To create a Semaphores set:")
-  print("sem.CreateSemSet(path, nsems, flags, id)")
+  print("sem.CreateSemSet([path or key], nsems, flags, id)")
   print("To get an existing Semaphores set:")
-  print("mmap.GetSemSet(path)")
+  print("mmap.GetSemSet([path or key])")
   print("")
   print("  -> path : a string, path to the semaphores set file")
+  print("  -> key : an integer, the key to the semaphores set")
   print("  -> nsem : an integer, how many semaphores in the set")
   print("  -> flags : a string, creation mode")
   print("       * \"recreate\" = if the semaphore set file already exists, it is deleted and regenerated")
@@ -177,10 +196,16 @@ local SemaphoreObject = LuaClass("SemaphoreObject", function(self, data)
   end)
 
 function sem.CreateSemSet(path, nsem, flag)
-  local openfile_flags = "O_CREAT | O_RDWR | O_NONBLOCK"
-  local semfileid = SysOpen({name=path, flags=openfile_flags})
+  local semkey
 
-  local semkey = SysFtok({pathname=path})
+  if type(path) == "string" then
+    local openfile_flags = "O_CREAT | O_RDWR | O_NONBLOCK"
+    local semfileid = SysOpen({name=path, flags=openfile_flags})
+
+    semkey = SysFtok({pathname=path})
+  else
+    semkey = path
+  end
 
   if flag == nil or flag == "recreate" then 
     flag = "IPC_CREAT | 0666"
@@ -199,7 +224,13 @@ function sem.CreateSemSet(path, nsem, flag)
 end
 
 function sem.GetSemSet(path)
-  local semkey = SysFtok({pathname=path})
+  local semkey
+
+  if type(path) == "string" then
+    semkey = SysFtok({pathname=path})
+  else
+    semkey = path
+  end
 
   local semid = SemGet({key=semkey, nsem=0, flag="0666"})
 
@@ -230,11 +261,12 @@ end
 
 function PrintSharedMemoryHelp()
   print("To create a shared memory segment:")
-  print("shmem.CreateShMem(path, [size or buffer], flag)")
+  print("shmem.CreateShMem([path or key], [size or buffer], flag)")
   print("To get an existing memory mapped file:")
-  print("shmem.GetShMem(path, buffer, flags)")
+  print("shmem.GetShMem([path or key], buffer, flags)")
   print("")
   print("  -> path : a string, path to the shared memory segment \"file\"")
+  print("  -> key : an integer, the key to the shared memory segment")
   print("  -> size : an integer, the size of the shared memory segment. If called with size, user need to attach a userdata afterward to use the segment")
   print("  -> buffer : a userdata, will be the interface to read from and write to the shared memory segment")
   print("  -> flag : a string, protection mode")
@@ -254,7 +286,7 @@ local ShMemObject = LuaClass("ShMemObject", function(self, data)
     self.current_offset = data and data.current_offset or 0
     self.owner = data and data.owner or nil
 
-    function self:RawGet()
+    function self:AutoGet()
       if self.struct == nil then
         return self.buffer:Get()
       elseif self.struct then
@@ -262,7 +294,7 @@ local ShMemObject = LuaClass("ShMemObject", function(self, data)
       end
     end
 
-    function self:RawSet(data)
+    function self:AutoSet(data)
       if self.struct == nil then
         return self.buffer:Set(data)
       elseif self.struct then
@@ -278,8 +310,8 @@ local ShMemObject = LuaClass("ShMemObject", function(self, data)
       end
     end
 
-    function self:SetAddress(buffer)
-      AssignShmem({shmid=self.id, buffer=buffer})
+    function self:SetAddress(buffer, offset)
+      AssignShmem({shmid=self.id, buffer=buffer, offset=offset})
       self.buffer = buffer
       self.struct = nil
     end
@@ -336,13 +368,13 @@ local ShMemObject = LuaClass("ShMemObject", function(self, data)
       if at and at >= 0 and at ~= self.current_offset/self:GetStepSize() then
         local shift = at - self.current_offset/self:GetStepSize()
         if self:Advance(shift) then
-          result = self:RawGet()
+          result = self:AutoGet()
           self:Advance(-shift)
         else
           return nil
         end
       else
-        result = self:RawGet()
+        result = self:AutoGet()
       end
 
       return result
@@ -352,24 +384,34 @@ local ShMemObject = LuaClass("ShMemObject", function(self, data)
       if at and at >= 0 and at ~= self.current_offset/self:GetStepSize() then
         local shift = at - self.current_offset/self:GetStepSize()
         if self:Advance(shift) then
-          self:RawSet(data)
+          self:AutoSet(data)
           self:Advance(-shift)
         else
           return nil
         end
       else
-        self:RawSet(data)
+        self:AutoSet(data)
       end
 
       return true
     end
+
+    function self:RawRead(size, offset)
+      return ShmRawRead({shmid=self.id, size=size, offset=offset})
+    end
   end)
 
 function shmem.CreateShMem(path, buffer, flag)
-  local openfile_flags = "O_CREAT | O_RDWR | O_NONBLOCK"
-  local shmfileid = SysOpen({name=path, flags=openfile_flags})
+  local shmkey 
 
-  local shmkey = SysFtok({pathname=path})
+  if type(path) == "string" then
+    local openfile_flags = "O_CREAT | O_RDWR | O_NONBLOCK"
+    local shmfileid = SysOpen({name=path, flags=openfile_flags})
+
+    shmkey = SysFtok({pathname=path})
+  else
+    shmkey = path
+  end
 
   if flag == nil or flag == "recreate" then 
     flag = "IPC_CREAT | 0666"
@@ -409,7 +451,13 @@ function shmem.CreateShMem(path, buffer, flag)
 end
 
 function shmem.GetShMem(path, buffer, flag)
-  local shmkey = SysFtok({pathname=path})
+  local shmkey
+
+  if type(path) == "string" then
+    shmkey = SysFtok({pathname=path})
+  else
+    shmkey = path
+  end
 
   if flag == nil or flag == "open" then 
     flag = "0666"
@@ -549,6 +597,10 @@ local MMapObject = LuaClass("MMapObject", function(self, data)
       end
 
       return true
+    end
+
+    function self:RawRead(size, offset)
+      return MMapRawRead({mapid=self.fd, size=size, offset=offset})
     end
   end)
 
