@@ -1,5 +1,6 @@
 #include "LuaSystemCalls.h"
 #include <sys/ioctl.h>
+#include <signal.h>
 
 int GetFlagsFromOctalString(lua_State* L, string str)
 {
@@ -48,6 +49,8 @@ int LuaSysFork(lua_State* L)
 	switch (childid = fork())
 	{
 	case 0:
+		signal( SIGINT, SIG_DFL);
+
 		lua_pcall(L, nargs, LUA_MULTRET, 0);
 
 		exit(0);
@@ -401,6 +404,8 @@ int LuaSysRead(lua_State* L)
 	char* buffer = new char[read_length];
 
 	int rbytes = read(rfd, buffer, read_length);
+
+	if (rbytes < 0) cerr << "Error while reading: " << errno << endl;
 
 	lua_pushlstring(L, buffer, rbytes);
 	lua_pushinteger(L, rbytes);
