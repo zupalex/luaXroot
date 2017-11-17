@@ -158,7 +158,7 @@ int LuaAssignShmem(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaAssignShmem argument table",
 		{ "buffer", "shmid", "offset" },
-		{ LUA_TUSERDATA, LUA_TNUMBER },
+		{ LUA_TUSERDATA, LUA_TNUMBER, LUA_TNUMBER },
 		{ true, true, false });
 	lua_remove(L, 1);
 

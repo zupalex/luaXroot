@@ -866,6 +866,7 @@ template<typename T> void SetupBranchFuncs(lua_State* L, string type)
 
 void InitializeBranchesFuncs(lua_State* L)
 {
+	SetupBranchFuncs<char>(L, "char");
 	SetupBranchFuncs<bool>(L, "bool");
 	SetupBranchFuncs<short>(L, "short");
 	SetupBranchFuncs<unsigned short>(L, "unsigned short");

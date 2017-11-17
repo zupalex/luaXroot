@@ -7,7 +7,7 @@
 lua_State* lua = 0;
 
 map<string, function<int()>> methodList;
-map<string, map<int, function<int(int)>>> constructorList;
+map<string, map<int, function<int(int, int)>>> constructorList;
 
 lua_State* InitLuaEnv()
 {
@@ -475,7 +475,7 @@ void MakeStringAccessor(lua_State* L)
 {
 	userDataSizes["cstring"] = sizeof(string);
 
-	auto ctor = [=](int index)
+	auto ctor = [=](int index, int array_size)
 	{
 		NewUserData<string>(L);
 
@@ -579,7 +579,7 @@ int SetMemoryBlock(lua_State* L, char* address)
 
 			effectiveSize *= array_size;
 
-			setUserDataFns[type](L, address);
+			setUserDataFns[type](L, address+totsize);
 		}
 		else
 		{
@@ -592,7 +592,7 @@ int SetMemoryBlock(lua_State* L, char* address)
 			if (arrayPos != string::npos)
 			{
 				size_t endArrSize = type.find("]", arrayPos + 1);
-				if (endArrSize > arrayPos + 1) type = type.substr(0, arrayPos+1) + "]";
+				if (endArrSize > arrayPos + 1) type = type.substr(0, arrayPos + 1) + "]";
 			}
 
 			if (type != "string") effectiveSize = userDataSizes[type];
@@ -605,10 +605,9 @@ int SetMemoryBlock(lua_State* L, char* address)
 				lua_pushinteger(L, array_size);
 			}
 
-			setUserDataFns[type](L, address);
+			setUserDataFns[type](L, address+totsize);
 		}
 
-		address += effectiveSize;
 		totsize += effectiveSize;
 	}
 
@@ -620,6 +619,7 @@ void GetMemoryBlock(lua_State* L, char* address)
 	int struct_size = lua_rawlen(L, 1);
 
 	bool toUserData = false;
+	int totsize = 0;
 
 	lua_geti(L, 1, 1);
 
@@ -647,7 +647,7 @@ void GetMemoryBlock(lua_State* L, char* address)
 			lua_getfield(L, -1, "array_size");
 			int array_size = lua_tointegerx(L, -1, nullptr);
 			if (lua_type(L, -1) == LUA_TNIL) lua_pop(L, 1);
-			getUserDataFns[type](L, address);
+			getUserDataFns[type](L, address+totsize);
 
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
@@ -669,10 +669,10 @@ void GetMemoryBlock(lua_State* L, char* address)
 				size_t endArrSize = type.find("]");
 				array_size = stoi(type.substr(arrayPos + 1, endArrSize - arrayPos - 1));
 				lua_pushinteger(L, array_size);
-				type = type.substr(0, arrayPos+1) + "]";
+				type = type.substr(0, arrayPos + 1) + "]";
 			}
 
-			getUserDataFns[type](L, address);
+			getUserDataFns[type](L, address+totsize);
 
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
@@ -683,7 +683,7 @@ void GetMemoryBlock(lua_State* L, char* address)
 			lua_pop(L, 1);
 		}
 
-		address += effectiveSize;
+		totsize += effectiveSize;
 	}
 }
 
@@ -719,7 +719,7 @@ template<> void LuaPopValue<bool>(lua_State* L, bool* dest, int index)
 
 template<> void LuaPopValue<char>(lua_State* L, char* dest, int index)
 {
-	sprintf(dest, "%s", lua_tostringx(L, index));
+	*dest = lua_tostring(L, index)[0];
 	lua_remove(L, index);
 }
 
@@ -796,7 +796,7 @@ template<> void LuaPushValue<bool>(lua_State* L, bool src)
 
 template<> void LuaPushValue<char>(lua_State* L, char src)
 {
-	lua_pushstring(L, &src);
+	lua_pushlstring(L, &src, 1);
 }
 
 template<> void LuaPushValue<short>(lua_State* L, short src)
@@ -852,5 +852,36 @@ template<> void LuaPushValue<double>(lua_State* L, double src)
 template<> void LuaPushValue<string>(lua_State* L, string src)
 {
 	lua_pushstring(L, src.c_str());
+}
+
+template<> int ArraySetterFn<char>(lua_State* L)
+{
+	char* ud = GetUserData<char>(L, 1, "getUserDataFns");
+
+	if (lua_type(L, 2) == LUA_TNIL) return 0;
+
+	int index = lua_tointegerx(L, 2, nullptr);
+
+	if (index >= 1)
+	{
+		ud[index - 1] = lua_tostring(L, -1)[0];
+		return 0;
+	}
+
+	sprintf(ud, "%s", lua_tostring(L, -1));
+
+	return 0;
+}
+
+template<> int ArrayGetterFn<char>(lua_State* L)
+{
+	char* ud = GetUserData<char>(L, 1, "getUserDataFns");
+	int index = lua_tointegerx(L, 2, nullptr);
+
+	if (index >= 1) LuaPushValue<char>(L, ud[index - 1]);
+
+	else lua_pushstring(L, ud);
+
+	return 1;
 }
 

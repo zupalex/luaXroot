@@ -41,6 +41,15 @@
 
 using namespace std;
 
+namespace LuaExt {
+template<typename T> string to_string(const T& x)
+{
+	return "to_string not implemented";
+}
+}
+
+using namespace LuaExt;
+
 class LuaUserClass;
 
 extern lua_State* lua;
@@ -551,6 +560,31 @@ template<typename T> int luaExt_ClearUserDataArray(lua_State* L)
 	return 0;
 }
 
+template<typename T> int luaExt_ShiftUDAddress(lua_State* L)
+{
+	T** obj_ = static_cast<T**>(lua_touserdata(L, 1));
+	int shift = lua_tointeger(L, 2);
+	*obj_ += shift;
+	return 0;
+}
+
+template<typename T> int luaExt_SetUDAddress(lua_State* L)
+{
+	T** obj_ = static_cast<T**>(lua_touserdata(L, 1));
+	char* address = *((char**) lua_touserdata(L, 2));
+	int offset = lua_tointegerx(L, 3, nullptr);
+	address += offset;
+	*obj_ = (T*) address;
+	return 0;
+}
+
+template<typename T> int luaExt_AllocateUD(lua_State* L)
+{
+	T** obj_ = static_cast<T**>(lua_touserdata(L, 1));
+	*obj_ = new T();
+	return 0;
+}
+
 template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::type SetupMetatable(lua_State* L)
 {
 	lua_getglobal(L, "SetupMetatable");
@@ -558,15 +592,15 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::typ
 	lua_pcall(L, 1, 0, 0);
 
 	T* obj = *(static_cast<T**>(lua_touserdata(L, -1)));
-	AddMethod(L, [](lua_State* L_)
-	{
-		T** obj_ = static_cast<T**>(lua_touserdata(L_, 1));
-		int shift = lua_tointeger(L_, 2);
-		*obj_ += shift;
-		return 0;
-	}, "ShiftAddress");
+	AddMethod(L, luaExt_ShiftUDAddress<T>, "ShiftAddress");
+	AddMethod(L, luaExt_SetUDAddress<T>, "SetAddress");
+	AddMethod(L, luaExt_AllocateUD<T>, "Allocate");
 
-	obj->SetupMetatable(L);
+	lua_getfield(L, -1, "type");
+	string type = lua_tostring(L, -1);
+	lua_pop(L, 1);
+
+	if (type.find("vector") == string::npos && type.find("[") == string::npos) obj->SetupMetatable(L);
 }
 
 template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::type SetupMetatable(lua_State* L)
@@ -575,20 +609,30 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::ty
 	lua_pushvalue(L, -2);
 	lua_pcall(L, 1, 0, 0);
 
-	AddMethod(L, [](lua_State* L_)
-	{
-		T** obj_ = static_cast<T**>(lua_touserdata(L_, 1));
-		int shift = lua_tointeger(L_, 2);
-		*obj_ += shift;
-		return 0;
-	}, "ShiftAddress");
+	AddMethod(L, luaExt_ShiftUDAddress<T>, "ShiftAddress");
+	AddMethod(L, luaExt_SetUDAddress<T>, "SetAddress");
+	AddMethod(L, luaExt_AllocateUD<T>, "Allocate");
 }
 
 template<typename T> typename enable_if<!is_std_tuple<T>::value>::type LuaPushValue(lua_State* L, T src)
 {
 	T* obj = *(reinterpret_cast<T**>(lua_newuserdata(L, sizeof(T*))));
+	obj = new T();
 	*obj = src;
 	MakeMetatable(L);
+
+	lua_getfield(L, 1, "type");
+
+	string type = lua_tostring(L, -1);
+	if (type.find("[") != string::npos)
+	{
+		type = type.substr(0, type.find("[") - 1);
+		lua_pop(L, 1);
+		lua_pushstring(L, type.c_str());
+	}
+
+	lua_setfield(L, -2, "type");
+
 	SetupMetatable<T>(L);
 }
 
@@ -662,7 +706,7 @@ template<typename T> int lua_autogetarray(lua_State* L, T* src, unsigned int siz
 // --------------------------------------------------------------------------------------------------------- //
 
 extern map<string, function<int()>> methodList;
-extern map<string, map<int, function<int(int)>>> constructorList;
+extern map<string, map<int, function<int(int, int)>>> constructorList;
 
 template<int...> struct seq
 {};
@@ -865,9 +909,10 @@ template<typename T, typename R, typename ... Args> R CallFuncsWithArgs(lua_Stat
 
 template<typename T, typename ... Args> void MakeDefaultConstructor(lua_State* L, string name)
 {
-	auto ctor = [=](int index)
+	auto ctor = [=](int index, int array_size)
 	{
-		NewUserData<T>(L);
+		if(array_size == 0) NewUserData<T>(L);
+		else NewUserDataArray<T>(L, array_size);
 
 		MakeMetatable ( L );
 
@@ -888,16 +933,22 @@ template<typename T, typename ... Args> void MakeDefaultConstructor(lua_State* L
 
 template<typename T, typename ... Args> void AddObjectConstructor(lua_State* L, string name)
 {
-	auto ctor = [=](int index)
+	auto ctor = [=](int index, int array_size)
 	{
 		auto args = LuaPopHelper<sizeof...(Args), Args...>::DoPop(L, index);
 
-		auto final_args = tuple_cat(make_tuple(L), args);
-		StoreArgsAndCallFn<sizeof...(Args), T**, lua_State*, Args...> retrieved =
-		{	NewUserData<T>, final_args};
+		T** obj;
 
-		T** obj = reinterpret_cast<T**>(lua_newuserdata(L, sizeof(T*)));
-		obj = retrieved.DoCallFn();
+		if(array_size > 0) obj = NewUserDataArray<T>(L, array_size);
+		else
+		{
+			auto final_args = tuple_cat(make_tuple(L), args);
+			StoreArgsAndCallFn<sizeof...(Args), T**, lua_State*, Args...> retrieved =
+			{	NewUserData<T>, final_args};
+
+			obj = reinterpret_cast<T**>(lua_newuserdata(L, sizeof(T*)));
+			obj = retrieved.DoCallFn();
+		}
 
 		MakeMetatable ( L );
 
@@ -930,7 +981,7 @@ inline int LuaCtor(lua_State* L, int index = 1)
 		classname = classname.substr(0, findIfArray) + "[]";
 	}
 
-	int type_size = (constructorList[classname][nargs])(index);
+	int type_size = (constructorList[classname][nargs])(index, arraySize);
 
 	lua_pushinteger(L, type_size * (arraySize > 0 ? arraySize : 1));
 	lua_setfield(L, -2, "sizeof");
@@ -1059,6 +1110,8 @@ template<typename T> int ArraySetterFn(lua_State* L)
 	return 0;
 }
 
+template<> int ArraySetterFn<char>(lua_State* L);
+
 template<typename T> int ArrayGetterFn(lua_State* L)
 {
 	T* ud = GetUserData<T>(L, 1, "getUserDataFns");
@@ -1077,11 +1130,14 @@ template<typename T> int ArrayGetterFn(lua_State* L)
 	return 1;
 }
 
+template<> int ArrayGetterFn<char>(lua_State* L);
+
 template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string type)
 {
 	string finalType = type;
 
 	userDataSizes[type] = sizeof(T);
+	userDataSizes[type+"[]"] = sizeof(T);
 
 	MakeDefaultConstructor<T>(_lstate, finalType);
 	AddObjectConstructor<T, T>(_lstate, finalType);
