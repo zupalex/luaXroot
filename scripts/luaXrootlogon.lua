@@ -64,7 +64,7 @@ function require(pckg)
   return _require(pckg)
 end
 
-if IsMasterState then
+if IsMasterState then 
 -- Initialize the ROOT interaction application (event processing in TCanvas, etc...)
   theApp = TApplication()
 
@@ -87,27 +87,6 @@ if IsMasterState then
   end
 
 --******** Task Managing Functions ********--
-
-  function ForkWithRedirect(fn, ...)
-    if type(fn) ~= "function" then
-      print("Invalid arguments. Format: function, [arg1], [arg2], ...")
-      return
-    end
-
-    local fds = {}
-    local prefn = function() 
-      fds.fdin, fds.fdout = MakePipe() 
-    end
-
-    local new_fn = function(fds, ...)
-      SysDup2(fds.fdin, 1)
-      fn(...)
-    end
-
-    SysFork({fn=new_fn, args=table.pack(fds, ...), preinit=prefn})
-
-    return fds.fdout
-  end
 
   function StartNewTask(taskname, fn, ...)
     RootTasks[taskname] = {
@@ -215,11 +194,13 @@ if IsMasterState then
 
   function exit() 
     print("")
-    saveprompthistory(luaXrootParams.max_history_length)
+    if theApp.isforked == nil then
+      saveprompthistory(luaXrootParams.max_history_length)
 
-    for i, v in ipairs(msgq._activemsgqs) do if v.owner then MsgCtl({v.id, IPC_RMID}) end end
-    for i, v in ipairs(sem._activesems) do if v.owner then SemCtl({v.id, IPC_RMID}) end end
-    for i, v in ipairs(shmem._activeshmems) do if v.owner then ShmCtl({v.id, IPC_RMID}) end end
+      for i, v in ipairs(msgq._activemsgqs) do if v.owner then MsgCtl({v.id, IPC_RMID}) end end
+      for i, v in ipairs(sem._activesems) do if v.owner then SemCtl({v.id, IPC_RMID}) end end
+      for i, v in ipairs(shmem._activeshmems) do if v.owner then ShmCtl({v.id, IPC_RMID}) end end
+    end
 
     theApp:Terminate() 
   end
@@ -275,12 +256,21 @@ function ProcessSignal(sig_str)
   end
 end
 
-pcall(require, 'userlogon') -- this line attempt to load additional user/userlogon.lua. If it doesnt't exist it does nothing. 
+local userlog_loaded, errmsg = pcall(require, 'userlogon') -- this line attempt to load additional user/userlogon.lua. If it doesnt't exist it does nothing. 
 -- If the user wants to load additional modules, it should be done in this file. Create it if needed. The directory user might need to be created as well.
 
 -- If you want to add modules which are not where you found built-in modules, you ----------------
 -- will need to set the search path to include the location of such scripts ----------------------
 -- To do this add "package.path = package.path .. ";<path/to/add>/?.lua"  in user/userlogon.lua --
 -- e.g.: package.path = package.path .. ";/home/awesomescripts/?.lua;/home/awesomescripts/lua_scripts/?"
+
+if not userlog_loaded then
+  if errmsg:find("module 'userlogon' not found") == nil then
+    print("WARNING: Error in userlogon.lua script")
+    print(errmsg)
+    print("----------------------------------------------")
+    print(debug.traceback())
+  end
+end
 
 defaultPackages = shallowcopy(package.loaded)

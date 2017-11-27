@@ -78,18 +78,6 @@ public:
 		lua_setfield(L, -2, "Terminate");
 	}
 
-	void KillApp()
-	{
-		cout << "Received signal to kill the app" << endl;
-		gSystem->ExitLoop();
-	}
-
-	void OnCanvasKilled()
-	{
-		cout << "A Canvas Has Been KILLED!" << endl;
-		this->shouldStop = true;
-	}
-
 	void SetupUpdateSignalSender()
 	{
 		msgq_address = "/tmp/.luaXroot" + to_string(getpid()) + "_msgqueue";
@@ -235,6 +223,7 @@ extern map<lua_State*, string> tasksNames;
 extern map<string, string> tasksStatus;
 extern map<string, mutex> tasksMutexes;
 
+extern map<lua_State*, vector<string>> tasksControlSignals;
 extern map<lua_State*, vector<string>> tasksPendingSignals;
 
 struct NewTaskArgs {

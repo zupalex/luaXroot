@@ -219,6 +219,12 @@ AddPostInit("TH1", function(self)
         return _Fill(self, h, scale)
       end
     end
+
+    local _SetXProperties = self.SetXProperties
+    function self:SetXProperties(nbinsx, xmin, xmax)
+      _SetXProperties(self, nbinsx, xmin, xmax)
+      self:Draw()
+    end
   end)
 
 ---------------------------------------------------------------------
@@ -265,6 +271,18 @@ AddPostInit("TH2", function(self)
       else
         return _Fill(self, valx, valy, weight)
       end
+    end
+
+    local _SetXProperties = self.SetXProperties
+    function self:SetXProperties(nbinsx, xmin, xmax, drawopts)
+      _SetXProperties(self, nbinsx, xmin, xmax)
+      self:Draw(drawopts)
+    end
+
+    local _SetYProperties = self.SetYProperties
+    function self:SetYProperties(nbinsy, ymin, ymax, drawopts)
+      _SetYProperties(self, nbinsy, ymin, ymax)
+      self:Draw(drawopts)
     end
   end)
 

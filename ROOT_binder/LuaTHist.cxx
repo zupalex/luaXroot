@@ -7,32 +7,80 @@ using namespace std;
 
 void LuaTH1::DoFill(double x, double w)
 {
-	((TH1D*)rootObj)->Fill(x, w);
+	((TH1D*) rootObj)->Fill(x, w);
 }
 
 void LuaTH1::Reset()
 {
-	((TH1D*)rootObj)->Reset();
+	((TH1D*) rootObj)->Reset();
 }
 
 void LuaTH1::Rebuild()
 {
-	((TH1D*)rootObj)->Rebuild();
+	((TH1D*) rootObj)->Rebuild();
 }
 
 void LuaTH1::Scale(double s)
 {
-	((TH1D*)rootObj)->Scale(s);
+	((TH1D*) rootObj)->Scale(s);
 }
 
 void LuaTH1::SetRangeUserX(double xmin, double xmax)
 {
-	((TH1D*)rootObj)->SetAxisRange(xmin, xmax);
+	((TH1D*) rootObj)->SetAxisRange(xmin, xmax);
 }
 
 void LuaTH1::SetRangeUserY(double ymin, double ymax)
 {
-	((TH1D*)rootObj)->SetAxisRange(ymin, ymax, "Y");
+	((TH1D*) rootObj)->SetAxisRange(ymin, ymax, "Y");
+}
+
+void LuaTH1::SetXProperties(int nbinsx, double xmin, double xmax)
+{
+//	((TH1D*) rootObj)->SetBins(nbinsx, xmin, xmax);
+	const char* hname = rootObj->GetName();
+	TH1D* newHist = new TH1D("temp_hist_setxprop", rootObj->GetTitle(), nbinsx, xmin, xmax);
+
+	for (int i = 1; i < ((TH1D*) rootObj)->GetNbinsX(); i++)
+	{
+		int bcontent = ((TH1D*) rootObj)->GetBinContent(i);
+		if (bcontent > 0)
+		{
+			double prev_bin_center = ((TH1D*) rootObj)->GetXaxis()->GetBinCenter(i);
+			newHist->SetBinContent(newHist->FindBin(prev_bin_center), bcontent);
+		}
+	}
+
+	LuaCanvas* canv = canvasTracker[rootObj];
+
+	delete rootObj;
+
+	rootObj = newHist;
+	((TH1D*) rootObj)->SetName(hname);
+	canvasTracker[rootObj] = canv;
+}
+
+tuple<int, double, double> LuaTH1::GetXProperties()
+{
+	return make_tuple(((TH1D*) rootObj)->GetNbinsX(), ((TH1D*) rootObj)->GetXaxis()->GetXmin(), ((TH1D*) rootObj)->GetXaxis()->GetXmax());
+}
+
+tuple<vector<double>, vector<int>> LuaTH1::GetContent()
+{
+	vector<double> xvals;
+	vector<int> bincontents;
+
+	for (int i = 1; i <= ((TH1D*) rootObj)->GetNbinsX(); i++)
+	{
+		int bcontent = ((TH1D*) rootObj)->GetBinContent(i);
+		if (bcontent > 0)
+		{
+			bincontents.push_back(bcontent);
+			xvals.push_back(((TH1D*) rootObj)->GetXaxis()->GetBinCenter(i));
+		}
+	}
+
+	return make_tuple(xvals, bincontents);
 }
 
 void LuaTH1::MakeAccessors(lua_State* L)
@@ -47,6 +95,11 @@ void LuaTH1::MakeAccessors(lua_State* L)
 
 	AddClassMethod(L, &LuaTH1::SetRangeUserX, "SetRangeUserX");
 	AddClassMethod(L, &LuaTH1::SetRangeUserY, "SetRangeUserY");
+
+	AddClassMethod(L, &LuaTH1::SetXProperties, "SetXProperties");
+	AddClassMethod(L, &LuaTH1::GetXProperties, "GetXProperties");
+
+	AddClassMethod(L, &LuaTH1::GetContent, "GetContent");
 
 	AddClassMethod(L, &LuaTH1::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTH1::DoUpdate, "Update");
@@ -65,31 +118,101 @@ void LuaTH1::AddNonClassMethods(lua_State* L)
 
 void LuaTH2::DoFill(double x, double y, double w)
 {
-	((TH2D*)rootObj)->Fill(x, y, w);
+	((TH2D*) rootObj)->Fill(x, y, w);
 }
 
 void LuaTH2::Reset()
 {
-	((TH2D*)rootObj)->Reset();
+	((TH2D*) rootObj)->Reset();
 }
 
 void LuaTH2::Rebuild()
 {
-	((TH2D*)rootObj)->Rebuild();
+	((TH2D*) rootObj)->Rebuild();
 }
 void LuaTH2::Scale(double s)
 {
-	((TH2D*)rootObj)->Scale(s);
+	((TH2D*) rootObj)->Scale(s);
 }
 
 void LuaTH2::SetRangeUserX(double xmin, double xmax)
 {
-	((TH2D*)rootObj)->SetAxisRange(xmin, xmax);
+	((TH2D*) rootObj)->SetAxisRange(xmin, xmax);
 }
 
 void LuaTH2::SetRangeUserY(double ymin, double ymax)
 {
-	((TH2D*)rootObj)->SetAxisRange(ymin, ymax, "Y");
+	((TH2D*) rootObj)->SetAxisRange(ymin, ymax, "Y");
+}
+
+void LuaTH2::SetXProperties(int nbinsx, double xmin, double xmax)
+{
+//	((TH2D*) rootObj)->SetBins(nbinsx, xmin, xmax, ((TH2D*) rootObj)->GetNbinsY(), ((TH2D*) rootObj)->GetYaxis()->GetXmin(), ((TH2D*) rootObj)->GetYaxis()->GetXmax());
+	const char* hname = rootObj->GetName();
+	TH2D* newHist = new TH2D("temp_hist_setxprop", rootObj->GetTitle(), nbinsx, xmin, xmax, ((TH2D*) rootObj)->GetNbinsY(), ((TH2D*) rootObj)->GetYaxis()->GetXmin(),
+			((TH2D*) rootObj)->GetYaxis()->GetXmax());
+
+	for (int i = 1; i <= ((TH2D*) rootObj)->GetNbinsX(); i++)
+	{
+		for (int j = 1; j <= ((TH2D*) rootObj)->GetNbinsY(); j++)
+		{
+			int bcontent = ((TH2D*) rootObj)->GetBinContent(i, j);
+			if (bcontent > 0)
+			{
+				double prev_bin_centerx = ((TH2D*) rootObj)->GetXaxis()->GetBinCenter(i);
+				double prev_bin_centery = ((TH2D*) rootObj)->GetYaxis()->GetBinCenter(j);
+				newHist->SetBinContent(newHist->FindBin(prev_bin_centerx, prev_bin_centery), bcontent);
+			}
+		}
+	}
+
+	LuaCanvas* canv = canvasTracker[rootObj];
+
+	delete rootObj;
+
+	rootObj = newHist;
+	((TH2D*) rootObj)->SetName(hname);
+	canvasTracker[rootObj] = canv;
+}
+
+void LuaTH2::SetYProperties(int nbinsy, double ymin, double ymax)
+{
+//	((TH2D*) rootObj)->SetBins(((TH2D*) rootObj)->GetNbinsX(), ((TH2D*) rootObj)->GetXaxis()->GetXmin(), ((TH2D*) rootObj)->GetXaxis()->GetXmax(), nbinsy, ymin, ymax);
+	const char* hname = rootObj->GetName();
+	TH2D* newHist = new TH2D("temp_hist_setxprop", rootObj->GetTitle(), ((TH2D*) rootObj)->GetNbinsX(), ((TH2D*) rootObj)->GetXaxis()->GetXmin(),
+			((TH2D*) rootObj)->GetXaxis()->GetXmax(), nbinsy, ymin, ymax);
+
+	for (int i = 1; i <= ((TH2D*) rootObj)->GetNbinsX(); i++)
+	{
+		for (int j = 1; j <= ((TH2D*) rootObj)->GetNbinsY(); j++)
+		{
+			int bcontent = ((TH2D*) rootObj)->GetBinContent(i, j);
+			if (bcontent > 0)
+			{
+				double prev_bin_centerx = ((TH2D*) rootObj)->GetXaxis()->GetBinCenter(i);
+				double prev_bin_centery = ((TH2D*) rootObj)->GetYaxis()->GetBinCenter(j);
+				newHist->SetBinContent(newHist->FindBin(prev_bin_centerx, prev_bin_centery), bcontent);
+			}
+		}
+	}
+
+	LuaCanvas* canv = canvasTracker[rootObj];
+
+	delete rootObj;
+
+	rootObj = newHist;
+	((TH2D*) rootObj)->SetName(hname);
+	canvasTracker[rootObj] = canv;
+}
+
+tuple<int, double, double> LuaTH2::GetXProperties()
+{
+	return make_tuple(((TH2D*) rootObj)->GetNbinsX(), ((TH2D*) rootObj)->GetXaxis()->GetXmin(), ((TH2D*) rootObj)->GetXaxis()->GetXmax());
+}
+
+tuple<int, double, double> LuaTH2::GetYProperties()
+{
+	return make_tuple(((TH2D*) rootObj)->GetNbinsY(), ((TH2D*) rootObj)->GetYaxis()->GetXmin(), ((TH2D*) rootObj)->GetYaxis()->GetXmax());
 }
 
 void LuaTH2::MakeAccessors(lua_State* L)
@@ -104,6 +227,12 @@ void LuaTH2::MakeAccessors(lua_State* L)
 
 	AddClassMethod(L, &LuaTH2::SetRangeUserX, "SetRangeUserX");
 	AddClassMethod(L, &LuaTH2::SetRangeUserY, "SetRangeUserY");
+
+	AddClassMethod(L, &LuaTH2::SetXProperties, "SetXProperties");
+	AddClassMethod(L, &LuaTH2::SetYProperties, "SetYProperties");
+
+	AddClassMethod(L, &LuaTH2::GetXProperties, "GetXProperties");
+	AddClassMethod(L, &LuaTH2::GetYProperties, "GetYProperties");
 
 	AddClassMethod(L, &LuaTH2::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTH2::DoUpdate, "Update");

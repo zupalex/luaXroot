@@ -7,13 +7,14 @@
 
 #include "LuaExtension.h"
 
+extern vector<int> childProcessTracker;
+
 extern int maxFd;
 
 int LuaRegisterSysOpenConsts(lua_State* L);
 
 int GetFlagsFromOctalString(lua_State* L, string str);
 
-int LuaGetEnv(lua_State* L);
 int LuaSysFork(lua_State* L);
 int LuaSysExecvpe(lua_State* L);
 
@@ -45,7 +46,6 @@ static const luaL_Reg luaSysCall_lib[] =
 		{ "SysDup2", LuaSysDup2 },
 		{ "SysFork", LuaSysFork },
 		{ "SysExec", LuaSysExecvpe },
-		{ "GetEnv", LuaGetEnv },
 
 		{ "MakePipe", MakePipe },
 		{ "MakeFiFo", MakeFiFo },

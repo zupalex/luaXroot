@@ -368,8 +368,8 @@ function ForkAndRedirect(fn, args_table)
   end
 
   local function execfn(...)
-    SysDup2(fds.input, 1);
-    SysClose(fds.output);
+    SysDup2(fds.input, 1)
+    SysClose(fds.output)
 
     fn(...)
   end

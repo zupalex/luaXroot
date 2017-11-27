@@ -614,7 +614,7 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::ty
 	AddMethod(L, luaExt_AllocateUD<T>, "Allocate");
 }
 
-template<typename T> typename enable_if<!is_std_tuple<T>::value>::type LuaPushValue(lua_State* L, T src)
+template<typename T> typename enable_if<!is_std_tuple<T>::value && !is_std_vector<T>::value>::type LuaPushValue(lua_State* L, T src)
 {
 	T* obj = *(reinterpret_cast<T**>(lua_newuserdata(L, sizeof(T*))));
 	obj = new T();
@@ -639,6 +639,11 @@ template<typename T> typename enable_if<!is_std_tuple<T>::value>::type LuaPushVa
 template<typename T> typename enable_if<is_std_tuple<T>::value>::type LuaPushValue(lua_State* L, T src)
 {
 	LuaPushTuple(L, src);
+}
+
+template<typename T> typename enable_if<is_std_vector<T>::value>::type LuaPushValue(lua_State* L, T src)
+{
+	lua_autogetvector(L, src);
 }
 
 template<> void LuaPushValue<bool>(lua_State* L, bool src);

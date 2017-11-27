@@ -243,6 +243,7 @@ map<lua_State*, string> tasksNames;
 map<string, string> tasksStatus;
 map<string, mutex> tasksMutexes;
 
+map<lua_State*, vector<string>> tasksControlSignals;
 map<lua_State*, vector<string>> tasksPendingSignals;
 
 int TasksList_C(lua_State* L)
@@ -481,11 +482,16 @@ int GetTaskStatus(lua_State* L)
 
 void PushSignal(string taskname, string signal)
 {
-	vector<string>* sigs = &tasksPendingSignals[tasksStates[taskname]];
+	vector<string>* sigs;
 
-	//     cout << "Sending signal " << signal << " to " << taskname << endl;
+//	     cout << "Sending signal " << signal << " to " << taskname << endl;
 
-	if (signal == "stop" || signal == "wait" || signal == "resume") sigs->clear();
+	if (signal == "stop" || signal == "wait" || signal == "resume")
+	{
+		sigs = &tasksControlSignals[tasksStates[taskname]];
+		sigs->clear();
+	}
+	else sigs = &tasksPendingSignals[tasksStates[taskname]];
 
 	sigs->push_back(signal);
 }
@@ -507,61 +513,70 @@ int SendSignal_C(lua_State* L)
 	return 1;
 }
 
+void CheckActionSignals(lua_State* L)
+{
+	vector<string>* act_sigs = &tasksPendingSignals[L];
+	unsigned int nacts = act_sigs->size();
+
+	if (nacts > 0)
+	{
+		for (unsigned int i = 0; i < nacts; i++)
+		{
+			lua_getglobal(L, "ProcessSignal");
+			lua_pushstring(L, act_sigs->at(i).c_str());
+			lua_pcall(L, 1, LUA_MULTRET, 0);
+		}
+	}
+
+	act_sigs->clear();
+}
+
 int CheckSignals_C(lua_State* L)
 {
-	vector<string>* sigs = &tasksPendingSignals[L];
-	unsigned int nsigs = sigs->size();
+	vector<string>* ctrl_sigs = &tasksControlSignals[L];
+	unsigned int nctrl = ctrl_sigs->size();
 
-	if (nsigs > 0)
+	if (nctrl > 0)
 	{
-//         cout << nsigs << " pending signals for " << tasksNames[L] <<" ..." << endl;
-		for (unsigned int i = 0; i < nsigs; i++)
+		for (unsigned int i = 0; i < nctrl; i++)
 		{
-			//             cout << "Treating signal ";
-			if (i == 0 && sigs->at(i) == "stop")
+			if (i == 0 && ctrl_sigs->at(i) == "stop")
 			{
-//                 cout << "stop" << endl;
-				sigs->clear();
+				ctrl_sigs->clear();
 
 				MakeSyncSafe(false);
 
 				return 0;
 			}
-			if (i == 0 && sigs->at(i) == "wait")
+			if (i == 0 && ctrl_sigs->at(i) == "wait")
 			{
-//                 cout << "wait" << endl;
 				tasksStatus[tasksNames[L]] = "suspended";
 
 				MakeSyncSafe(false);
 
-				while (sigs->at(i) == "wait")
+				ctrl_sigs->clear();
+
+				while (ctrl_sigs->size() == 0 || !(ctrl_sigs->at(0) == "resume" || ctrl_sigs->at(0) == "stop"))
 				{
-					sleep(1);
+					CheckActionSignals(L);
+					sleep(0.5);
 				}
 
 				MakeSyncSafe(true);
 
 				return CheckSignals_C(L);
 			}
-			if (i == 0 && sigs->at(i) == "resume")
+			if (i == 0 && ctrl_sigs->at(i) == "resume")
 			{
 				tasksStatus[tasksNames[L]] = "running";
-				sigs->clear();
+				ctrl_sigs->clear();
 				signal( SIGTSTP, sigtstp_handler_pause);
 				return 1;
 			}
-			else
-			{
-//                 cout << sigs->at ( i ) << endl;
-				lua_getglobal(L, "ProcessSignal");
-				lua_pushstring(L, sigs->at(i).c_str());
-				lua_pcall(L, 1, LUA_MULTRET, 0);
-			}
 		}
 	}
-//     else cout << "No pending signals" << endl;
+	else CheckActionSignals(L);
 
-	sigs->clear();
 	lua_pushboolean(L, 1);
 
 	return 1;
@@ -583,9 +598,9 @@ void* StartRootEventProcessor(void* arg)
 
 	if (theApp->safeSync)
 	{
-		//         cout << "trying to acquire lock on sync mutex" << endl;
+//         cout << "trying to acquire lock on sync mutex" << endl;
 		syncSafeGuard.lock();
-		//         cout << "lock acquired and now releasing it..." << endl;
+//         cout << "lock acquired and now releasing it..." << endl;
 		syncSafeGuard.unlock();
 		theApp->safeSync = false;
 	}
@@ -607,7 +622,7 @@ void* StartRootEventProcessor(void* arg)
 
 	while (updateRequestPending > 0)
 	{
-		//         cout << "Waiting for updates: " << updateRequestPending << endl;
+//         cout << "Waiting for updates: " << updateRequestPending << endl;
 		gSystem->Sleep(50);
 	}
 
@@ -628,7 +643,7 @@ int luaExt_NewTApplication(lua_State* L)
 {
 	if (theApp == nullptr)
 	{
-		//         cout << "theApp == nullptr, initializing it..." << endl;
+//         cout << "theApp == nullptr, initializing it..." << endl;
 
 		signal( SIGTSTP, sigtstp_handler_pause);
 
@@ -692,7 +707,7 @@ int luaExt_TApplication_Update(lua_State* L)
 
 	while (updateRequestPending > 0)
 	{
-		//         cout << "Waiting for updates: " << updateRequestPending << endl;
+//         cout << "Waiting for updates: " << updateRequestPending << endl;
 		gSystem->Sleep(50);
 	}
 
@@ -701,11 +716,11 @@ int luaExt_TApplication_Update(lua_State* L)
 	TTimer* innerloop_timer = new TTimer(2000);
 	gSystem->AddTimer(innerloop_timer);
 
-	//     cout << "Force update theApp" << endl;
+//     cout << "Force update theApp" << endl;
 	tApp->StartIdleing();
 	gSystem->InnerLoop();
 	tApp->StopIdleing();
-	//     cout << "Force update theApp done" << endl;
+//     cout << "Force update theApp done" << endl;
 
 	gSystem->RemoveTimer(innerloop_timer);
 
@@ -717,20 +732,26 @@ int luaExt_TApplication_Update(lua_State* L)
 int luaExt_TApplication_Terminate(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 1, true, "luaExt_TApplication_Terminate", LUA_TUSERDATA)) return 0;
+	lua_getfield(L, 1, "isforked");
 
-	for (auto itr = socketsList.begin(); itr != socketsList.end(); itr++)
+	if (lua_type(L, -1) == LUA_TNIL)
 	{
-		unlink(itr->second.address.c_str());
-		close(itr->first);
+		for (auto itr = socketsList.begin(); itr != socketsList.end(); itr++)
+		{
+			unlink(itr->second.address.c_str());
+			close(itr->first);
+		}
+
+//		remove(theApp->msgq_address.c_str());
+
+		for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
+			itr->second->Close();
+
+//		for (unsigned int i = 0; i < childProcessTracker.size(); i++)
+//			kill(childProcessTracker[i], SIGINT);
 	}
 
-	remove(theApp->msgq_address.c_str());
-
-	for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
-		itr->second->Close();
-
 	TApplication* tApp = *(reinterpret_cast<TApplication**>(lua_touserdata(L, 1)));
-
 	tApp->Terminate();
 
 	return 0;

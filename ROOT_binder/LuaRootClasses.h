@@ -85,8 +85,10 @@ public:
 		}
 		else
 		{
-			if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
-			canvasTracker[rootObj]->Modified();
+			canvasTracker[rootObj]->cd();
+			Draw(varexp, cond, opts, nentries, firstentry);
+//			if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
+//			canvasTracker[rootObj]->Modified();
 			canvasTracker[rootObj]->Update();
 		}
 
@@ -402,6 +404,11 @@ public:
 	void SetRangeUserX(double xmin, double xmax);
 	void SetRangeUserY(double ymin, double ymax);
 
+	void SetXProperties(int nbinsx, double xmin, double xmax);
+	tuple<int, double, double> GetXProperties();
+
+	tuple<vector<double>, vector<int>> GetContent();
+
 	virtual void MakeAccessors(lua_State* L);
 	virtual void AddNonClassMethods(lua_State* L);
 };
@@ -430,6 +437,12 @@ public:
 	void Scale(double s);
 	void SetRangeUserX(double xmin, double xmax);
 	void SetRangeUserY(double ymin, double ymax);
+
+	void SetXProperties(int nbinsx, double xmin, double xmax);
+	void SetYProperties(int nbinsy, double ymin, double ymax);
+
+	tuple<int, double, double> GetXProperties();
+	tuple<int, double, double> GetYProperties();
 
 	virtual void MakeAccessors(lua_State* L);
 	virtual void AddNonClassMethods(lua_State* L);

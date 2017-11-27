@@ -2,6 +2,8 @@
 #include <sys/ioctl.h>
 #include <signal.h>
 
+vector<int> childProcessTracker;
+
 int GetFlagsFromOctalString(lua_State* L, string str)
 {
 	TryGetGlobalField(L, "_utilities.stringtoflags");
@@ -11,17 +13,6 @@ int GetFlagsFromOctalString(lua_State* L, string str)
 	lua_pop(L, 1);
 
 	return flagval;
-}
-
-int LuaGetEnv(lua_State* L)
-{
-	if (!CheckLuaArgs(L, 1, true, "LuaGetEnv", LUA_TSTRING)) return 0;
-
-	string env_var = lua_tostring(L, 1);
-
-	lua_pushstring(L, getenv(env_var.c_str()));
-
-	return 1;
 }
 
 int LuaSysFork(lua_State* L)
@@ -49,12 +40,17 @@ int LuaSysFork(lua_State* L)
 	switch (childid = fork())
 	{
 	case 0:
-		signal( SIGINT, SIG_DFL);
+		lua_getglobal(L, "theApp");
+		lua_pushboolean(L, 1);
+		lua_setfield(L, -2, "isforked");
+		lua_pop(L, 1);
 
 		lua_pcall(L, nargs, LUA_MULTRET, 0);
 
 		exit(0);
 	}
+
+	childProcessTracker.push_back(childid);
 
 	return 0;
 }
