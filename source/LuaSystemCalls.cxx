@@ -295,6 +295,7 @@ int LuaSysClose(lua_State* L)
 	int fd_close = lua_tointeger(L, 1);
 
 	close(fd_close);
+	fd_close = -1;
 
 	return 0;
 }

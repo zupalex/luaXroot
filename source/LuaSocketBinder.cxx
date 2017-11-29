@@ -157,7 +157,7 @@ int LuaSocketBind(lua_State* L)
 
 		strcpy(addr.sun_path, address.c_str());
 
-		unlink (address.c_str());
+		unlink(address.c_str());
 
 		if (bind(sockfd, (sockaddr*) &addr, sizeof(addr)) < 0)
 		{
@@ -362,7 +362,7 @@ int LuaSocketReceive(lua_State* L)
 	int sockfd = lua_tointeger(L, -3);
 
 	int data_length = lua_tointegerx(L, -2, nullptr);
-	if(data_length == 0) ioctl(sockfd, FIONREAD, &data_length);
+	if (data_length == 0) ioctl(sockfd, FIONREAD, &data_length);
 
 	int flags = lua_tointegerx(L, -1, nullptr);
 
@@ -370,8 +370,8 @@ int LuaSocketReceive(lua_State* L)
 
 	int bytes_received = recv(sockfd, (void*) buffer, data_length, flags);
 
-	lua_pushinteger(L, bytes_received);
 	lua_pushlstring(L, buffer, bytes_received);
+	lua_pushinteger(L, bytes_received);
 
 	return 2;
 }
