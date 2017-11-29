@@ -47,6 +47,42 @@ int LuaGetROOTObjectFromDir(lua_State* L)
 	return 1;
 }
 
+void LuaDrawTObject(TObject* obj, string opts)
+{
+	theApp->NotifyUpdatePending();
+
+	cout << obj->GetName() << endl;
+
+	if (canvasTracker[obj] != nullptr && ((string) canvasTracker[obj]->GetName()).empty()) delete canvasTracker[obj];
+
+	if (canvasTracker[obj] == nullptr || ((string) canvasTracker[obj]->GetName()).empty())
+	{
+		if (opts.find("same") == string::npos && opts.find("SAME") == string::npos)
+		{
+			LuaCanvas* disp = new LuaCanvas();
+			disp->cd();
+			canvasTracker[obj] = disp;
+		}
+		else
+		{
+			canvasTracker[obj] = (LuaCanvas*) gPad->GetCanvas();
+		}
+
+		obj->Draw(opts.c_str());
+		canvasTracker[obj]->Update();
+	}
+	else
+	{
+		canvasTracker[obj]->cd();
+		obj->Draw(opts.c_str());
+//			if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
+//			canvasTracker[rootObj]->Modified();
+		canvasTracker[obj]->Update();
+	}
+
+	theApp->NotifyUpdateDone();
+}
+
 extern "C" int openlib_lua_root_classes(lua_State* L)
 {
 	lua_register(L, "GetObject", LuaGetROOTObjectFromDir);

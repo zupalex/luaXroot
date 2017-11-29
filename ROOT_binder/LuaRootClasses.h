@@ -3,6 +3,8 @@
 
 #include "UserClassBase.h"
 
+void LuaDrawTObject(TObject* obj, string opts = "");
+
 template<typename T> class LuaROOTBase: public LuaUserClass {
 private:
 
@@ -431,6 +433,9 @@ public:
 	{
 	}
 
+	TH1D* projX = 0;
+	TH1D* projY = 0;
+
 	void DoFill(double x, double y, double w);
 	void Reset();
 	void Rebuild();
@@ -440,6 +445,9 @@ public:
 
 	void SetXProperties(int nbinsx, double xmin, double xmax);
 	void SetYProperties(int nbinsy, double ymin, double ymax);
+
+	void ProjectX(double ymin, double ymax);
+	void ProjectY(double xmin, double xmax);
 
 	tuple<int, double, double> GetXProperties();
 	tuple<int, double, double> GetYProperties();

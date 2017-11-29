@@ -145,6 +145,22 @@ void LuaTH2::SetRangeUserY(double ymin, double ymax)
 	((TH2D*) rootObj)->SetAxisRange(ymin, ymax, "Y");
 }
 
+void LuaTH2::ProjectX(double ymin, double ymax)
+{
+	TAxis* yax = ((TH2D*) rootObj)->GetYaxis();
+	projX = ((TH2D*) rootObj)->ProjectionX(((string) rootObj->GetName() + (string) "_projX").c_str(), yax->FindBin(ymin), yax->FindBin(ymax));
+
+	LuaDrawTObject(projX);
+}
+
+void LuaTH2::ProjectY(double xmin, double xmax)
+{
+	TAxis* xax = ((TH2D*) rootObj)->GetXaxis();
+	projY = ((TH2D*) rootObj)->ProjectionY(((string) rootObj->GetName() + (string) "_projY").c_str(), xax->FindBin(xmin), xax->FindBin(xmax));
+
+	LuaDrawTObject(projY);
+}
+
 void LuaTH2::SetXProperties(int nbinsx, double xmin, double xmax)
 {
 //	((TH2D*) rootObj)->SetBins(nbinsx, xmin, xmax, ((TH2D*) rootObj)->GetNbinsY(), ((TH2D*) rootObj)->GetYaxis()->GetXmin(), ((TH2D*) rootObj)->GetYaxis()->GetXmax());
@@ -227,6 +243,9 @@ void LuaTH2::MakeAccessors(lua_State* L)
 
 	AddClassMethod(L, &LuaTH2::SetRangeUserX, "SetRangeUserX");
 	AddClassMethod(L, &LuaTH2::SetRangeUserY, "SetRangeUserY");
+
+	AddClassMethod(L, &LuaTH2::ProjectX, "ProjectX");
+	AddClassMethod(L, &LuaTH2::ProjectY, "ProjectY");
 
 	AddClassMethod(L, &LuaTH2::SetXProperties, "SetXProperties");
 	AddClassMethod(L, &LuaTH2::SetYProperties, "SetYProperties");
