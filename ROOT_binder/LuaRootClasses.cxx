@@ -51,8 +51,6 @@ void LuaDrawTObject(TObject* obj, string opts)
 {
 	theApp->NotifyUpdatePending();
 
-	cout << obj->GetName() << endl;
-
 	if (canvasTracker[obj] != nullptr && ((string) canvasTracker[obj]->GetName()).empty()) delete canvasTracker[obj];
 
 	if (canvasTracker[obj] == nullptr || ((string) canvasTracker[obj]->GetName()).empty())
