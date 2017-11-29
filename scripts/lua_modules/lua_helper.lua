@@ -131,6 +131,10 @@ function newtable()
     return #tbl
   end
 
+  function tbl:back()
+    return tbl[#tbl]
+  end
+
   return tbl
 end
 
