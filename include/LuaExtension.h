@@ -711,7 +711,7 @@ template<typename T> int lua_autogetarray(lua_State* L, T* src, unsigned int siz
 // --------------------------------------------------------------------------------------------------------- //
 
 extern map<string, function<int()>> methodList;
-extern map<string, map<int, function<int(int, int)>>> constructorList;
+extern map<string, map<int, function<int(lua_State*, int, int)>>> constructorList;
 
 template<int...> struct seq
 {};
@@ -914,17 +914,17 @@ template<typename T, typename R, typename ... Args> R CallFuncsWithArgs(lua_Stat
 
 template<typename T, typename ... Args> void MakeDefaultConstructor(lua_State* L, string name)
 {
-	auto ctor = [=](int index, int array_size)
+	auto ctor = [=](lua_State* L_, int index, int array_size)
 	{
-		if(array_size == 0) NewUserData<T>(L);
-		else NewUserDataArray<T>(L, array_size);
+		if(array_size == 0) NewUserData<T>(L_);
+		else NewUserDataArray<T>(L_, array_size);
 
-		MakeMetatable ( L );
+		MakeMetatable ( L_ );
 
-		lua_pushstring(L, name.c_str());
-		lua_setfield(L, -2, "type");
+		lua_pushstring(L_, name.c_str());
+		lua_setfield(L_, -2, "type");
 
-		SetupMetatable<T> ( L );
+		SetupMetatable<T> ( L_ );
 
 		return sizeof(T);
 	};
@@ -938,29 +938,29 @@ template<typename T, typename ... Args> void MakeDefaultConstructor(lua_State* L
 
 template<typename T, typename ... Args> void AddObjectConstructor(lua_State* L, string name)
 {
-	auto ctor = [=](int index, int array_size)
+	auto ctor = [=](lua_State* L_, int index, int array_size)
 	{
-		auto args = LuaPopHelper<sizeof...(Args), Args...>::DoPop(L, index);
+		auto args = LuaPopHelper<sizeof...(Args), Args...>::DoPop(L_, index);
 
 		T** obj;
 
-		if(array_size > 0) obj = NewUserDataArray<T>(L, array_size);
+		if(array_size > 0) obj = NewUserDataArray<T>(L_, array_size);
 		else
 		{
-			auto final_args = tuple_cat(make_tuple(L), args);
+			auto final_args = tuple_cat(make_tuple(L_), args);
 			StoreArgsAndCallFn<sizeof...(Args), T**, lua_State*, Args...> retrieved =
 			{	NewUserData<T>, final_args};
 
-			obj = reinterpret_cast<T**>(lua_newuserdata(L, sizeof(T*)));
+			obj = reinterpret_cast<T**>(lua_newuserdata(L_, sizeof(T*)));
 			obj = retrieved.DoCallFn();
 		}
 
-		MakeMetatable ( L );
+		MakeMetatable ( L_ );
 
-		lua_pushstring(L, name.c_str());
-		lua_setfield(L, -2, "type");
+		lua_pushstring(L_, name.c_str());
+		lua_setfield(L_, -2, "type");
 
-		SetupMetatable<T> ( L );
+		SetupMetatable<T> ( L_ );
 
 		return sizeof(T);
 	};
@@ -986,7 +986,7 @@ inline int LuaCtor(lua_State* L, int index = 1)
 		classname = classname.substr(0, findIfArray) + "[]";
 	}
 
-	int type_size = (constructorList[classname][nargs])(index, arraySize);
+	int type_size = (constructorList[classname][nargs])(L, index, arraySize);
 
 	lua_pushinteger(L, type_size * (arraySize > 0 ? arraySize : 1));
 	lua_setfield(L, -2, "sizeof");

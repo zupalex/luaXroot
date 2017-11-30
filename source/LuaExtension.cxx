@@ -7,7 +7,7 @@
 lua_State* lua = 0;
 
 map<string, function<int()>> methodList;
-map<string, map<int, function<int(int, int)>>> constructorList;
+map<string, map<int, function<int(lua_State*, int, int)>>> constructorList;
 
 lua_State* InitLuaEnv()
 {
@@ -475,18 +475,18 @@ void MakeStringAccessor(lua_State* L)
 {
 	userDataSizes["cstring"] = sizeof(string);
 
-	auto ctor = [=](int index, int array_size)
+	auto ctor = [=](lua_State* L_, int index, int array_size)
 	{
-		NewUserData<string>(L);
+		NewUserData<string>(L_);
 
-		MakeMetatable ( L );
+		MakeMetatable ( L_ );
 
 		lua_pushstring(L, "cstring");
-		lua_setfield(L, -2, "type");
+		lua_setfield(L_, -2, "type");
 
-		SetupMetatable<string> ( L );
+		SetupMetatable<string> ( L_ );
 
-		AddMethod(L, StrLength, "StrLength");
+		AddMethod(L_, StrLength, "StrLength");
 
 		return sizeof(string);
 	};

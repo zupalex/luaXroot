@@ -38,7 +38,6 @@ require("lua_classes")
 
 -- Loading the wrapper between ROOT objects and lua
 LoadLib(LUAXROOTLIBPATH .. "/libLuaXRootlib.so", "luaopen_libLuaXRootlib", true)
-
 LoadLib(LUAXROOTLIBPATH .. "/libRootBinderLib.so", "lua_root_classes")
 
 require("lua_helper")
