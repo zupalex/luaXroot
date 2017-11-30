@@ -123,9 +123,11 @@ end
 function MakeEasyMethodCalls(obj)
   if obj.methods == nil or obj.Call == nil then return end
 
+  local method_prefix = obj.type.."::"
+
   for i, v in ipairs(obj.methods) do
     obj[v] = function(self, ...)
-      return obj:Call(v, ...)
+      return obj:Call(method_prefix..v, ...)
     end
   end
 end

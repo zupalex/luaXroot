@@ -51,15 +51,21 @@ void LuaTH1::SetXProperties(int nbinsx, double xmin, double xmax)
 		}
 	}
 
+	LuaCanvas* canv = 0;
+
 	auto itr = canvasTracker.find(rootObj);
-	LuaCanvas* canv = itr->second;
-	canvasTracker.erase(itr);
+	if (itr != canvasTracker.end())
+	{
+		canv = itr->second;
+		canvasTracker.erase(itr);
+	}
 
 	delete rootObj;
 
 	rootObj = newHist;
 	((TH1D*) rootObj)->SetName(hname);
-	canvasTracker[rootObj] = canv;
+
+	if (canv != nullptr) canvasTracker[rootObj] = canv;
 }
 
 tuple<int, double, double> LuaTH1::GetXProperties()
@@ -184,15 +190,21 @@ void LuaTH2::SetXProperties(int nbinsx, double xmin, double xmax)
 		}
 	}
 
+	LuaCanvas* canv = 0;
+
 	auto itr = canvasTracker.find(rootObj);
-	LuaCanvas* canv = itr->second;
-	canvasTracker.erase(itr);
+	if (itr != canvasTracker.end())
+	{
+		canv = itr->second;
+		canvasTracker.erase(itr);
+	}
 
 	delete rootObj;
 
 	rootObj = newHist;
 	((TH2D*) rootObj)->SetName(hname);
-	canvasTracker[rootObj] = canv;
+
+	if (canv != nullptr) canvasTracker[rootObj] = canv;
 }
 
 void LuaTH2::SetYProperties(int nbinsy, double ymin, double ymax)
@@ -216,15 +228,20 @@ void LuaTH2::SetYProperties(int nbinsy, double ymin, double ymax)
 		}
 	}
 
+	LuaCanvas* canv = 0;
+
 	auto itr = canvasTracker.find(rootObj);
-	LuaCanvas* canv = itr->second;
-	canvasTracker.erase(itr);
+	if (itr != canvasTracker.end())
+	{
+		canv = itr->second;
+		canvasTracker.erase(itr);
+	}
 
 	delete rootObj;
 
 	rootObj = newHist;
 	((TH2D*) rootObj)->SetName(hname);
-	canvasTracker[rootObj] = canv;
+	if (canv != nullptr) canvasTracker[rootObj] = canv;
 }
 
 tuple<int, double, double> LuaTH2::GetXProperties()
