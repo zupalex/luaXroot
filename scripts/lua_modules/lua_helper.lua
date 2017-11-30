@@ -306,7 +306,7 @@ function BlockUntilReadable(fd, verbose)
   while rfd == nil or rfd == 0 do 
     rfd, wfd = SysSelect({read=fd}) 
     if rfd == 0 and verbose then
-      print("Socket not ready to be read... waiting...")
+      print("File descriptor not ready to be read... waiting...")
     end
   end
 
@@ -322,16 +322,87 @@ function BlockUntilWritable(fd, verbose)
   while wfd == nil or rfd == 0 do 
     rfd, wfd = SysSelect({write=fd}) 
     if rfd == 0 and verbose then
-      print("Socket not ready for writing... waiting...")
+      print("File descriptor not ready for writing... waiting...")
     end
   end
 
   return fd
 end
 
-local PipeObject = LuaClass("PipeObject", function(self, data)
-    self.type = data and data.type or 1
+local FileObject = LuaClass("FileObject", function(self, data)
     self.fd = data and data.fd or nil
+
+    function self:Write(data, size)
+      return SysWrite({fd=self.fd, data=data, size=size})
+    end
+
+    function self:Read(size)
+      return SysRead({fd=self.fd, size=size})
+    end
+
+    function self:WaitAndRead(size, verbose)
+      BlockUntilReadable(self.fd, verbose)
+
+      return self:Read(size)
+    end
+
+    function self:WaitAndWrite(data, size, verbose)
+      BlockUntilWritable(self.fd, verbose)
+
+      return self:Write(data, size)
+    end
+
+    function self:Close()
+      return SysClose(self.fd)
+    end
+  end)
+
+function OpenFile(path, flags, mode)
+  if flags == nil then
+    flags = "O_RDWR | O_CREAT"  
+  end
+
+  if mode == nil then
+    mode = "0666"
+  end
+
+  local fd = SysOpen({name=path, flags=flags, mode=mode})
+
+  local fileobj = FileObject({fd=fd})
+
+  function fileobj:Beg()
+    return SysLSeek(self.fd, 0, SEEK_SET)
+  end
+
+  function fileobj:End()
+    return SysLSeek(self.fd, 0, SEEK_END)
+  end
+
+  function fileobj:GetPosition()
+    return SysLSeek(self.fd, 0, SEEK_CUR)
+  end
+
+  function fileobj:SetPosition(pos)
+    if pos >= 0 then return SysLSeek(self.fd, pos, SEEK_SET)
+    else return SysLSeek(self.fd, pos, SEEK_END) end 
+  end
+
+  function fileobj:Advance(pos)
+    return SysLSeek(self.fd, pos, SEEK_CUR)
+  end
+
+  function fileobj:GetLength()
+    local cur_pos = self:GetPosition()
+    local length = SysLSeek(self.fd, 0, SEEK_END)
+    SysLSeek(self.fd, cur_pos, SEEK_SET)
+    return length
+  end
+
+  return fileobj
+end
+
+local PipeObject = LuaClass("PipeObject", "FileObject", function(self, data)
+    self.type = data and data.type or 1
 
     function self:Write(data, size)
       if self.type == 0 or self.type == 2 then
@@ -349,18 +420,6 @@ local PipeObject = LuaClass("PipeObject", function(self, data)
         print("Attempting to read from the input end of a pipe...")
         return
       end
-    end
-
-    function self:WaitAndRead(size)
-      BlockUntilReadable(self.fd)
-
-      return self:Read(size)
-    end
-
-    function self:WaitAndWrite(data, size)
-      BlockUntilWritable(self.fd)
-
-      return self:Write(data, size)
     end
   end)
 

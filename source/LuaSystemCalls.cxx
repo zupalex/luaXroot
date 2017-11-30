@@ -237,6 +237,23 @@ int LuaRegisterSysOpenConsts(lua_State* L)
 	lua_pushinteger(L, CLOCK_THREAD_CPUTIME_ID);
 	lua_setglobal(L, "CLOCK_THREAD_CPUTIME_ID");
 
+	// SEEK CONSTS
+
+	lua_pushinteger(L, SEEK_SET);
+	lua_setglobal(L, "SEEK_SET");
+
+	lua_pushinteger(L, SEEK_CUR);
+	lua_setglobal(L, "SEEK_CUR");
+
+	lua_pushinteger(L, SEEK_END);
+	lua_setglobal(L, "SEEK_END");
+
+	lua_pushinteger(L, SEEK_DATA);
+	lua_setglobal(L, "SEEK_DATA");
+
+	lua_pushinteger(L, SEEK_HOLE);
+	lua_setglobal(L, "SEEK_HOLE");
+
 	return 0;
 }
 
@@ -298,6 +315,19 @@ int LuaSysClose(lua_State* L)
 	fd_close = -1;
 
 	return 0;
+}
+
+int LuaSysLSeek(lua_State* L)
+{
+	int fd = lua_tointeger(L, 1);
+	int offset = lua_tointegerx(L, 2, nullptr);
+	int whence = lua_tointeger(L, 3);
+
+	int newpos = lseek(fd, offset, whence);
+
+	lua_pushinteger(L, newpos);
+
+	return 1;
 }
 
 int MakePipe(lua_State* L)

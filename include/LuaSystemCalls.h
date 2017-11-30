@@ -21,6 +21,7 @@ int LuaSysExecvpe(lua_State* L);
 int LuaSysOpen(lua_State* L);
 int LuaSysFtruncate(lua_State* L);
 int LuaSysClose(lua_State* L);
+int LuaSysLSeek(lua_State* L);
 int MakePipe(lua_State* L);
 int MakeFiFo(lua_State* L);
 int LuaSysDup(lua_State* L);
@@ -39,6 +40,7 @@ static const luaL_Reg luaSysCall_lib[] =
 		{ "SysOpen", LuaSysOpen },
 		{ "SysFtruncate", LuaSysFtruncate },
 		{ "SysClose", LuaSysClose },
+		{ "SysLSeek", LuaSysLSeek },
 		{ "SysUnlink", LuaSysUnlink },
 		{ "SysRead", LuaSysRead },
 		{ "SysWrite", LuaSysWrite },
