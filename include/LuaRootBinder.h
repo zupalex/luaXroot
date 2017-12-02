@@ -16,6 +16,7 @@
 #include "TF1.h"
 #include "TH2.h"
 #include "TH1.h"
+#include "TSpectrum.h"
 #include "TGraphErrors.h"
 #include "TCutG.h"
 #include "TFile.h"

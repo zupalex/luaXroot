@@ -45,9 +45,9 @@ public:
 		return ((T*) rootObj)->GetXaxis();
 	}
 
-	void Fit(TF1* fitfunc, const char* opts = "", const char* gopts = "", double xmin = 0, double xmax = 0)
+	void Fit(TF1* fitfunc, string opts = "", string gopts = "", double xmin = 0, double xmax = 0)
 	{
-		((T*) rootObj)->Fit(fitfunc, opts, gopts, xmin, xmax);
+		((T*) rootObj)->Fit(fitfunc, opts.c_str(), gopts.c_str(), xmin, xmax);
 	}
 
 	void Add(LuaROOTBase<T>* h2, double s)
@@ -218,24 +218,24 @@ public:
 		rootObj = new TF1();
 	}
 
-	LuaTF1(const char* name, const char* formula)
+	LuaTF1(string name, string formula)
 	{
-		rootObj = new TF1(name, formula);
+		rootObj = new TF1(name.c_str(), formula.c_str());
 	}
 
-	LuaTF1(const char* name, const char* formula, double xmin, double xmax)
+	LuaTF1(string name, string formula, double xmin, double xmax)
 	{
-		rootObj = new TF1(name, formula, xmin, xmax);
+		rootObj = new TF1(name.c_str(), formula.c_str(), xmin, xmax);
 	}
 
-	LuaTF1(const char* name, const char* fnname, double xmin, double xmax, int npar)
+	LuaTF1(string name, string fnname, double xmin, double xmax, int npar)
 	{
-		rootObj = new TF1(name, registeredTF1fns[fnname], xmin, xmax, npar);
+		rootObj = new TF1(name.c_str(), registeredTF1fns[fnname], xmin, xmax, npar);
 	}
 
-	LuaTF1(const char* name, const char* fnname, double xmin, double xmax, int npar, int ndim)
+	LuaTF1(string name, string fnname, double xmin, double xmax, int npar, int ndim)
 	{
-		rootObj = new TF1(name, registeredTF1fns[fnname], xmin, xmax, npar, ndim);
+		rootObj = new TF1(name.c_str(), registeredTF1fns[fnname], xmin, xmax, npar, ndim);
 	}
 
 	~LuaTF1()
@@ -274,21 +274,21 @@ template<typename T> int LuaTFit(lua_State* L)
 	double xmin, xmax;
 	string opts = "";
 
-	if (lua_checkfield(L, 1, "xmin", LUA_TNUMBER))
+	if (lua_checkfield(L, -1, "xmin", LUA_TNUMBER))
 	{
 		xmin = lua_tonumber(L, -1);
 		lua_pop(L, 1);
 	}
 	else xmin = xAxis->GetXmin();
 
-	if (lua_checkfield(L, 1, "xmax", LUA_TNUMBER))
+	if (lua_checkfield(L, -1, "xmax", LUA_TNUMBER))
 	{
 		xmax = lua_tonumber(L, -1);
 		lua_pop(L, 1);
 	}
 	else xmax = xAxis->GetXmax();
 
-	if (lua_checkfield(L, 1, "opts", LUA_TSTRING))
+	if (lua_checkfield(L, -1, "opts", LUA_TSTRING))
 	{
 		opts = lua_tostring(L, -1);
 		lua_pop(L, 1);
@@ -451,6 +451,46 @@ public:
 
 	tuple<int, double, double> GetXProperties();
 	tuple<int, double, double> GetYProperties();
+
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
+};
+
+// _____________________________________________________________________________ //
+//																				 //
+// ------------------------------- TSpectrum ----------------------------------- //
+// _____________________________________________________________________________ //
+
+extern "C" void LoadLuaTSpectrumLib(lua_State* L);
+
+class LuaTSpectrum: public LuaROOTBase<TSpectrum> {
+private:
+
+public:
+	LuaTSpectrum()
+	{
+		rootObj = new TSpectrum();
+	}
+
+	LuaTSpectrum(int maxposition)
+	{
+		rootObj = new TSpectrum(maxposition);
+	}
+
+	~LuaTSpectrum()
+	{
+	}
+
+	TH1D* background = 0;
+
+	void Background(string histname, int niter = 20, string opts = "");
+	void DrawBackground();
+	string GetBackgroundName();
+
+	void Search(string histname, double sigma = 2, string opts = "", double threshold = 0.05);
+	int GetNPeaks();
+	vector<double> GetPositionX();
+	vector<double> GetPositionY();
 
 	virtual void MakeAccessors(lua_State* L);
 	virtual void AddNonClassMethods(lua_State* L);

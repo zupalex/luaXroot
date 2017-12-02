@@ -296,12 +296,14 @@ extern "C" void LoadLuaTHistLib(lua_State* L)
 	MakeAccessFunctions<LuaTH1>(L, "TH1");
 	rootObjectAliases["TH1F"] = "TH1";
 	rootObjectAliases["TH1D"] = "TH1";
+	rootObjectAliases["TH1"] = "TH1";
 
 	AddObjectConstructor<LuaTH1, string, string, int, int, int>(L, "TH1");
 
 	MakeAccessFunctions<LuaTH2>(L, "TH2");
 	rootObjectAliases["TH2F"] = "TH2";
 	rootObjectAliases["TH2D"] = "TH2";
+	rootObjectAliases["TH2"] = "TH2";
 
 	AddObjectConstructor<LuaTH2, string, string, int, int, int, int, int, int>(L, "TH2");
 }

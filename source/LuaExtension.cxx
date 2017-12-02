@@ -799,6 +799,16 @@ template<> void LuaPushValue<char>(lua_State* L, char src)
 	lua_pushlstring(L, &src, 1);
 }
 
+template<> void LuaPushValue<char*>(lua_State* L, char* src)
+{
+	lua_pushlstring(L, src, 1);
+}
+
+template<> void LuaPushValue<const char*>(lua_State* L, const char* src)
+{
+	lua_pushlstring(L, src, 1);
+}
+
 template<> void LuaPushValue<short>(lua_State* L, short src)
 {
 	lua_pushinteger(L, src);

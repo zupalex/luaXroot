@@ -648,6 +648,8 @@ template<typename T> typename enable_if<is_std_vector<T>::value>::type LuaPushVa
 
 template<> void LuaPushValue<bool>(lua_State* L, bool src);
 template<> void LuaPushValue<char>(lua_State* L, char src);
+template<> void LuaPushValue<char*>(lua_State* L, char* src);
+template<> void LuaPushValue<const char*>(lua_State* L, const char* src);
 template<> void LuaPushValue<short>(lua_State* L, short src);
 template<> void LuaPushValue<unsigned short>(lua_State* L, unsigned short src);
 template<> void LuaPushValue<int>(lua_State* L, int src);

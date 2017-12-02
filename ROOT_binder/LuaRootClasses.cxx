@@ -40,6 +40,8 @@ int LuaGetROOTObjectFromDir(lua_State* L)
 
 	lua_pcall(L, 1, 1, 0);
 
+	if (lua_type(L, -1) != LUA_TUSERDATA) return 0;
+
 	LuaUserClass* obj = GetUserData<LuaUserClass>(L, -1);
 
 	obj->SetROOTObject(ret);
@@ -90,6 +92,7 @@ extern "C" int openlib_lua_root_classes(lua_State* L)
 	LoadLuaTGraphLib(L);
 	LoadLuaTF1Lib(L);
 	LoadLuaTHistLib(L);
+	LoadLuaTSpectrumLib(L);
 	LoadLuaTCutGLib(L);
 	LoadLuaTTreeLib(L);
 

@@ -15,7 +15,7 @@ function msgq.ListActiveMsgqs()
   end
 end
 
-function PrintMessagesQueueHelp()
+function PrintMessagesQueuesHelp()
   print("To create a Messages Queue:")
   print("msgq.CreateMsgq([path or key], flags)")
   print("To get an existing Messages Queue:")

@@ -284,6 +284,60 @@ AddPostInit("TH2", function(self)
       _SetYProperties(self, nbinsy, ymin, ymax)
       self:Draw(drawopts)
     end
+
+    local _ProjectX = self.ProjectX
+    function self:ProjectX(ymin, ymax)
+      _ProjectX(self, ymin, ymax)
+      return GetObject("TH1D", self:GetName().."_projX")
+    end
+
+    local _ProjectY = self.ProjectY
+    function self:ProjectY(xmin, xmax)
+      _ProjectY(self, xmin, xmax)
+      return GetObject("TH1D", self:GetName().."_projY")
+    end
+
+    function self:GetProjectionX()
+      return GetObject("TH1D", self:GetName().."_projX")
+    end
+
+    function self:GetProjectionY()
+      return GetObject("TH1D", self:GetName().."_projY")
+    end
+  end)
+
+---------------------------------------------------------------------
+----------------------------- TSpectrum -----------------------------
+---------------------------------------------------------------------
+
+local function PrintTSpectrumError()
+  print("ERROR in TSpectrum constructor")
+  print("  [maxposition] -> maximum number of peaks")
+end
+
+local _TSpectrum = TSpectrum
+function TSpectrum(args, ...)
+  if type(args) == "table" then
+    local maxpositions = args.maxpositions
+    return _TSpectrum(maxpositions)
+  elseif args == nil then
+    return _TSpectrum()
+  else
+    return _TSpectrum(args, ...)
+  end
+end
+
+AddPostInit("TSpectrum", function(self)
+    local _Background = self.Background
+    function self:Background(histname, niter, opts)
+      _Background(self, histname, niter, opts)
+      return GetObject("TH1D", histname.."_background")
+    end
+
+    function self:GetHistogram()
+      local backname = self:GetBackgroundName()
+      return GetObject("TH1D", backname)
+    end
   end)
 
 ---------------------------------------------------------------------

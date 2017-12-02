@@ -70,8 +70,8 @@ extern "C" void LoadLuaTF1Lib(lua_State* L)
 	MakeAccessFunctions<LuaTF1>(L, "TF1");
 	rootObjectAliases["TF1"] = "TF1";
 
-	AddObjectConstructor<LuaTF1, const char*, const char*>(L, "TF1");
-	AddObjectConstructor<LuaTF1, const char*, const char*, double, double>(L, "TF1");
-	AddObjectConstructor<LuaTF1, const char*, const char*, double, double, int>(L, "TF1");
-	AddObjectConstructor<LuaTF1, const char*, const char*, double, double, int, int>(L, "TF1");
+	AddObjectConstructor<LuaTF1, string, string>(L, "TF1");
+	AddObjectConstructor<LuaTF1, string, string, double, double>(L, "TF1");
+	AddObjectConstructor<LuaTF1, string, string, double, double, int>(L, "TF1");
+	AddObjectConstructor<LuaTF1, string, string, double, double, int, int>(L, "TF1");
 }
