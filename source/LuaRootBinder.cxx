@@ -750,8 +750,11 @@ int luaExt_TApplication_Terminate(lua_State* L)
 
 		for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
 		{
-			itr->second->Close();
-			delete itr->second;
+			if (itr->second != nullptr)
+			{
+				itr->second->Close();
+				delete itr->second;
+			}
 		}
 
 //		for (unsigned int i = 0; i < childProcessTracker.size(); i++)

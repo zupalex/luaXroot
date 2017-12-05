@@ -62,6 +62,7 @@ void LuaDrawTObject(TObject* obj, string opts)
 			LuaCanvas* disp = new LuaCanvas();
 			disp->cd();
 			canvasTracker[obj] = disp;
+			disp->SetTitle(obj->GetName());
 		}
 		else
 		{
@@ -74,6 +75,7 @@ void LuaDrawTObject(TObject* obj, string opts)
 	else
 	{
 		canvasTracker[obj]->cd();
+		canvasTracker[obj]->SetTitle(obj->GetName());
 		obj->Draw(opts.c_str());
 //			if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
 //			canvasTracker[rootObj]->Modified();
@@ -88,6 +90,7 @@ extern "C" int openlib_lua_root_classes(lua_State* L)
 	lua_register(L, "GetObject", LuaGetROOTObjectFromDir);
 	lua_register(L, "ListCurrentDir", luaExt_GetGDirContent);
 
+	LoadLuaTCanvasLib(L);
 	LoadLuaTFileLib(L);
 	LoadLuaTGraphLib(L);
 	LoadLuaTF1Lib(L);

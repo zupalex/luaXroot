@@ -14,6 +14,27 @@ function _LuaRootObj.Value(self, member, value)
 end
 
 ---------------------------------------------------------------------
+------------------------------- TCanvas -------------------------------
+---------------------------------------------------------------------
+
+AddPostInit("TCanvas", function(self)
+    local _Divide = self.Divide
+    function self:Divide(nrow, ncol)
+      self.nrow = nrow
+      self.ncol = ncol
+
+      _Divide(self, nrow, ncol)
+    end
+
+    local _Draw = self.Draw
+    function self:Draw(rootObj, opts, rown, coln)
+      if rootObj == nil then return end
+      _Draw(self, rootObj, rown or 1, coln or 0)
+      rootObj:Draw(opts)
+    end
+  end)
+
+---------------------------------------------------------------------
 ------------------------------- TFile -------------------------------
 ---------------------------------------------------------------------
 

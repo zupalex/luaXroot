@@ -76,6 +76,7 @@ public:
 				LuaCanvas* disp = new LuaCanvas();
 				disp->cd();
 				canvasTracker[rootObj] = disp;
+				disp->SetTitle(rootObj->GetName());
 			}
 			else
 			{
@@ -88,6 +89,7 @@ public:
 		else
 		{
 			canvasTracker[rootObj]->cd();
+			canvasTracker[rootObj]->SetTitle(rootObj->GetName());
 			Draw(varexp, cond, opts, nentries, firstentry);
 //			if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
 //			canvasTracker[rootObj]->Modified();
@@ -164,6 +166,45 @@ template<typename T> int LuaTClone(lua_State* L)
 
 int LuaGetROOTObjectFromDir(lua_State* L);
 int luaExt_GetGDirContent(lua_State* L);
+
+// _____________________________________________________________________________ //
+//																				 //
+// -------------------------------- TCanvas -------------------------------------- //
+// _____________________________________________________________________________ //
+
+extern "C" void LoadLuaTCanvasLib(lua_State* L);
+
+class LuaTCanvas: public LuaROOTBase<LuaCanvas> {
+private:
+
+public:
+	LuaTCanvas()
+	{
+		theApp->NotifyUpdatePending();
+		rootObj = new LuaCanvas();
+		theApp->NotifyUpdateDone();
+	}
+
+	~LuaTCanvas()
+	{
+	}
+
+	int nrow = 0;
+	int ncol = 0;
+
+	map<LuaCanvas*, TObject*> dispObjs;
+
+	void Close();
+	void Clear();
+
+	void Divide(int nrow_, int ncol_);
+
+	void Draw(LuaUserClass* obj, int row, int col);
+	void Update();
+
+	virtual void MakeAccessors(lua_State* L);
+	virtual void AddNonClassMethods(lua_State* L);
+};
 
 // _____________________________________________________________________________ //
 //																				 //

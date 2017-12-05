@@ -853,7 +853,7 @@ struct LuaPopHelper {
 	typedef std::tuple<Ts...> type;
 
 	template<typename T>
-	static tuple<T> LuaStackToTuple(lua_State* L, const int index)
+	static typename enable_if<!is_pointer<T>::value, tuple<T>>::type LuaStackToTuple(lua_State* L, const int index)
 	{
 		T stack_element = T();
 		if (lua_type(L, index) != LUA_TNIL)
@@ -864,15 +864,41 @@ struct LuaPopHelper {
 		return make_tuple(stack_element);
 	}
 
+	template<typename T>
+	static typename enable_if<is_pointer<T>::value, tuple<T>>::type LuaStackToTuple(lua_State* L, const int index)
+	{
+		T stack_element = nullptr;
+		if (lua_type(L, index) != LUA_TNIL)
+		{
+			stack_element = *(static_cast<T*>(lua_touserdata(L, index)));
+			lua_remove(L, index);
+		}
+		return make_tuple(stack_element);
+	}
+
 	// inductive case
 	template<typename T1, typename T2, typename ... Rest>
-	static tuple<T1, T2, Rest...> LuaStackToTuple(lua_State* L, const int index)
+	static typename enable_if<!is_pointer<T1>::value, tuple<T1, T2, Rest...>>::type LuaStackToTuple(lua_State* L, const int index)
 	{
 		T1 stack_element = T1();
 		if (lua_type(L, index) != LUA_TNIL)
 		{
 			if (is_std_vector<T1>::value) lua_autosetvector(L, &stack_element, -1, index);
 			else LuaPopValue<T1>(L, &stack_element, index);
+		}
+		tuple<T1> head = make_tuple(stack_element);
+		return tuple_cat(head, LuaStackToTuple<T2, Rest...>(L, index));
+	}
+
+	// inductive case
+	template<typename T1, typename T2, typename ... Rest>
+	static typename enable_if<is_pointer<T1>::value, tuple<T1, T2, Rest...>>::type LuaStackToTuple(lua_State* L, const int index)
+	{
+		T1 stack_element = nullptr;
+		if (lua_type(L, index) != LUA_TNIL)
+		{
+			stack_element = *(static_cast<T1*>(lua_touserdata(L, index)));
+			lua_remove(L, index);
 		}
 		tuple<T1> head = make_tuple(stack_element);
 		return tuple_cat(head, LuaStackToTuple<T2, Rest...>(L, index));
@@ -1144,7 +1170,7 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 	string finalType = type;
 
 	userDataSizes[type] = sizeof(T);
-	userDataSizes[type+"[]"] = sizeof(T);
+	userDataSizes[type + "[]"] = sizeof(T);
 
 	MakeDefaultConstructor<T>(_lstate, finalType);
 	AddObjectConstructor<T, T>(_lstate, finalType);
