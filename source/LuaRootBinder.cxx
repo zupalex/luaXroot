@@ -680,6 +680,10 @@ int luaExt_NewTApplication(lua_State* L)
 
 		theApp->WaitForUpdateReceiver();
 
+		cout << "ROOT " << gROOT->GetVersion() << "   http://root.cern.ch   The ROOT Team" << endl;
+		cout << "luaXroot  https://github.com/zupalex/luaXroot   Alexandre Lepailleur (alex.lepailleur@gmail.com)" << endl;
+		cout << "------------------------------------------------------------------------------------------------" << endl << endl;
+
 		return 1;
 	}
 	else
@@ -745,13 +749,28 @@ int luaExt_TApplication_Terminate(lua_State* L)
 //		remove(theApp->msgq_address.c_str());
 
 		for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
+		{
 			itr->second->Close();
+			delete itr->second;
+		}
 
 //		for (unsigned int i = 0; i < childProcessTracker.size(); i++)
 //			kill(childProcessTracker[i], SIGINT);
 	}
 
 	TApplication* tApp = *(reinterpret_cast<TApplication**>(lua_touserdata(L, 1)));
+
+	theApp->NotifyUpdatePending();
+
+	TTimer* innerloop_timer = new TTimer(2000);
+	gSystem->AddTimer(innerloop_timer);
+
+//     cout << "Force update theApp" << endl;
+	tApp->StartIdleing();
+	gSystem->InnerLoop();
+	tApp->StopIdleing();
+//     cout << "Force update theApp done" << endl;
+
 	tApp->Terminate();
 
 	return 0;

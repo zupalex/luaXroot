@@ -218,6 +218,22 @@ function isint(x)
   return x == math.floor(x)
 end
 
+function string.find_last_occurence(str, pattern)
+  local s, e = str:find(pattern)
+
+  if s == nil then return nil end
+
+  local prev_s, prev_e
+
+  while s ~= nil do
+    prev_s = s
+    prev_e = e
+    s, e = str:find(pattern, e+1)
+  end
+  
+  return prev_s, prev_e
+end
+
 _utilities = {}
 
 function _utilities.roundnumber(num)

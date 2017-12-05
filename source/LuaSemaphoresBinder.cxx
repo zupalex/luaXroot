@@ -112,10 +112,10 @@ int LuaSemCtl(lua_State* L)
 	lua_unpackarguments(L, 1, "LuaSemCtl argument table",
 		{ "semid", "semnum", "cmd" },
 		{ LUA_TNUMBER, LUA_TNUMBER, LUA_TNUMBER },
-		{ true, true, true });
+		{ true, false, true });
 
 	int semid = lua_tointeger(L, -3);
-	int semnum = lua_tointeger(L, -2);
+	int semnum = lua_tointegerx(L, -2, nullptr);
 	int cmd = lua_tointeger(L, -1);
 
 	semun sem_un;

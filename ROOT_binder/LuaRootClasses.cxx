@@ -27,7 +27,7 @@ int LuaGetROOTObjectFromDir(lua_State* L)
 
 	string objName = lua_tostring(L, 2);
 
-	TObject* ret = dir->FindObject(objName.c_str());
+	TObject* ret = dir->FindObjectAny(objName.c_str());
 
 	if (ret == nullptr)
 	{
