@@ -91,6 +91,24 @@ tuple<vector<double>, vector<int>> LuaTH1::GetContent()
 	return make_tuple(xvals, bincontents);
 }
 
+void LuaTH1::SetLogScale(string axis, bool val)
+{
+	theApp->NotifyUpdatePending();
+	LuaCanvas* can = canvasTracker[rootObj];
+
+	if (can != nullptr)
+	{
+		if (axis == "X") can->SetLogx(val);
+		else if (axis == "Y") can->SetLogy(val);
+		else if (axis == "Z") can->SetLogz(val);
+	}
+
+	can->Modified();
+	can->Update();
+
+	theApp->NotifyUpdateDone();
+}
+
 void LuaTH1::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTH1::SetTitle, "SetTitle");
@@ -108,6 +126,8 @@ void LuaTH1::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTH1::GetXProperties, "GetXProperties");
 
 	AddClassMethod(L, &LuaTH1::GetContent, "GetContent");
+
+	AddClassMethod(L, &LuaTH1::SetLogScale, "SetLogScale");
 
 	AddClassMethod(L, &LuaTH1::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTH1::DoUpdate, "Update");
@@ -254,6 +274,24 @@ tuple<int, double, double> LuaTH2::GetYProperties()
 	return make_tuple(((TH2D*) rootObj)->GetNbinsY(), ((TH2D*) rootObj)->GetYaxis()->GetXmin(), ((TH2D*) rootObj)->GetYaxis()->GetXmax());
 }
 
+void LuaTH2::SetLogScale(string axis, bool val)
+{
+	theApp->NotifyUpdatePending();
+	LuaCanvas* can = canvasTracker[rootObj];
+
+	if (can != nullptr)
+	{
+		if (axis == "X") can->SetLogx(val);
+		else if (axis == "Y") can->SetLogy(val);
+		else if (axis == "Z") can->SetLogz(val);
+	}
+
+	can->Modified();
+	can->Update();
+
+	theApp->NotifyUpdateDone();
+}
+
 void LuaTH2::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTH2::SetTitle, "SetTitle");
@@ -275,6 +313,8 @@ void LuaTH2::MakeAccessors(lua_State* L)
 
 	AddClassMethod(L, &LuaTH2::GetXProperties, "GetXProperties");
 	AddClassMethod(L, &LuaTH2::GetYProperties, "GetYProperties");
+
+	AddClassMethod(L, &LuaTH2::SetLogScale, "SetLogScale");
 
 	AddClassMethod(L, &LuaTH2::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTH2::DoUpdate, "Update");

@@ -32,6 +32,15 @@ AddPostInit("TCanvas", function(self)
       _Draw(self, rootObj, rown or 1, coln or 0)
       rootObj:Draw(opts)
     end
+
+    local _SetLogScale = self.SetLogScale
+    function self:SetLogScale(rown, coln, axis, val)
+      if type(rown) == "string" then
+        _SetLogScale(self, 0, 0, rown, coln or true)
+      else
+        _SetLogScale(self, rown, coln, axis, val or true)
+      end
+    end
   end)
 
 ---------------------------------------------------------------------

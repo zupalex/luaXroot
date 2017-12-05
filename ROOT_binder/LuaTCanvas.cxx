@@ -94,6 +94,27 @@ void LuaTCanvas::SetWindowSize(int width, int height)
 	theApp->NotifyUpdateDone();
 }
 
+void LuaTCanvas::SetLogScale(int rown_, int coln_, string axis, bool val)
+{
+	theApp->NotifyUpdatePending();
+	LuaCanvas* can = (LuaCanvas*) rootObj;
+
+	if (rown_ > 0 && coln_ > 0)
+	{
+		int subpadnum = coln_ + (coln_ * (nrow - 1));
+		can = (LuaCanvas*) ((LuaCanvas*) rootObj)->cd(subpadnum);
+	}
+
+	if (axis == "X") can->SetLogx(val);
+	else if (axis == "Y") can->SetLogy(val);
+	else if (axis == "Z") can->SetLogz(val);
+
+	can->Modified();
+	can->Update();
+
+	theApp->NotifyUpdateDone();
+}
+
 void LuaTCanvas::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTCanvas::SetTitle, "SetTitle");
@@ -107,6 +128,8 @@ void LuaTCanvas::MakeAccessors(lua_State* L)
 
 	AddClassMethod(L, &LuaTCanvas::SetSize, "SetSize");
 	AddClassMethod(L, &LuaTCanvas::SetWindowSize, "SetWindowSize");
+
+	AddClassMethod(L, &LuaTCanvas::SetLogScale, "SetLogScale");
 }
 
 void LuaTCanvas::AddNonClassMethods(lua_State* L)

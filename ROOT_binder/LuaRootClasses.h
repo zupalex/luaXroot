@@ -205,6 +205,8 @@ class LuaTCanvas : public LuaROOTBase<LuaCanvas> {
 		void SetSize(int width, int height);
 		void SetWindowSize(int width, int height);
 
+		void SetLogScale(int rown_, int coln_, string axis, bool val);
+
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
 };
@@ -455,6 +457,8 @@ class LuaTH1 : public LuaROOTBase<TH1D> {
 
 		tuple<vector<double>, vector<int>> GetContent();
 
+		void SetLogScale(string axis, bool val);
+
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
 };
@@ -495,6 +499,8 @@ class LuaTH2 : public LuaROOTBase<TH2D> {
 
 		tuple<int, double, double> GetXProperties();
 		tuple<int, double, double> GetYProperties();
+
+		void SetLogScale(string axis, bool val);
 
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
