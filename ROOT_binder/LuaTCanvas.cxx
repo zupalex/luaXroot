@@ -101,7 +101,7 @@ void LuaTCanvas::SetLogScale(int rown_, int coln_, string axis, bool val)
 
 	if (rown_ > 0 && coln_ > 0)
 	{
-		int subpadnum = coln_ + (coln_ * (nrow - 1));
+		int subpadnum = coln_ + (ncol * (rown_ - 1));
 		can = (LuaCanvas*) ((LuaCanvas*) rootObj)->cd(subpadnum);
 	}
 
