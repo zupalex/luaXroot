@@ -76,18 +76,43 @@ void LuaTCanvas::Update()
 	theApp->NotifyUpdateDone();
 }
 
+void LuaTCanvas::SetSize(int width, int height)
+{
+	theApp->NotifyUpdatePending();
+
+	((LuaCanvas*) rootObj)->SetCanvasSize(width, height);
+
+	theApp->NotifyUpdateDone();
+}
+
+void LuaTCanvas::SetWindowSize(int width, int height)
+{
+	theApp->NotifyUpdatePending();
+
+	((LuaCanvas*) rootObj)->SetWindowSize(width, height);
+
+	theApp->NotifyUpdateDone();
+}
+
 void LuaTCanvas::MakeAccessors(lua_State* L)
 {
+	AddClassMethod(L, &LuaTCanvas::SetTitle, "SetTitle");
+	AddClassMethod(L, &LuaTCanvas::GetTitle, "GetTitle");
+
 	AddClassMethod(L, &LuaTCanvas::Close, "Close");
 	AddClassMethod(L, &LuaTCanvas::Divide, "Divide");
 	AddClassMethod(L, &LuaTCanvas::Draw, "Draw");
 	AddClassMethod(L, &LuaTCanvas::Clear, "Clear");
 	AddClassMethod(L, &LuaTCanvas::Update, "Update");
+
+	AddClassMethod(L, &LuaTCanvas::SetSize, "SetSize");
+	AddClassMethod(L, &LuaTCanvas::SetWindowSize, "SetWindowSize");
 }
 
 void LuaTCanvas::AddNonClassMethods(lua_State* L)
 {
-
+	AddMethod(L, LuaTObjectSetName<LuaTCanvas>, "SetName");
+	AddMethod(L, LuaTObjectGetName<LuaTCanvas>, "GetName");
 }
 
 extern "C" void LoadLuaTCanvasLib(lua_State* L)
