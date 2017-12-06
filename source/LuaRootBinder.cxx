@@ -705,8 +705,6 @@ int luaExt_TApplication_Run(lua_State* L)
 
 int luaExt_TApplication_Update(lua_State* L)
 {
-	TApplication* tApp = *(reinterpret_cast<TApplication**>(lua_touserdata(L, 1)));
-
 	theApp->NotifyUpdatePending();
 
 	auto itr = canvasTracker.begin();
