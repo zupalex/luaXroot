@@ -54,6 +54,8 @@ void LuaCanvas::HandleInput(EEventType event, int px, int py)
 		vector<TObject*> drawables;
 		vector<string> drawopts;
 
+		clone->cd();
+
 		for (int i = 0; i < prims->GetSize(); i++)
 		{
 			string pclass = prims->At(i)->ClassName();
@@ -838,32 +840,22 @@ int luaExt_TApplication_Terminate(lua_State* L)
 		}
 
 //		remove(theApp->msgq_address.c_str());
-
-		for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
-		{
-			if (itr->second != nullptr)
-			{
-				itr->second->Close();
-				delete itr->second;
-			}
-		}
-
-//		for (unsigned int i = 0; i < childProcessTracker.size(); i++)
-//			kill(childProcessTracker[i], SIGINT);
+//
+//		for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
+//		{
+//			if (itr->second != nullptr)
+//			{
+//				itr->second->Close();
+//				delete itr->second;
+//			}
+//		}
 	}
 
 	TApplication* tApp = *(reinterpret_cast<TApplication**>(lua_touserdata(L, 1)));
 
 	theApp->NotifyUpdatePending();
 
-	TTimer* innerloop_timer = new TTimer(2000);
-	gSystem->AddTimer(innerloop_timer);
-
-//     cout << "Force update theApp" << endl;
-	tApp->StartIdleing();
-	gSystem->InnerLoop();
-	tApp->StopIdleing();
-//     cout << "Force update theApp done" << endl;
+	gSystem->ProcessEvents();
 
 	tApp->Terminate();
 
