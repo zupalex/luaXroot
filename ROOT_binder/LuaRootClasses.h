@@ -318,6 +318,8 @@ template<typename T> int LuaTFit(lua_State* L)
 {
 	if (!CheckLuaArgs(L, 1, true, "LuaTGraphFit", LUA_TUSERDATA, LUA_TTABLE)) return 0;
 
+	theApp->NotifyUpdatePending();
+
 	T* obj = *(reinterpret_cast<T**>(lua_touserdata(L, 1)));
 
 	lua_getfield(L, 2, "fn");
@@ -358,6 +360,8 @@ template<typename T> int LuaTFit(lua_State* L)
 	{
 		gPad->Update();
 	}
+
+	theApp->NotifyUpdateDone();
 
 	return 0;
 }

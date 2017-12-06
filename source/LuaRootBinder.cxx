@@ -52,12 +52,17 @@ void LuaCanvas::HandleInput(EEventType event, int px, int py)
 		TList* prims = clone->GetListOfPrimitives();
 
 		vector<TObject*> drawables;
+		vector<string> drawopts;
 
 		for (int i = 0; i < prims->GetSize(); i++)
 		{
 			string pclass = prims->At(i)->ClassName();
 
-			if (drawableROOTClasses.find(pclass) != drawableROOTClasses.end()) drawables.push_back(prims->At(i)->Clone());
+			if (drawableROOTClasses.find(pclass) != drawableROOTClasses.end())
+			{
+				drawables.push_back(prims->At(i)->Clone());
+				drawopts.push_back(prims->At(i)->GetDrawOption());
+			}
 		}
 
 		if (drawables.size() > 0)
@@ -69,7 +74,7 @@ void LuaCanvas::HandleInput(EEventType event, int px, int py)
 			clone_can->cd();
 
 			for (unsigned int i = 0; i < drawables.size(); i++)
-				drawables[i]->Draw(drawables[i]->GetDrawOption());
+				drawables[i]->Draw(drawopts[i].c_str());
 		}
 	}
 	else TCanvas::HandleInput(event, px, py);
