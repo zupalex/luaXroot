@@ -166,14 +166,14 @@ mutex rootProcessLoopLock;
 
 RootAppManager* theApp = 0;
 
-RootAppManager::RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options, Int_t numOptions) :
-		TApplication(appClassName, argc, argv, options, numOptions)
+RootAppManager::RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options, Int_t numOptions)
+		: TApplication(appClassName, argc, argv, options, numOptions)
 {
 
 }
 
-LuaCanvas::LuaCanvas() :
-		TCanvas()
+LuaCanvas::LuaCanvas()
+		: TCanvas()
 {
 }
 
@@ -817,10 +817,10 @@ int RegisterTF1fn(lua_State* L)
 		lua_pcall ( L, npars+1, 1, 0 );
 
 		double res = lua_tonumber ( L, -1 );
-		lua_settop(L, 0);  // Required to not flood the console... When moving the mouse over the TCanvas, each mouse movement call this function and push the result on the stack!
+		lua_pop(L, 1);
 
-			return res;
-		};
+		return res;
+	};
 
 	registeredTF1fns[fname] = fn;
 

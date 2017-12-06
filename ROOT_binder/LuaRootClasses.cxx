@@ -51,6 +51,8 @@ int LuaGetROOTObjectFromDir(lua_State* L)
 
 void LuaDrawTObject(TObject* obj, string opts)
 {
+	if (obj == nullptr) return;
+
 	theApp->NotifyUpdatePending();
 
 	if (canvasTracker[obj] != nullptr && ((string) canvasTracker[obj]->GetName()).empty()) delete canvasTracker[obj];

@@ -101,11 +101,15 @@ function TF1(args, ...)
 
     if name == nil then return PrintTF1Error() end
 
+    local tfunc
+
     if formula ~= nil then
       if xmin ~= nil and xmax ~= nil then
-        return _TF1(name, formula)
+        tfunc = _TF1(name, formula)
       else
-        return _TF1(name, formula, xmin, xmax)
+        tfunc = _TF1(name, formula, xmin, xmax)
+        tfunc.xmin = xmin
+        tfunc.xmax = xmax
       end
     elseif fn ~= nil and npars ~= nil and xmin ~= nil and xmax ~= nil and type(fn) == "function" then
       local fn_id = _stdfunctions.unnamed+1
@@ -114,16 +118,27 @@ function TF1(args, ...)
       _stdfunctions.unnamed = fn_id
 
       if ndim ~= nil then
-        return _TF1(name, reg_name, xmin, xmax, npars, ndim)
+        local tfunc = _TF1(name, reg_name, xmin, xmax, npars, ndim)
+        tfunc.xmin = xmin
+        tfunc.xmax = xmax
+        tfunc.npars = npars
+        tfunc.ndim = dnim
       else
-        return _TF1(name, reg_name, xmin, xmax, npars)
+        local tfunc = _TF1(name, reg_name, xmin, xmax, npars)
+        tfunc.xmin = xmin
+        tfunc.xmax = xmax
+        tfunc.npars = npars
       end
     else
       return PrintTF1Error()
     end
+
+    return tfunc
+--    return tfunc:IsValid() and tfunc or nil
   elseif args == nil then
     return _TF1()
   else
+    local tfunc
     local other_args = table.pack(...)
     if type(other_args[1]) == "function" and other_args[4] ~= nil then
       local fn_id = _stdfunctions.unnamed+1
@@ -132,15 +147,47 @@ function TF1(args, ...)
       _stdfunctions.unnamed = fn_id
 
       if other_args[5] == nil then
-        return _TF1(args, reg_name, other_args[2], other_args[3], other_args[4])
+        tfunc = _TF1(args, reg_name, other_args[2], other_args[3], other_args[4])
+        tfunc.xmin = other_args[2]
+        tfunc.xmax = other_args[3]
+        tfunc.npars = other_args[4]
       else
-        return _TF1(args, reg_name, other_args[2], other_args[3], other_args[4], other_args[5])
+        local tfunc = _TF1(args, reg_name, other_args[2], other_args[3], other_args[4], other_args[5])
+        tfunc.xmin = other_args[2]
+        tfunc.xmax = other_args[3]
+        tfunc.npars = other_args[4]
+        tfunc.ndim = other_args[5] 
       end
+    else
+      tfunc = _TF1(args, ...)
+      tfunc.xmin = other_args[2]
+      tfunc.xmax = other_args[3]
+      tfunc.npars = other_args[4]
+      tfunc.ndim = other_args[5] 
     end
 
-    return _TF1(args, ...)
+    return tfunc
+--    return tfunc:IsValid() and tfunc or nil
   end
 end
+
+AddPostInit("TF1", function(self)
+    local _GetRandom = self.GetRandom
+    function self:GetRandom(xmin, xmax)
+      if xmin == nil then xmin = self.xmin end
+      if xmax == nil then xmax = self.xmax end
+
+      return _GetRandom(self, xmin, xmax)
+    end
+
+    local _Integral = self.Integral
+    function self:Integral(xmin, xmax)
+      if xmin == nil then xmin = self.xmin end
+      if xmax == nil then xmax = self.xmax end
+
+      return _Integral(self, xmin, xmax)
+    end
+  end)
 
 ---------------------------------------------------------------------
 ---------------------------- TGraphErrors ---------------------------
@@ -255,6 +302,12 @@ AddPostInit("TH1", function(self)
       _SetXProperties(self, nbinsx, xmin, xmax)
       self:Draw()
     end
+
+    local _Integral = self.Integral
+    function self:Integral(xmin, xmax)
+      if xmin == nil or xmax == nil then xmin, xmax = 0, 0 end
+      return _Integral(self, xmin, xmax)
+    end
   end)
 
 ---------------------------------------------------------------------
@@ -333,6 +386,12 @@ AddPostInit("TH2", function(self)
 
     function self:GetProjectionY()
       return GetObject("TH1D", self:GetName().."_projY")
+    end
+
+    local _Integral = self.Integral
+    function self:Integral(xmin, xmax, ymin, ymax)
+      if xmin == nil or xmax == nil or ymin == nil or ymax == nil then xmin, xmax, ymin, ymax = 0, 0, 0, 0 end
+      return _Integral(self, xmin, xmax, ymin, ymax)
     end
   end)
 

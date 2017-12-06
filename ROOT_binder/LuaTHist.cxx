@@ -109,6 +109,23 @@ void LuaTH1::SetLogScale(string axis, bool val)
 	theApp->NotifyUpdateDone();
 }
 
+double LuaTH1::Integral(double xmin, double xmax)
+{
+	if (xmin != xmax)
+	{
+		TAxis* xaxis = ((TH1D*) rootObj)->GetXaxis();
+
+		int minbin = xaxis->FindBin(xmin);
+		int maxbin = xaxis->FindBin(xmax);
+
+		return ((TH1D*) rootObj)->Integral(minbin, maxbin, "width");
+	}
+	else
+	{
+		return ((TH1D*) rootObj)->Integral("width");
+	}
+}
+
 void LuaTH1::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTH1::SetTitle, "SetTitle");
@@ -128,6 +145,8 @@ void LuaTH1::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTH1::GetContent, "GetContent");
 
 	AddClassMethod(L, &LuaTH1::SetLogScale, "SetLogScale");
+
+	AddClassMethod(L, &LuaTH1::Integral, "Integral");
 
 	AddClassMethod(L, &LuaTH1::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTH1::DoUpdate, "Update");
@@ -292,6 +311,26 @@ void LuaTH2::SetLogScale(string axis, bool val)
 	theApp->NotifyUpdateDone();
 }
 
+double LuaTH2::Integral(double xmin, double xmax, double ymin, double ymax)
+{
+	if (xmin != xmax && ymin != ymax)
+	{
+		TAxis* xaxis = ((TH2D*) rootObj)->GetXaxis();
+		int minbinx = xaxis->FindBin(xmin);
+		int maxbinx = xaxis->FindBin(xmax);
+
+		TAxis* yaxis = ((TH2D*) rootObj)->GetYaxis();
+		int minbiny = yaxis->FindBin(ymin);
+		int maxbiny = yaxis->FindBin(ymax);
+
+		return ((TH2D*) rootObj)->Integral(minbinx, maxbinx, minbiny, maxbiny, "width");
+	}
+	else
+	{
+		return ((TH2D*) rootObj)->Integral("width");
+	}
+}
+
 void LuaTH2::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTH2::SetTitle, "SetTitle");
@@ -315,6 +354,8 @@ void LuaTH2::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTH2::GetYProperties, "GetYProperties");
 
 	AddClassMethod(L, &LuaTH2::SetLogScale, "SetLogScale");
+
+	AddClassMethod(L, &LuaTH2::Integral, "Integral");
 
 	AddClassMethod(L, &LuaTH2::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTH2::DoUpdate, "Update");

@@ -586,6 +586,15 @@ template<typename T> int luaExt_AllocateUD(lua_State* L)
 	return 0;
 }
 
+template<typename T> int luaExt_DeleteUD(lua_State* L)
+{
+	T** obj_ = static_cast<T**>(lua_touserdata(L, 1));
+	if (*obj_ != nullptr) delete *obj_;
+
+	*obj_ = nullptr;
+	return 0;
+}
+
 template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::type SetupMetatable(lua_State* L)
 {
 	lua_getglobal(L, "SetupMetatable");
@@ -596,6 +605,7 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::typ
 	AddMethod(L, luaExt_ShiftUDAddress<T>, "ShiftAddress");
 	AddMethod(L, luaExt_SetUDAddress<T>, "SetAddress");
 	AddMethod(L, luaExt_AllocateUD<T>, "Allocate");
+	AddMethod(L, luaExt_DeleteUD<T>, "Delete");
 
 	lua_getfield(L, -1, "type");
 	string type = lua_tostring(L, -1);
@@ -613,6 +623,7 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::ty
 	AddMethod(L, luaExt_ShiftUDAddress<T>, "ShiftAddress");
 	AddMethod(L, luaExt_SetUDAddress<T>, "SetAddress");
 	AddMethod(L, luaExt_AllocateUD<T>, "Allocate");
+	AddMethod(L, luaExt_DeleteUD<T>, "Delete");
 }
 
 template<typename T> typename enable_if<!is_std_tuple<T>::value && !is_std_vector<T>::value>::type LuaPushValue(lua_State* L, T src)

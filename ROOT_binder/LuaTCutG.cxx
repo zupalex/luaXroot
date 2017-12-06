@@ -2,12 +2,41 @@
 
 int LuaTCutG::IsInside(double x, double y)
 {
-	return ((TCutG*)rootObj)->IsInside(x, y);
+	return ((TCutG*) rootObj)->IsInside(x, y);
+}
+
+void LuaTCutG::SetNPoint(int n)
+{
+	return ((TCutG*) rootObj)->Set(n);
+}
+
+void LuaTCutG::SetPoint(int n, double x, double y)
+{
+	return ((TCutG*) rootObj)->SetPoint(n, x, y);
+}
+
+double LuaTCutG::Area()
+{
+	return ((TCutG*) rootObj)->Area();
+}
+
+double LuaTCutG::IntegralHist(LuaUserClass* h2d)
+{
+	TH2* hist = dynamic_cast<TH2*>(h2d->GetROOTObject());
+
+	if (hist != nullptr) return ((TCutG*) rootObj)->IntegralHist(hist, "width");
+	else return 0;
 }
 
 void LuaTCutG::MakeAccessors(lua_State* L)
 {
+	AddClassMethod(L, &LuaTCutG::SetNPoint, "SetNPoint");
+	AddClassMethod(L, &LuaTCutG::SetPoint, "SetPoint");
+
 	AddClassMethod(L, &LuaTCutG::IsInside, "IsInside");
+
+	AddClassMethod(L, &LuaTCutG::Area, "Area");
+	AddClassMethod(L, &LuaTCutG::IntegralHist, "IntegralHist");
 
 	AddClassMethod(L, &LuaTCutG::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTCutG::DoUpdate, "Update");

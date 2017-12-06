@@ -63,6 +63,8 @@ template<typename T> class LuaROOTBase : public LuaUserClass {
 		virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = numeric_limits<unsigned long long>::max(), unsigned long long firstentry =
 				0)
 		{
+			if (rootObj == nullptr) return;
+
 			theApp->NotifyUpdatePending();
 
 			if (!is_same<T, TTree>::value) opts = varexp;
@@ -249,7 +251,7 @@ class LuaTFile : public LuaROOTBase<TFile> {
 };
 
 // _____________________________________________________________________________ //
-//																				 //
+//	                                                                             //
 // --------------------------------- TF1 --------------------------------------- //
 // _____________________________________________________________________________ //
 
@@ -296,6 +298,17 @@ class LuaTF1 : public LuaROOTBase<TF1> {
 		double GetChi2();
 
 		virtual double Eval(double x);
+
+		double Integral(double xmin, double xmax);
+
+		void SetNpx(int npx);
+		void SetRange(double xmin, double xmax);
+
+		double GetX(double y);
+
+		double GetRandom(double xmin, double xmax);
+
+		bool IsValid();
 
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
@@ -350,7 +363,7 @@ template<typename T> int LuaTFit(lua_State* L)
 }
 
 // _____________________________________________________________________________ //
-//																				 //
+//                                                                               //
 // -------------------------------- TGraph ------------------------------------- //
 // _____________________________________________________________________________ //
 
@@ -407,7 +420,7 @@ class LuaGraphError : public LuaROOTBase<TGraphErrors> {
 };
 
 // _____________________________________________________________________________ //
-//																				 //
+//                                                                               //
 // ----------------------------- THistograms ----------------------------------- //
 // _____________________________________________________________________________ //
 
@@ -459,6 +472,8 @@ class LuaTH1 : public LuaROOTBase<TH1D> {
 
 		void SetLogScale(string axis, bool val);
 
+		double Integral(double xmin, double xmax);
+
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
 };
@@ -502,12 +517,14 @@ class LuaTH2 : public LuaROOTBase<TH2D> {
 
 		void SetLogScale(string axis, bool val);
 
+		double Integral(double xmin, double xmax, double ymin, double ymax);
+
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
 };
 
 // _____________________________________________________________________________ //
-//																				 //
+//                                                                               //
 // ------------------------------- TSpectrum ----------------------------------- //
 // _____________________________________________________________________________ //
 
@@ -547,7 +564,7 @@ class LuaTSpectrum : public LuaROOTBase<TSpectrum> {
 };
 
 // _____________________________________________________________________________ //
-//																				 //
+//                                                                               //
 // --------------------------------- TCutG ------------------------------------- //
 // _____________________________________________________________________________ //
 
@@ -568,12 +585,19 @@ class LuaTCutG : public LuaROOTBase<TCutG> {
 
 		virtual int IsInside(double x, double y);
 
+		void SetNPoint(int n);
+
+		void SetPoint(int n, double x, double y);
+
+		double Area();
+		double IntegralHist(LuaUserClass* h2d);
+
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
 };
 
 // _____________________________________________________________________________ //
-//																				 //
+//	                                                                             //
 // --------------------------------- TTree ------------------------------------- //
 // _____________________________________________________________________________ //
 
