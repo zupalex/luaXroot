@@ -705,6 +705,30 @@ int luaExt_TApplication_Run(lua_State* L)
 
 int luaExt_TApplication_Update(lua_State* L)
 {
+	TApplication* tApp = *(reinterpret_cast<TApplication**>(lua_touserdata(L, 1)));
+
+	theApp->NotifyUpdatePending();
+
+	auto itr = canvasTracker.begin();
+
+	while (itr != canvasTracker.end())
+	{
+		if (itr->second != nullptr)
+		{
+			itr->second->Modified();
+			itr->second->Update();
+			itr++;
+		}
+		else itr = canvasTracker.erase(itr);
+	}
+
+	theApp->NotifyUpdateDone();
+
+	return 0;
+}
+
+int luaExt_TApplication_ProcessEvents(lua_State* L)
+{
 	if (!CheckLuaArgs(L, 1, true, "luaExt_TApplication_Update", LUA_TUSERDATA)) return 0;
 
 	TApplication* tApp = *(reinterpret_cast<TApplication**>(lua_touserdata(L, 1)));

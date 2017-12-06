@@ -52,6 +52,7 @@ void sigtstp_handler_pause(int signal);
 int luaExt_NewTApplication(lua_State* L);
 int luaExt_TApplication_Run(lua_State* L);
 int luaExt_TApplication_Update(lua_State* L);
+int luaExt_TApplication_ProcessEvents(lua_State* L);
 int luaExt_TApplication_Terminate(lua_State* L);
 
 // --------------------------------------------------------------------------------- //
@@ -74,6 +75,9 @@ public:
 
 		lua_pushcfunction(L, luaExt_TApplication_Update);
 		lua_setfield(L, -2, "Update");
+
+		lua_pushcfunction(L, luaExt_TApplication_ProcessEvents);
+		lua_setfield(L, -2, "ProcessEvents");
 
 		lua_pushcfunction(L, luaExt_TApplication_Terminate);
 		lua_setfield(L, -2, "Terminate");
