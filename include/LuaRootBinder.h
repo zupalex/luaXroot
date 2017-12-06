@@ -188,6 +188,8 @@ inline int GetTheApp(lua_State* L)
 // ------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------ //
 
+static map<string, bool> drawableROOTClasses;
+
 class LuaCanvas : public TCanvas {
 	private:
 
@@ -218,29 +220,7 @@ class LuaCanvas : public TCanvas {
 			Emit("RequestMasterUpdate()");
 		}
 
-		void HandleInput(EEventType event, int px, int py)
-		{
-			if (event == kButton1Double)
-			{
-				string clonename = this->GetName();
-				clonename += "_clone";
-
-				LuaCanvas* prev_clone = (LuaCanvas*) gDirectory->FindObjectAny(clonename.c_str());
-
-				if (prev_clone != nullptr)
-				{
-					prev_clone->Close();
-					delete prev_clone;
-					prev_clone = nullptr;
-				}
-
-				LuaCanvas* clone = (LuaCanvas*) this->Clone();
-
-				clone->SetName(clonename.c_str());
-				clone->Draw();
-			}
-			else TCanvas::HandleInput(event, px, py);
-		}
+		void HandleInput(EEventType event, int px, int py);
 
 	ClassDef(LuaCanvas, 1)
 };

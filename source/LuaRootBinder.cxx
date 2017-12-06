@@ -13,6 +13,68 @@ map<TObject*, LuaCanvas*> canvasTracker;
 mutex syncSafeGuard;
 int updateRequestPending;
 
+void SetROOTDrawableClasses()
+{
+	drawableROOTClasses["TH1"] = true;
+	drawableROOTClasses["TH1I"] = true;
+	drawableROOTClasses["TH1D"] = true;
+	drawableROOTClasses["TH1F"] = true;
+
+	drawableROOTClasses["TH2"] = true;
+	drawableROOTClasses["TH2I"] = true;
+	drawableROOTClasses["TH2D"] = true;
+	drawableROOTClasses["TH2F"] = true;
+
+	drawableROOTClasses["TGraph"] = true;
+	drawableROOTClasses["TGraphErrors"] = true;
+	drawableROOTClasses["TCutG"] = true;
+	drawableROOTClasses["TF1"] = true;
+}
+
+void LuaCanvas::HandleInput(EEventType event, int px, int py)
+{
+	if (event == kButton1Double)
+	{
+		TPad* clone = (TPad*) this->GetClickSelectedPad()->Clone();
+
+		string clonename = clone->GetName();
+		clonename += "_clone";
+
+		LuaCanvas* prev_clone = (LuaCanvas*) gDirectory->FindObjectAny(clonename.c_str());
+
+		if (prev_clone != nullptr)
+		{
+			prev_clone->Close();
+			delete prev_clone;
+			prev_clone = nullptr;
+		}
+
+		TList* prims = clone->GetListOfPrimitives();
+
+		vector<TObject*> drawables;
+
+		for (int i = 0; i < prims->GetSize(); i++)
+		{
+			string pclass = prims->At(i)->ClassName();
+
+			if (drawableROOTClasses.find(pclass) != drawableROOTClasses.end()) drawables.push_back(prims->At(i)->Clone());
+		}
+
+		if (drawables.size() > 0)
+		{
+			LuaCanvas* clone_can = new LuaCanvas();
+
+			clone_can->SetName(clonename.c_str());
+
+			clone_can->cd();
+
+			for (unsigned int i = 0; i < drawables.size(); i++)
+				drawables[i]->Draw(drawables[i]->GetDrawOption());
+		}
+	}
+	else TCanvas::HandleInput(event, px, py);
+}
+
 void sigtstp_handler_stop(int i)
 {
 	if (i == SIGTSTP)
@@ -646,6 +708,8 @@ int luaExt_NewTApplication(lua_State* L)
 //         cout << "theApp == nullptr, initializing it..." << endl;
 
 		signal( SIGTSTP, sigtstp_handler_pause);
+
+		SetROOTDrawableClasses();
 
 		sprintf(homeDir, "%s", getenv("HOME"));
 		sprintf(histPath, "%s/.luaXrootHist", homeDir);
