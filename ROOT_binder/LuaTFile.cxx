@@ -32,7 +32,18 @@ int LuaTFile::Write(string name)
 
 int LuaTFile::Overwrite(string name)
 {
-	return ((TFile*) rootObj)->Write(name.c_str(), 2);
+	return ((TFile*) rootObj)->Write(name.c_str(), 4);
+}
+
+void LuaTFile::ReadKeys()
+{
+	((TFile*) rootObj)->ReadKeys();
+}
+
+void LuaTFile::Refresh(string name, LuaUserClass* dest)
+{
+	delete ((TFile*) rootObj)->FindObject(name.c_str());
+	dest->SetROOTObject(((TFile*) rootObj)->Get(name.c_str()));
 }
 
 void LuaTFile::MakeAccessors(lua_State* L)
@@ -46,6 +57,9 @@ void LuaTFile::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTFile::Write, "Write");
 	AddClassMethod(L, &LuaTFile::Overwrite, "Overwrite");
 	AddClassMethod(L, &LuaTFile::Flush, "Flush");
+
+	AddClassMethod(L, &LuaTFile::ReadKeys, "ReadKeys");
+	AddClassMethod(L, &LuaTFile::Refresh, "Refresh");
 }
 
 void LuaTFile::AddNonClassMethods(lua_State* L)

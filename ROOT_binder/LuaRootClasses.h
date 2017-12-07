@@ -250,6 +250,9 @@ class LuaTFile : public LuaROOTBase<TFile> {
 		int Write(string name);
 		int Overwrite(string name);
 
+		void ReadKeys();
+		void Refresh(string name, LuaUserClass* dest);
+
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
 };
