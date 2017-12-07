@@ -22,15 +22,30 @@ local SocketObject = LuaClass("SocketObject", "PipeObject", function(self, data)
 
     self.fd = self.sockfd
 
+    function self:AcceptConnection()
+      local dfd, errno = SocketAccept({sockfd=self.sockfd})
+
+      if dfd == nil then
+        print("There was an issue while accepting the socket connection:", errno)
+        return nil
+      end
+
+      table.insert(sockobj.clientsfd, dfd)
+    end
+
     function self:Send(data, size, listeners)
       if type(size) == "table" then
         listeners = size
         size = nil
       end
 
+      local status = {}
+
       for i, v in ipairs(listeners ~= nil and listeners or self.clientsfd) do
-        return SocketSend({sockfd=v, data=data, size=size})
+        status[v] = SocketSend({sockfd=v, data=data, size=size})
       end
+
+      return status
     end
 
     function self:Receive(size, wait)
@@ -115,7 +130,7 @@ function PrintSocketHelp()
   print("On the client machine: receiver:Receive() => will print \"Hello Client\"")
 end
 
-function socket.CreateHost(type, address, maxqueue)
+function socket.CreateHost(type, address, maxqueue, flags)
   if type == nil then
     return PrintSocketHelp()
   end
@@ -153,14 +168,16 @@ function socket.CreateHost(type, address, maxqueue)
     return
   end
 
-  local dfd, errno = SocketAccept({sockfd=hfd})
+  if flags == nil then flags = "" end
+
+  local dfd, errno = SocketAccept({sockfd=hfd, flags=flags})
 
   if dfd == nil then
     print("There was an issue while accepting the socket connection:", errno)
     return nil
   end
 
-  sockobj.clientsfd= {dfd}
+  sockobj.clientsfd = {dfd}
 
   return sockobj
 end

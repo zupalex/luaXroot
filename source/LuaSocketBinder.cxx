@@ -320,6 +320,12 @@ int LuaSocketAccept(lua_State* L)
 	if (!CheckLuaArgs(L, -1, true, "LuaSocketAccept arguments", LUA_TNUMBER)) return 0;
 	int sockfd = lua_tointeger(L, -1);
 
+	lua_getfield(L, 1, "flags");
+	string accept_flag_str = lua_tostringx(L, -1);
+
+	int accept_flag = 0;
+	if (!accept_flag_str.empty()) accept_flag = GetFlagsFromOctalString(L, accept_flag_str);
+
 	socklen_t addr_size;
 
 	int new_fd = -1;
@@ -329,14 +335,14 @@ int LuaSocketAccept(lua_State* L)
 		sockaddr_in6 clients_addr;
 		memset(&clients_addr, 0, sizeof(clients_addr));
 
-		new_fd = accept(sockfd, (sockaddr*) &clients_addr, &addr_size);
+		new_fd = accept4(sockfd, (sockaddr*) &clients_addr, &addr_size, accept_flag);
 	}
 	else
 	{
 		sockaddr_in clients_addr;
 		memset(&clients_addr, 0, sizeof(clients_addr));
 
-		new_fd = accept(sockfd, (sockaddr*) &clients_addr, &addr_size);
+		new_fd = accept4(sockfd, (sockaddr*) &clients_addr, &addr_size, accept_flag);
 	}
 
 	if (new_fd < 0)

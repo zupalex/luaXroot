@@ -20,6 +20,21 @@ void LuaTFile::Open(string path, string opts)
 	((TFile*) rootObj)->Open(path.c_str(), opts.c_str());
 }
 
+void LuaTFile::Flush()
+{
+	((TFile*) rootObj)->Flush();
+}
+
+int LuaTFile::Write(string name)
+{
+	return ((TFile*) rootObj)->Write(name.c_str());
+}
+
+int LuaTFile::Overwrite(string name)
+{
+	return ((TFile*) rootObj)->Write(name.c_str(), 2);
+}
+
 void LuaTFile::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTFile::MakeActive, "cd");
@@ -28,7 +43,9 @@ void LuaTFile::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTFile::Close, "Close");
 	AddClassMethod(L, &LuaTFile::Open, "Open");
 
-	AddClassMethod(L, &LuaTFile::DoWrite, "Write");
+	AddClassMethod(L, &LuaTFile::Write, "Write");
+	AddClassMethod(L, &LuaTFile::Overwrite, "Overwrite");
+	AddClassMethod(L, &LuaTFile::Flush, "Flush");
 }
 
 void LuaTFile::AddNonClassMethods(lua_State* L)
