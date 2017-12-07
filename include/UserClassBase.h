@@ -19,15 +19,6 @@ public:
 
 	vector<string> methods;
 
-	virtual TObject* GetROOTObject()
-	{
-		return nullptr;
-	}
-
-	virtual void SetROOTObject(TObject* obj)
-	{
-	}
-
 	void SetupMetatable(lua_State* L);
 
 	virtual void MakeAccessors(lua_State* L)

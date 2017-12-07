@@ -5,7 +5,7 @@
 
 void LuaDrawTObject(TObject* obj, string opts = "");
 
-template<typename T> class LuaROOTBase : public LuaUserClass {
+class LuaROOTBase : public LuaUserClass {
 	private:
 
 	public:
@@ -18,17 +18,39 @@ template<typename T> class LuaROOTBase : public LuaUserClass {
 		}
 
 		TObject* rootObj = 0;
+
+		void DoUpdate()
+		{
+			theApp->NotifyUpdatePending();
+
+			if (canvasTracker[rootObj] != nullptr)
+			{
+				canvasTracker[rootObj]->Modified();
+				canvasTracker[rootObj]->Update();
+			}
+
+			theApp->NotifyUpdateDone();
+		}
+
+		virtual void Draw(string varexp, string cond, string opts, unsigned long long nentries, unsigned long long firstentry)
+		{
+			rootObj->Draw(varexp.c_str());
+		}
+};
+
+template<typename T> class LuaROOTSpec : public LuaROOTBase {
+	private:
+
+	public:
+		LuaROOTSpec()
+		{
+		}
+
+		virtual ~LuaROOTSpec()
+		{
+		}
+
 		typedef T type;
-
-		virtual TObject* GetROOTObject()
-		{
-			return rootObj;
-		}
-
-		virtual void SetROOTObject(TObject* obj)
-		{
-			rootObj = obj;
-		}
 
 		void SetTitle(string title)
 		{
@@ -50,14 +72,9 @@ template<typename T> class LuaROOTBase : public LuaUserClass {
 			((T*) rootObj)->Fit(fitfunc, opts.c_str(), gopts.c_str(), xmin, xmax);
 		}
 
-		void Add(LuaROOTBase<T>* h2, double s)
+		void Add(LuaROOTSpec<T>* h2, double s)
 		{
 			((T*) rootObj)->Add((T*) (h2->rootObj), s);
-		}
-
-		virtual void Draw(string varexp, string cond, string opts, unsigned long long nentries, unsigned long long firstentry)
-		{
-			rootObj->Draw(varexp.c_str());
 		}
 
 		virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = numeric_limits<unsigned long long>::max(), unsigned long long firstentry =
@@ -95,19 +112,6 @@ template<typename T> class LuaROOTBase : public LuaUserClass {
 				Draw(varexp, cond, opts, nentries, firstentry);
 //			if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
 //			canvasTracker[rootObj]->Modified();
-				canvasTracker[rootObj]->Update();
-			}
-
-			theApp->NotifyUpdateDone();
-		}
-
-		void DoUpdate()
-		{
-			theApp->NotifyUpdatePending();
-
-			if (canvasTracker[rootObj] != nullptr)
-			{
-				canvasTracker[rootObj]->Modified();
 				canvasTracker[rootObj]->Update();
 			}
 
@@ -176,7 +180,7 @@ int luaExt_GetGDirContent(lua_State* L);
 
 extern "C" void LoadLuaTCanvasLib(lua_State* L);
 
-class LuaTCanvas : public LuaROOTBase<LuaCanvas> {
+class LuaTCanvas : public LuaROOTSpec<LuaCanvas> {
 	private:
 
 	public:
@@ -201,7 +205,7 @@ class LuaTCanvas : public LuaROOTBase<LuaCanvas> {
 
 		void Divide(int nrow_, int ncol_);
 
-		void Draw(LuaUserClass* obj, int row, int col);
+		void Draw(LuaROOTBase* obj, int row, int col);
 		void Update();
 
 		void SetSize(int width, int height);
@@ -220,7 +224,7 @@ class LuaTCanvas : public LuaROOTBase<LuaCanvas> {
 
 extern "C" void LoadLuaTFileLib(lua_State* L);
 
-class LuaTFile : public LuaROOTBase<TFile> {
+class LuaTFile : public LuaROOTSpec<TFile> {
 	private:
 
 	public:
@@ -251,7 +255,7 @@ class LuaTFile : public LuaROOTBase<TFile> {
 		int Overwrite(string name);
 
 		void ReadKeys();
-		void Refresh(string name, LuaUserClass* dest);
+		void Refresh(string name, LuaROOTBase* dest);
 
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
@@ -264,7 +268,7 @@ class LuaTFile : public LuaROOTBase<TFile> {
 
 extern "C" void LoadLuaTF1Lib(lua_State* L);
 
-class LuaTF1 : public LuaROOTBase<TF1> {
+class LuaTF1 : public LuaROOTSpec<TF1> {
 	private:
 
 	public:
@@ -380,7 +384,7 @@ template<typename T> int LuaTFit(lua_State* L)
 
 extern "C" void LoadLuaTGraphLib(lua_State* L);
 
-class LuaGraphError : public LuaROOTBase<TGraphErrors> {
+class LuaGraphError : public LuaROOTSpec<TGraphErrors> {
 	private:
 
 	public:
@@ -451,7 +455,7 @@ template<typename T> int LuaAddHist(lua_State* L)
 
 extern "C" void LoadLuaTHistLib(lua_State* L);
 
-class LuaTH1 : public LuaROOTBase<TH1D> {
+class LuaTH1 : public LuaROOTSpec<TH1D> {
 	private:
 
 	public:
@@ -489,7 +493,7 @@ class LuaTH1 : public LuaROOTBase<TH1D> {
 		virtual void AddNonClassMethods(lua_State* L);
 };
 
-class LuaTH2 : public LuaROOTBase<TH2D> {
+class LuaTH2 : public LuaROOTSpec<TH2D> {
 	private:
 
 	public:
@@ -541,7 +545,7 @@ class LuaTH2 : public LuaROOTBase<TH2D> {
 
 extern "C" void LoadLuaTSpectrumLib(lua_State* L);
 
-class LuaTSpectrum : public LuaROOTBase<TSpectrum> {
+class LuaTSpectrum : public LuaROOTSpec<TSpectrum> {
 	private:
 
 	public:
@@ -581,7 +585,7 @@ class LuaTSpectrum : public LuaROOTBase<TSpectrum> {
 
 extern "C" void LoadLuaTCutGLib(lua_State* L);
 
-class LuaTCutG : public LuaROOTBase<TCutG> {
+class LuaTCutG : public LuaROOTSpec<TCutG> {
 	private:
 
 	public:
@@ -601,7 +605,7 @@ class LuaTCutG : public LuaROOTBase<TCutG> {
 		void SetPoint(int n, double x, double y);
 
 		double Area();
-		double IntegralHist(LuaUserClass* h2d);
+		double IntegralHist(LuaROOTBase* h2d);
 
 		virtual void MakeAccessors(lua_State* L);
 		virtual void AddNonClassMethods(lua_State* L);
@@ -617,7 +621,7 @@ extern "C" void LoadLuaTTreeLib(lua_State* L);
 int luaExt_TTree_NewBranch_Interface(lua_State* L);
 int luaExt_TTree_GetBranch_Interface(lua_State* L);
 
-class LuaTTree : public LuaROOTBase<TTree> {
+class LuaTTree : public LuaROOTSpec<TTree> {
 	private:
 
 	public:

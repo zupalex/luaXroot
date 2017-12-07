@@ -42,9 +42,9 @@ int LuaGetROOTObjectFromDir(lua_State* L)
 
 	if (lua_type(L, -1) != LUA_TUSERDATA) return 0;
 
-	LuaUserClass* obj = GetUserData<LuaUserClass>(L, -1);
+	LuaROOTBase* obj = GetUserData<LuaROOTBase>(L, -1);
 
-	obj->SetROOTObject(ret);
+	obj->rootObj = ret;
 
 	return 1;
 }

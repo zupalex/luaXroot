@@ -39,11 +39,11 @@ void LuaTCanvas::Divide(int nrow_, int ncol_)
 	ncol = ncol_;
 }
 
-void LuaTCanvas::Draw(LuaUserClass* obj, int row, int col)
+void LuaTCanvas::Draw(LuaROOTBase* obj, int row, int col)
 {
 	if (obj == nullptr) return;
 
-	TObject* robj = obj->GetROOTObject();
+	TObject* robj = obj->rootObj;
 
 	int subpadnum = col + (ncol * (row - 1));
 

@@ -40,10 +40,10 @@ void LuaTFile::ReadKeys()
 	((TFile*) rootObj)->ReadKeys();
 }
 
-void LuaTFile::Refresh(string name, LuaUserClass* dest)
+void LuaTFile::Refresh(string name, LuaROOTBase* dest)
 {
 	delete ((TFile*) rootObj)->FindObject(name.c_str());
-	dest->SetROOTObject(((TFile*) rootObj)->Get(name.c_str()));
+	((TFile*) rootObj)->GetObject(name.c_str(), dest->rootObj);
 }
 
 void LuaTFile::MakeAccessors(lua_State* L)

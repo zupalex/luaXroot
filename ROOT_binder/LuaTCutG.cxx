@@ -20,9 +20,9 @@ double LuaTCutG::Area()
 	return ((TCutG*) rootObj)->Area();
 }
 
-double LuaTCutG::IntegralHist(LuaUserClass* h2d)
+double LuaTCutG::IntegralHist(LuaROOTBase* h2d)
 {
-	TH2* hist = dynamic_cast<TH2*>(h2d->GetROOTObject());
+	TH2* hist = dynamic_cast<TH2*>(h2d->rootObj);
 
 	if (hist != nullptr) return ((TCutG*) rootObj)->IntegralHist(hist, "width");
 	else return 0;
