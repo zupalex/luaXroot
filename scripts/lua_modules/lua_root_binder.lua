@@ -279,6 +279,8 @@ function TH1(args, ...)
 end
 
 AddPostInit("TH1", function(self)
+    self.bins = {}
+
     local _Fill = self.Fill
     function self:Fill(val, weight)
       if weight == nil then
@@ -300,6 +302,10 @@ AddPostInit("TH1", function(self)
     local _SetXProperties = self.SetXProperties
     function self:SetXProperties(nbinsx, xmin, xmax)
       _SetXProperties(self, nbinsx, xmin, xmax)
+      self.binwidth = (xmax-xmin)/nbinsx
+      self.nbinsx = nbinsx
+      self.xmin = xmin
+      self.xmax = xmax
       self:Draw()
     end
 
@@ -307,6 +313,35 @@ AddPostInit("TH1", function(self)
     function self:Integral(xmin, xmax)
       if xmin == nil or xmax == nil then xmin, xmax = 0, 0 end
       return _Integral(self, xmin, xmax)
+    end
+
+    local xprops = self:GetXProperties()
+    self.binwidth = (xprops[3]-xprops[2])/xprops[1]
+    self.nbinsx = xprops[1]
+    self.xmin = xprops[2]
+    self.xmax = xprops[3]
+
+    function self:GetBinWidth()
+      return self.binwidth
+    end
+
+    function self:GetBinNumber(x)
+      return math.floor((x-self.xmin)/self.binwidth)+1
+    end
+
+    for i=1, xprops[1]+2 do
+      self.bins[i] = 0
+    end
+
+    function self:Buffer(x, weight)
+      local bin = self:GetBinNumber(x)+1
+      if bin <= self.nbinsx+2 and bin >= 1 then
+        self.bins[bin] = self.bins[bin] + (weight or 1)
+      end
+    end
+
+    function self:RefreshROOTObj()
+      self:SetContent(self.bins)
     end
   end)
 
@@ -347,6 +382,8 @@ function TH2(args, ...)
 end
 
 AddPostInit("TH2", function(self)
+    self.bins = {}
+
     local _Fill = self.Fill
     function self:Fill(valx, valy, weight)
       if weight == nil then
@@ -359,12 +396,22 @@ AddPostInit("TH2", function(self)
     local _SetXProperties = self.SetXProperties
     function self:SetXProperties(nbinsx, xmin, xmax, drawopts)
       _SetXProperties(self, nbinsx, xmin, xmax)
+      self.binwidthx = (xmax-xmin)/nbinsx
+      self.nbinsx = nbinsx
+      self.xmin = xmin
+      self.xmax = xmax
+      self.nbins = (self.nbinsy+2)*(self.nbinsx+2)
       self:Draw(drawopts)
     end
 
     local _SetYProperties = self.SetYProperties
     function self:SetYProperties(nbinsy, ymin, ymax, drawopts)
       _SetYProperties(self, nbinsy, ymin, ymax)
+      self.binwidthy = (ymax-ymin)/nbinsy
+      self.nbinsy = nbinsy
+      self.ymin = ymin
+      self.ymax = ymax
+      self.nbins = (self.nbinsy+2)*(self.nbinsx+2)
       self:Draw(drawopts)
     end
 
@@ -392,6 +439,52 @@ AddPostInit("TH2", function(self)
     function self:Integral(xmin, xmax, ymin, ymax)
       if xmin == nil or xmax == nil or ymin == nil or ymax == nil then xmin, xmax, ymin, ymax = 0, 0, 0, 0 end
       return _Integral(self, xmin, xmax, ymin, ymax)
+    end
+
+    local xprops = self:GetXProperties()
+    local yprops = self:GetYProperties()
+
+    self.nbinsx = xprops[1]
+    self.xmin = xprops[2]
+    self.xmax = xprops[3]
+
+    self.nbinsy = yprops[1]
+    self.ymin = yprops[2]
+    self.ymax = yprops[3]
+
+    self.nbins = (yprops[1]+2)*(xprops[1]+2)
+
+    self.binwidthx = (xprops[3]-xprops[2])/xprops[1]
+    self.binwidthy = (yprops[3]-yprops[2])/yprops[1]
+
+    function self:GetBinWidthX()
+      return self.binwidthx
+    end
+
+    function self:GetBinWidthY()
+      return self.binwidthy
+    end
+
+    function self:GetBinNumber(x, y)
+      local binx = math.floor((x-self.xmin)/self.binwidthx)+1
+      local biny = math.floor((y-self.ymin)/self.binwidthy)+1
+
+      return binx+(biny)*(self.nbinsx+2)
+    end
+
+    for i=1, self.nbins do
+      self.bins[i] = 0
+    end
+
+    function self:Buffer(x, y, weight)
+      local bin = self:GetBinNumber(x, y)+1
+      if bin <= self.nbins and bin >= 1 then
+        self.bins[bin] = self.bins[bin] + (weight or 1)
+      end
+    end
+
+    function self:RefreshROOTObj()
+      self:SetContent(self.bins)
     end
   end)
 

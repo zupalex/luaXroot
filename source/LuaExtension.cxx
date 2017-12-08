@@ -83,6 +83,19 @@ int luaExt_gettime(lua_State* L)
 	return 2;
 }
 
+int luaExt_nanosleep(lua_State* L)
+{
+	timespec ts;
+	double timer = lua_tonumber(L, 1);
+
+	ts.tv_sec = floor(timer);
+	ts.tv_nsec = (timer-ts.tv_sec)*1e9;
+
+	nanosleep(&ts, nullptr);
+
+	return 0;
+}
+
 string GetLuaTypename(int type_)
 {
 	if (type_ == LUA_TNUMBER) return "number";
@@ -369,15 +382,15 @@ int LuaListDirContent(lua_State* L)
 
 		switch (fstat.st_mode & S_IFMT)
 		{
-		case S_IFDIR:
-			dtype = "dir";
-			break;
-		case S_IFREG:
-			dtype = "file";
-			break;
-		default:
-			dtype = "undetermined";
-			break;
+			case S_IFDIR:
+				dtype = "dir";
+				break;
+			case S_IFREG:
+				dtype = "file";
+				break;
+			default:
+				dtype = "undetermined";
+				break;
 		}
 
 		if (dtype != "undetermined")
@@ -579,7 +592,7 @@ int SetMemoryBlock(lua_State* L, char* address)
 
 			effectiveSize *= array_size;
 
-			setUserDataFns[type](L, address+totsize);
+			setUserDataFns[type](L, address + totsize);
 		}
 		else
 		{
@@ -605,7 +618,7 @@ int SetMemoryBlock(lua_State* L, char* address)
 				lua_pushinteger(L, array_size);
 			}
 
-			setUserDataFns[type](L, address+totsize);
+			setUserDataFns[type](L, address + totsize);
 		}
 
 		totsize += effectiveSize;
@@ -647,7 +660,7 @@ void GetMemoryBlock(lua_State* L, char* address)
 			lua_getfield(L, -1, "array_size");
 			int array_size = lua_tointegerx(L, -1, nullptr);
 			if (lua_type(L, -1) == LUA_TNIL) lua_pop(L, 1);
-			getUserDataFns[type](L, address+totsize);
+			getUserDataFns[type](L, address + totsize);
 
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);
@@ -672,7 +685,7 @@ void GetMemoryBlock(lua_State* L, char* address)
 				type = type.substr(0, arrayPos + 1) + "]";
 			}
 
-			getUserDataFns[type](L, address+totsize);
+			getUserDataFns[type](L, address + totsize);
 
 			if (type != "string") effectiveSize = userDataSizes[type];
 			else effectiveSize = lua_rawlen(L, -1) + sizeof(int);

@@ -315,6 +315,13 @@ map<string, mutex> tasksMutexes;
 map<lua_State*, vector<string>> tasksControlSignals;
 map<lua_State*, vector<string>> tasksPendingSignals;
 
+int luaExt_GetTaskName(lua_State* L)
+{
+	lua_pushstring(L, tasksNames[L].c_str());
+
+	return 1;
+}
+
 int TasksList_C(lua_State* L)
 {
 	lua_newtable(L);
@@ -389,8 +396,6 @@ void* NewTaskFn(void* arg)
 	//     luaopen_libLuaXRootlib ( L );
 	if (!args->packages.empty())
 	{
-		//         cout << "Some additional packages need to be loaded" << endl;
-
 		lua_getglobal(L, "LoadAdditionnalPackages");
 
 		luaL_loadstring(L, (args->packages).c_str());
@@ -433,7 +438,7 @@ void* NewTaskFn(void* arg)
 	{
 		const char* taskfn_name = lua_tostring(L, -1);
 		lua_pop(L, 1);
-		//         cout << "Task given as string: " << taskfn_name << endl;
+//		         cout << "Task given as string: " << taskfn_name << endl;
 		TryGetGlobalField(L, taskfn_name);
 	}
 
@@ -466,7 +471,14 @@ void* NewTaskFn(void* arg)
 
 	tasksStatus[taskname] = "running";
 
-	lua_pcall(L, nargs, LUA_MULTRET, 0);
+	int success = lua_pcall(L, nargs, LUA_MULTRET, 0);
+
+	if (success != 0)
+	{
+		const char* errmsg = lua_tostring(L, -1);
+		cerr << "ERROR while executing task " << taskname << endl;
+		cerr << errmsg << endl;
+	}
 
 	tasksMutexes[taskname].unlock();
 
@@ -549,7 +561,7 @@ int GetTaskStatus(lua_State* L)
 	return 1;
 }
 
-void PushSignal(string taskname, string signal)
+void PushSignal(string taskname, string signal, bool wipequeue)
 {
 	vector<string>* sigs;
 
@@ -560,22 +572,22 @@ void PushSignal(string taskname, string signal)
 		sigs = &tasksControlSignals[tasksStates[taskname]];
 		sigs->clear();
 	}
-	else sigs = &tasksPendingSignals[tasksStates[taskname]];
+	else
+	{
+		sigs = &tasksPendingSignals[tasksStates[taskname]];
+		if (wipequeue) sigs->clear();
+	}
 
 	sigs->push_back(signal);
 }
 
 int SendSignal_C(lua_State* L)
 {
-	if (!CheckLuaArgs(L, 1, true, "SendSignal_C", LUA_TSTRING, LUA_TSTRING))
-	{
-		return 0;
-	}
-
 	string taskname = lua_tostring(L, 1);
 	string signal = lua_tostring(L, 2);
+	bool wipequeue = lua_tointegerx(L, 3, nullptr);
 
-	PushSignal(taskname, signal);
+	PushSignal(taskname, signal, wipequeue);
 
 	lua_pushboolean(L, true);
 
@@ -750,6 +762,9 @@ int luaExt_NewTApplication(lua_State* L)
 		pthread_create(&startRootEventProcessrTask, nullptr, StartRootEventProcessor, nullptr);
 
 		theApp->WaitForUpdateReceiver();
+
+		tasksStates["master"] = L;
+		tasksNames[L] = "master";
 
 		cout << "ROOT " << gROOT->GetVersion() << "   http://root.cern.ch   The ROOT Team" << endl;
 		cout << "luaXroot  https://github.com/zupalex/luaXroot   Alexandre Lepailleur (alex.lepailleur@gmail.com)" << endl;

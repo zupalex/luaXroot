@@ -197,6 +197,9 @@ function socket.CreateClient(type, address)
   elseif type == "IPV6" or type == "ipv6" then
     cfd = NewSocket({domain=AF_INET6, type=SOCK_STREAM, protocol=0})  
     address, port = SeparateAddressAndPort(address)
+  elseif type == "http" then
+    cfd = NewSocket({domain=AF_INET, type=SOCK_STREAM, protocol=0})
+    port = "http"
   else
     print("Invalid socket type", type)
     print("Type socket.CreateClient() to get detailed help")

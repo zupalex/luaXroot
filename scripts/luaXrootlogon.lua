@@ -63,67 +63,17 @@ function require(pckg)
   return _require(pckg)
 end
 
+RootTasks = {}
+
 if IsMasterState then 
 -- Initialize the ROOT interaction application (event processing in TCanvas, etc...)
   theApp = TApplication()
 
-  RootTasks = {}
-
-  local function GetAdditionnalPackages()
-    local packaddons = {}
-
-    for k, v in pairs(package.loaded) do
-      if not defaultPackages[k] and k ~= "luaXrootlogon" then
-        local packpath = package.searchpath(k, package.path)
-
-        if packpath ~= nil then
-          packaddons[k] = packpath
-        end
-      end
-    end
-
-    return packaddons
-  end
-
 --******** Task Managing Functions ********--
-
-  function StartNewTask(taskname, fn, ...)
-    RootTasks[taskname] = {
-      name = taskname,
-      taskfn = fn,
-      args = table.pack(...),
-    }
-
-    local serialized_task = serpent.dump(RootTasks[taskname])
-    local serialized_packslist = serpent.dump(GetAdditionnalPackages())
-
-    StartNewTask_C(serialized_task, serialized_packslist)
-  end
 
   function GetStatus(taskname)
     local status = GetTaskStatus(taskname)
     return status
-  end
-
-  function SendSignal(taskname, sig, ...)
-    local args = table.pack(...)
-    local args_str = serpent.dump(args)
-
-    if type(sig) == "string" then
-      if #args > 0 then
-        sig = sig.."$ARGS"..args_str
-      end
-
-      SendSignal_C(taskname, sig)
-    elseif type(sig) == "function" then
-      local sig_str = serpent.dump(sig)
-
-      if #args > 0 then
-        sig_str = sig_str.."$ARGS"..args_str
-      end
-
-      SendSignal_C(taskname, sig_str)
-    end
   end
 
   function TasksList(doprint)
@@ -211,10 +161,82 @@ else
   theApp = GetTheApp()
 end
 
--- Create a sleep function
-function sleep(s)
-  local t0 = GetClockTime("second")
-  while GetClockTime("second") - t0 <= s do end
+--******** Task Managing Functions ********--
+
+local function GetAdditionnalPackages()
+  local packaddons = {}
+
+  for k, v in pairs(package.loaded) do
+    if not defaultPackages[k] and k ~= "luaXrootlogon" then
+      local packpath = package.searchpath(k, package.path)
+
+      if packpath ~= nil then
+        packaddons[k] = packpath
+      end
+    end
+  end
+
+  return packaddons
+end
+
+function StartNewTask(taskname, fn, ...)
+  RootTasks[taskname] = {
+    name = taskname,
+    taskfn = fn,
+    args = table.pack(...),
+  }
+
+  local serialized_task = serpent.dump(RootTasks[taskname])
+  local serialized_packslist = serpent.dump(GetAdditionnalPackages())
+
+  StartNewTask_C(serialized_task, serialized_packslist)
+end
+
+function GetStatus(taskname)
+  local status = GetTaskStatus(taskname)
+  return status
+end
+
+function SendSignal(taskname, sig, ...)
+  local args = table.pack(...)
+  local args_str = serpent.dump(args)
+
+  if type(sig) == "string" then
+    if #args > 0 then
+      sig = sig.."$ARGS"..args_str
+    end
+
+    SendSignal_C(taskname, sig)
+  elseif type(sig) == "function" then
+    local sig_str = serpent.dump(sig)
+
+    if #args > 0 then
+      sig_str = sig_str.."$ARGS"..args_str
+    end
+
+    SendSignal_C(taskname, sig_str)
+  end
+end
+
+function SendSignalUnique(taskname, sig, ...)
+  local args = table.pack(...)
+  local args_str = serpent.dump(args)
+
+  if type(sig) == "string" then
+    if #args > 0 then
+      sig = sig.."$ARGS"..args_str
+    end
+
+    SendSignal_C(taskname, sig, true)
+  elseif type(sig) == "function" then
+    local sig_str = serpent.dump(sig)
+
+    if #args > 0 then
+      sig_str = sig_str.."$ARGS"..args_str
+    end
+
+    SendSignal_C(taskname, sig_str, true)
+  end
 end
 
 -- Support function to setup new threads

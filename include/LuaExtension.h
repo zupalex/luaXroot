@@ -79,6 +79,7 @@ int saveprompthistory(lua_State* L);
 int clearprompthistory(lua_State* L);
 
 int luaExt_gettime(lua_State* L);
+int luaExt_nanosleep(lua_State* L);
 
 string GetLuaTypename(int type_);
 

@@ -126,12 +126,26 @@ double LuaTH1::Integral(double xmin, double xmax)
 	}
 }
 
+void LuaTH1::SetBinContent(int bin, double content)
+{
+	((TH1D*) rootObj)->SetBinContent(bin, content);
+}
+
+void LuaTH1::SetContent(vector<double> content)
+{
+	((TH1D*) rootObj)->SetContent(&content[0]);
+}
+
 void LuaTH1::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTH1::SetTitle, "SetTitle");
 	AddClassMethod(L, &LuaTH1::GetTitle, "GetTitle");
 
 	AddClassMethod(L, &LuaTH1::DoFill, "Fill");
+
+	AddClassMethod(L, &LuaTH1::SetBinContent, "SetBinContent");
+	AddClassMethod(L, &LuaTH1::SetContent, "SetContent");
+
 	AddClassMethod(L, &LuaTH1::Reset, "Reset");
 	AddClassMethod(L, &LuaTH1::Rebuild, "Rebuild");
 	AddClassMethod(L, &LuaTH1::Scale, "Scale");
@@ -331,12 +345,26 @@ double LuaTH2::Integral(double xmin, double xmax, double ymin, double ymax)
 	}
 }
 
+void LuaTH2::SetBinContent(int bin, double content)
+{
+	((TH2D*) rootObj)->SetBinContent(bin, content);
+}
+
+void LuaTH2::SetContent(vector<double> content)
+{
+	((TH2D*) rootObj)->SetContent(&content[0]);
+}
+
 void LuaTH2::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTH2::SetTitle, "SetTitle");
 	AddClassMethod(L, &LuaTH2::GetTitle, "GetTitle");
 
 	AddClassMethod(L, &LuaTH2::DoFill, "Fill");
+
+	AddClassMethod(L, &LuaTH2::SetBinContent, "SetBinContent");
+	AddClassMethod(L, &LuaTH2::SetContent, "SetContent");
+
 	AddClassMethod(L, &LuaTH2::Reset, "Reset");
 	AddClassMethod(L, &LuaTH2::Rebuild, "Rebuild");
 	AddClassMethod(L, &LuaTH2::Scale, "Scale");
@@ -379,12 +407,12 @@ extern "C" void LoadLuaTHistLib(lua_State* L)
 	rootObjectAliases["TH1D"] = "TH1";
 	rootObjectAliases["TH1"] = "TH1";
 
-	AddObjectConstructor<LuaTH1, string, string, int, int, int>(L, "TH1");
+	AddObjectConstructor<LuaTH1, string, string, int, double, double>(L, "TH1");
 
 	MakeAccessFunctions<LuaTH2>(L, "TH2");
 	rootObjectAliases["TH2F"] = "TH2";
 	rootObjectAliases["TH2D"] = "TH2";
 	rootObjectAliases["TH2"] = "TH2";
 
-	AddObjectConstructor<LuaTH2, string, string, int, int, int, int, int, int>(L, "TH2");
+	AddObjectConstructor<LuaTH2, string, string, int, double, double, int, double, double>(L, "TH2");
 }

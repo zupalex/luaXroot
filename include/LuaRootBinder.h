@@ -47,6 +47,8 @@ void sigtstp_handler_pause(int signal);
 // ------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------ //
 
+int luaExt_GetTaskName(lua_State* L);
+
 // --------------------------------- TApplication Binder---------------------------- //
 
 int luaExt_NewTApplication(lua_State* L);
@@ -251,7 +253,7 @@ int LuaMakeSyncSafe(lua_State*L);
 
 int GetTaskStatus(lua_State* L);
 
-void PushSignal(string taskname, string signal);
+void PushSignal(string taskname, string signal, bool wipequeue = false);
 
 int SendSignal_C(lua_State* L);
 int CheckSignals_C(lua_State* L);
@@ -298,10 +300,12 @@ inline void SetupTObjectMetatable(lua_State* L)
 static const luaL_Reg luaXroot_lib[] =
 	{
 		{ "GetClockTime", luaExt_gettime },
+		{ "sleep", luaExt_nanosleep },
 		{ "SizeOf", luaExt_GetUserDataSize },
 
 		{ "TasksList_C", TasksList_C },
 		{ "StartNewTask_C", StartNewTask_C },
+		{ "GetTaskName", luaExt_GetTaskName },
 		{ "MakeSyncSafe", LuaMakeSyncSafe },
 		{ "LockTaskMutex", LockTaskMutex },
 		{ "ReleaseTaskMutex", ReleaseTaskMutex },

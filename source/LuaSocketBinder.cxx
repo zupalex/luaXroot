@@ -195,7 +195,7 @@ int LuaSocketBind(lua_State* L)
 		}
 
 		socketsList[sockfd].address = address;
-		socketsList[sockfd].port = stoi(portno);
+		socketsList[sockfd].port = portno;
 	}
 	else if (sock_domain == AF_INET6)
 	{
@@ -276,7 +276,7 @@ int LuaSocketConnect(lua_State* L)
 		}
 
 		socketsList[sockfd].address = address;
-		socketsList[sockfd].port = stoi(portno);
+		socketsList[sockfd].port = portno;
 	}
 	else if (sock_domain == AF_INET6)
 	{

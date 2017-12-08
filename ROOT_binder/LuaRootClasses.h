@@ -464,7 +464,7 @@ class LuaTH1 : public LuaROOTSpec<TH1D> {
 			rootObj = new TH1D();
 		}
 
-		LuaTH1(string name, string title, int nbinsx, int xmin, int xmax)
+		LuaTH1(string name, string title, int nbinsx, double xmin, double xmax)
 		{
 			rootObj = new TH1D(name.c_str(), title.c_str(), nbinsx, xmin, xmax);
 		}
@@ -474,6 +474,9 @@ class LuaTH1 : public LuaROOTSpec<TH1D> {
 		}
 
 		void DoFill(double x, double w);
+		void SetBinContent(int bin, double content);
+		void SetContent(vector<double> content);
+
 		void Reset();
 		void Rebuild();
 		void Scale(double s);
@@ -502,7 +505,7 @@ class LuaTH2 : public LuaROOTSpec<TH2D> {
 			rootObj = new TH2D();
 		}
 
-		LuaTH2(string name, string title, int nbinsx, int xmin, int xmax, int nbinsy, int ymin, int ymax)
+		LuaTH2(string name, string title, int nbinsx, double xmin, double xmax, int nbinsy, double ymin, double ymax)
 		{
 			rootObj = new TH2D(name.c_str(), title.c_str(), nbinsx, xmin, xmax, nbinsy, ymin, ymax);
 		}
@@ -515,6 +518,9 @@ class LuaTH2 : public LuaROOTSpec<TH2D> {
 		TH1D* projY = 0;
 
 		void DoFill(double x, double y, double w);
+		void SetBinContent(int bin, double content);
+		void SetContent(vector<double> content);
+
 		void Reset();
 		void Rebuild();
 		void Scale(double s);
