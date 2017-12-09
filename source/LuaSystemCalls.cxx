@@ -611,6 +611,17 @@ int LuaSysFtok(lua_State* L)
 
 int LuaOpenNewSlaveTerminal(lua_State* L)
 {
+	lua_unpackarguments(L, 1, "LuaOpenNewSlaveTerminal argument table",
+		{ "bgcolor", "fgcolor", "fontstyle", "fontsize", "geometry" },
+		{ LUA_TSTRING, LUA_TSTRING, LUA_TSTRING, LUA_TNUMBER, LUA_TSTRING },
+		{ false, false, false, false, false });
+
+	string bgcolor = lua_tostringx(L, -5);
+	string fgcolor = lua_tostringx(L, -4);
+	string fontstyle = lua_tostringx(L, -3);
+	int fontsize = lua_tointegerx(L, -2, nullptr);
+	string geomopts = lua_tostringx(L, -1);
+
 	int pt = posix_openpt(O_RDWR);
 	if (pt == -1)
 	{
@@ -635,7 +646,10 @@ int LuaOpenNewSlaveTerminal(lua_State* L)
 	string ptname_str = ptname;
 
 	std::ostringstream oss;
-	oss << "xterm -S" << (ptname_str.find_last_of("/") + 1) << "/" << pt << " &";
+
+	oss << "xterm -hold" << (bgcolor.empty() ? "" : (string) (" -bg '" + bgcolor + "'")) << (fgcolor.empty() ? "" : (string) (" -fg '" + fgcolor + "'"))
+			<< (fontstyle.empty() ? "" : (string) (" -fa '" + fontstyle + "'")) << (fontsize > 0 ? (string) (" -fs " + to_string(fontsize)) : "")
+			<< (geomopts.empty() ? "" : (string) (" -geometry '" + geomopts + "'")) << " -S" << (ptname_str.find_last_of("/") + 1) << "/" << pt << " &";
 	int success = system(oss.str().c_str());
 
 	if (success == -1)

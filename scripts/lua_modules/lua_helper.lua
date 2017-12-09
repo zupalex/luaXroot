@@ -484,8 +484,9 @@ function AttachOutput(file, command, args_table, env_table)
 end
 
 local _MakeSlaveTerm = MakeSlaveTerm
-function MakeSlaveTerm()
-  local fd = _MakeSlaveTerm()
-  
+function MakeSlaveTerm(args)
+  if args == nil then args = {fontstyle = "Monospace", fontsize = 10} end
+  local fd = _MakeSlaveTerm(args)
+
   return FileObject({fd=fd})
 end
