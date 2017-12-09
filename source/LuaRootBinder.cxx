@@ -31,57 +31,6 @@ void SetROOTDrawableClasses()
 	drawableROOTClasses["TF1"] = true;
 }
 
-void LuaCanvas::HandleInput(EEventType event, int px, int py)
-{
-	if (event == kButton1Double)
-	{
-		TPad* clone = (TPad*) this->GetClickSelectedPad()->Clone();
-
-		string clonename = clone->GetName();
-		clonename += "_clone";
-
-		LuaCanvas* prev_clone = (LuaCanvas*) gDirectory->FindObjectAny(clonename.c_str());
-
-		if (prev_clone != nullptr)
-		{
-			prev_clone->Close();
-			delete prev_clone;
-			prev_clone = nullptr;
-		}
-
-		TList* prims = clone->GetListOfPrimitives();
-
-		vector<TObject*> drawables;
-		vector<string> drawopts;
-
-		clone->cd();
-
-		for (int i = 0; i < prims->GetSize(); i++)
-		{
-			string pclass = prims->At(i)->ClassName();
-
-			if (drawableROOTClasses.find(pclass) != drawableROOTClasses.end())
-			{
-				drawables.push_back(prims->At(i)->Clone());
-				drawopts.push_back(prims->At(i)->GetDrawOption());
-			}
-		}
-
-		if (drawables.size() > 0)
-		{
-			LuaCanvas* clone_can = new LuaCanvas();
-
-			clone_can->SetName(clonename.c_str());
-
-			clone_can->cd();
-
-			for (unsigned int i = 0; i < drawables.size(); i++)
-				drawables[i]->Draw(drawopts[i].c_str());
-		}
-	}
-	else TCanvas::HandleInput(event, px, py);
-}
-
 void sigtstp_handler_stop(int i)
 {
 	if (i == SIGTSTP)
@@ -238,12 +187,64 @@ RootAppManager* theApp = 0;
 RootAppManager::RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options, Int_t numOptions)
 		: TApplication(appClassName, argc, argv, options, numOptions)
 {
-
 }
+
+ClassImp(RootAppManager)
 
 LuaCanvas::LuaCanvas()
 		: TCanvas()
 {
+}
+
+void LuaCanvas::HandleInput(EEventType event, int px, int py)
+{
+	if (event == kButton1Double)
+	{
+		TPad* clone = (TPad*) this->GetClickSelectedPad()->Clone();
+
+		string clonename = clone->GetName();
+		clonename += "_clone";
+
+		LuaCanvas* prev_clone = (LuaCanvas*) gDirectory->FindObjectAny(clonename.c_str());
+
+		if (prev_clone != nullptr)
+		{
+			prev_clone->Close();
+			delete prev_clone;
+			prev_clone = nullptr;
+		}
+
+		TList* prims = clone->GetListOfPrimitives();
+
+		vector<TObject*> drawables;
+		vector<string> drawopts;
+
+		clone->cd();
+
+		for (int i = 0; i < prims->GetSize(); i++)
+		{
+			string pclass = prims->At(i)->ClassName();
+
+			if (drawableROOTClasses.find(pclass) != drawableROOTClasses.end())
+			{
+				drawables.push_back(prims->At(i)->Clone());
+				drawopts.push_back(prims->At(i)->GetDrawOption());
+			}
+		}
+
+		if (drawables.size() > 0)
+		{
+			LuaCanvas* clone_can = new LuaCanvas();
+
+			clone_can->SetName(clonename.c_str());
+
+			clone_can->cd();
+
+			for (unsigned int i = 0; i < drawables.size(); i++)
+				drawables[i]->Draw(drawopts[i].c_str());
+		}
+	}
+	else TCanvas::HandleInput(event, px, py);
 }
 
 ClassImp(LuaCanvas)
@@ -803,7 +804,10 @@ int luaExt_TApplication_Update(lua_State* L)
 			itr->second->Update();
 			itr++;
 		}
-		else itr = canvasTracker.erase(itr);
+		else
+		{
+			itr = canvasTracker.erase(itr);
+		}
 	}
 
 	theApp->NotifyUpdateDone();
@@ -853,6 +857,9 @@ int luaExt_TApplication_Terminate(lua_State* L)
 			unlink(itr->second.address.c_str());
 			close(itr->first);
 		}
+
+		for (auto itr = tasksNames.begin(); itr != tasksNames.end(); itr++)
+			PushSignal(itr->second, "stop");
 
 //		remove(theApp->msgq_address.c_str());
 //

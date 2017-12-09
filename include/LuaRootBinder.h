@@ -162,6 +162,11 @@ class RootAppManager : public TApplication {
 			rootProcessLoopLock.unlock();
 		}
 
+		void CanvasClosed()
+		{
+			cout << "canvas closed" << endl;
+		}
+
 		bool shouldStop = false;
 		bool safeSync = false;
 
@@ -197,6 +202,7 @@ class LuaCanvas : public TCanvas {
 
 	public:
 		LuaCanvas();
+
 		virtual ~LuaCanvas()
 		{
 			HasBeenKilled();

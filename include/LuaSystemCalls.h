@@ -35,6 +35,8 @@ int LuaSysSelect(lua_State* L);
 
 int LuaSysFtok(lua_State* L);
 
+int LuaOpenNewSlaveTerminal(lua_State* L);
+
 static const luaL_Reg luaSysCall_lib[] =
 	{
 		{ "SysOpen", LuaSysOpen },
@@ -55,6 +57,8 @@ static const luaL_Reg luaSysCall_lib[] =
 		{ "SysSelect", LuaSysSelect },
 
 		{ "SysFtok", LuaSysFtok },
+
+		{ "MakeSlaveTerm", LuaOpenNewSlaveTerminal },
 
 		{ NULL, NULL } };
 

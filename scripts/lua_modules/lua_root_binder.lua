@@ -243,6 +243,8 @@ end
 -------------------------------- TH1 --------------------------------
 ---------------------------------------------------------------------
 
+_LuaRootObj.activehists = {}
+
 local function PrintTHErrorCommon()
   print("Required arguments:")
   print("  [name] -> a string, no space")
@@ -280,6 +282,16 @@ end
 
 AddPostInit("TH1", function(self)
     self.bins = {}
+
+    function self:RemoveFromActiveList()
+      _LuaRootObj.activehists[self] = nil
+    end
+
+    local _Draw = self.Draw
+    function self:Draw(opts)
+      _Draw(self, opts)
+      _LuaRootObj.activehists[self] = true
+    end
 
     local _Fill = self.Fill
     function self:Fill(val, weight)
@@ -329,9 +341,9 @@ AddPostInit("TH1", function(self)
       return math.floor((x-self.xmin)/self.binwidth)+1
     end
 
-    for i=1, xprops[1]+2 do
-      self.bins[i] = 0
-    end
+--    for i=1, xprops[1]+2 do
+--      self.bins[i] = 0
+--    end
 
     function self:Buffer(x, weight)
       local bin = self:GetBinNumber(x)+1
@@ -383,6 +395,16 @@ end
 
 AddPostInit("TH2", function(self)
     self.bins = {}
+
+    function self:RemoveFromActiveList()
+      _LuaRootObj.activehists[self] = nil
+    end
+
+    local _Draw = self.Draw
+    function self:Draw(opts)
+      _Draw(self, opts)
+      _LuaRootObj.activehists[self] = true
+    end
 
     local _Fill = self.Fill
     function self:Fill(valx, valy, weight)
@@ -472,9 +494,9 @@ AddPostInit("TH2", function(self)
       return binx+(biny)*(self.nbinsx+2)
     end
 
-    for i=1, self.nbins do
-      self.bins[i] = 0
-    end
+--    for i=1, self.nbins do
+--      self.bins[i] = 0
+--    end
 
     function self:Buffer(x, y, weight)
       local bin = self:GetBinNumber(x, y)+1

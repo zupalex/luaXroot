@@ -230,7 +230,7 @@ function string.find_last_occurence(str, pattern)
     prev_e = e
     s, e = str:find(pattern, e+1)
   end
-  
+
   return prev_s, prev_e
 end
 
@@ -481,4 +481,11 @@ function AttachOutput(file, command, args_table, env_table)
   SysFork({fn=execfn, args=args_table, preinit=prefn})
 
   return PipeObject({type = 1, fd = fds.output})
+end
+
+local _MakeSlaveTerm = MakeSlaveTerm
+function MakeSlaveTerm()
+  local fd = _MakeSlaveTerm()
+  
+  return FileObject({fd=fd})
 end

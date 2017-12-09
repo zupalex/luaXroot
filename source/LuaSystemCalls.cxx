@@ -39,15 +39,15 @@ int LuaSysFork(lua_State* L)
 
 	switch (childid = fork())
 	{
-	case 0:
-		lua_getglobal(L, "theApp");
-		lua_pushboolean(L, 1);
-		lua_setfield(L, -2, "isforked");
-		lua_pop(L, 1);
+		case 0:
+			lua_getglobal(L, "theApp");
+			lua_pushboolean(L, 1);
+			lua_setfield(L, -2, "isforked");
+			lua_pop(L, 1);
 
-		lua_pcall(L, nargs, LUA_MULTRET, 0);
+			lua_pcall(L, nargs, LUA_MULTRET, 0);
 
-		exit(0);
+			exit(0);
 	}
 
 	childProcessTracker.push_back(childid);
@@ -605,6 +605,48 @@ int LuaSysFtok(lua_State* L)
 	key_t fkey = ftok(pathname, proj_id > 0 ? proj_id : 'Z');
 
 	lua_pushinteger(L, fkey);
+
+	return 1;
+}
+
+int LuaOpenNewSlaveTerminal(lua_State* L)
+{
+	int pt = posix_openpt(O_RDWR);
+	if (pt == -1)
+	{
+		std::cerr << "Could not open pseudo terminal.\n";
+		return 0;
+	}
+	char* ptname = ptsname(pt);
+	if (!ptname)
+	{
+		std::cerr << "Could not get pseudo terminal device name.\n";
+		close(pt);
+		return 0;
+	}
+
+	if (unlockpt(pt) == -1)
+	{
+		std::cerr << "Could not get pseudo terminal device name.\n";
+		close(pt);
+		return 0;
+	}
+
+	string ptname_str = ptname;
+
+	std::ostringstream oss;
+	oss << "xterm -S" << (ptname_str.find_last_of("/") + 1) << "/" << pt << " &";
+	int success = system(oss.str().c_str());
+
+	if (success == -1)
+	{
+		cerr << "Error while creating slave terminal..." << errno << endl;
+		return 0;
+	}
+
+	int xterm_fd = open(ptname, O_RDWR);
+
+	lua_pushinteger(L, xterm_fd);
 
 	return 1;
 }
