@@ -612,10 +612,12 @@ int LuaSysFtok(lua_State* L)
 int LuaOpenNewSlaveTerminal(lua_State* L)
 {
 	lua_unpackarguments(L, 1, "LuaOpenNewSlaveTerminal argument table",
-		{ "bgcolor", "fgcolor", "fontstyle", "fontsize", "geometry" },
-		{ LUA_TSTRING, LUA_TSTRING, LUA_TSTRING, LUA_TNUMBER, LUA_TSTRING },
-		{ false, false, false, false, false });
+		{ "title", "label", "bgcolor", "fgcolor", "fontstyle", "fontsize", "geometry" },
+		{ LUA_TSTRING, LUA_TSTRING, LUA_TSTRING, LUA_TSTRING, LUA_TSTRING, LUA_TNUMBER, LUA_TSTRING },
+		{ false, false, false, false, false, false, false });
 
+	string title = lua_tostringx(L, -7);
+	string label = lua_tostringx(L, -6);
 	string bgcolor = lua_tostringx(L, -5);
 	string fgcolor = lua_tostringx(L, -4);
 	string fontstyle = lua_tostringx(L, -3);
@@ -649,6 +651,7 @@ int LuaOpenNewSlaveTerminal(lua_State* L)
 
 	oss << "xterm -hold" << (bgcolor.empty() ? "" : (string) (" -bg '" + bgcolor + "'")) << (fgcolor.empty() ? "" : (string) (" -fg '" + fgcolor + "'"))
 			<< (fontstyle.empty() ? "" : (string) (" -fa '" + fontstyle + "'")) << (fontsize > 0 ? (string) (" -fs " + to_string(fontsize)) : "")
+			<< (title.empty() ? "" : (string) (" -T '" + title + "'")) << (label.empty() ? "" : (string) (" -n '" + label + "'"))
 			<< (geomopts.empty() ? "" : (string) (" -geometry '" + geomopts + "'")) << " -S" << (ptname_str.find_last_of("/") + 1) << "/" << pt << " &";
 	int success = system(oss.str().c_str());
 
