@@ -7,7 +7,7 @@ What it does:
     
 What it can do:
 - A powerful TTree binder allowing the creation and manipulation of TTree from a Lua script without having to interact with the C side at all.
-- Provide a base C++ class which can be used to create custom user classes that can be easily compiled from the interpreter.  
+- Provides a base C++ class which can be used to create custom user classes that can be easily compiled from the interpreter.  
       -> Compiles libraries (using ROOT cling) that can be reloaded from a Lua script or from the interpreter.  
       -> These custom classes can be used as TTree branches.  
       -> API functions available to easily create Lua Getter and Setter for class members.  
