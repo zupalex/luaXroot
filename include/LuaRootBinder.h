@@ -38,6 +38,8 @@ extern mutex rootProcessLoopLock;
 extern mutex syncSafeGuard;
 extern int updateRequestPending;
 
+extern string sharedBuffer;
+
 void sigtstp_handler_stop(int signal);
 void sigtstp_handler_pause(int signal);
 
@@ -48,6 +50,10 @@ void sigtstp_handler_pause(int signal);
 // ------------------------------------------------------------------------------------------------------------------ //
 
 int luaExt_GetTaskName(lua_State* L);
+int luaExt_SendCmdToMaster(lua_State* L);
+
+int luaExt_SetSharedBuffer(lua_State* L);
+int luaExt_GetSharedBuffer(lua_State* L);
 
 // --------------------------------- TApplication Binder---------------------------- //
 
@@ -312,6 +318,7 @@ static const luaL_Reg luaXroot_lib[] =
 		{ "TasksList_C", TasksList_C },
 		{ "StartNewTask_C", StartNewTask_C },
 		{ "GetTaskName", luaExt_GetTaskName },
+		{ "SendMasterCmd", luaExt_SendCmdToMaster },
 		{ "MakeSyncSafe", LuaMakeSyncSafe },
 		{ "LockTaskMutex", LockTaskMutex },
 		{ "ReleaseTaskMutex", ReleaseTaskMutex },
@@ -331,6 +338,9 @@ static const luaL_Reg luaXroot_lib[] =
 		{ "clearprompthistory", clearprompthistory },
 
 		{ "_ctor", luaExt_Ctor },
+
+		{ "SetSharedBuffer", luaExt_SetSharedBuffer },
+		{ "GetSharedBuffer", luaExt_GetSharedBuffer },
 
 		{ NULL, NULL } };
 

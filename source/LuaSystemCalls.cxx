@@ -649,7 +649,7 @@ int LuaOpenNewSlaveTerminal(lua_State* L)
 
 	std::ostringstream oss;
 
-	oss << "xterm -hold" << (bgcolor.empty() ? "" : (string) (" -bg '" + bgcolor + "'")) << (fgcolor.empty() ? "" : (string) (" -fg '" + fgcolor + "'"))
+	oss << "xterm -ah" << (bgcolor.empty() ? "" : (string) (" -bg '" + bgcolor + "'")) << (fgcolor.empty() ? "" : (string) (" -fg '" + fgcolor + "'"))
 			<< (fontstyle.empty() ? "" : (string) (" -fa '" + fontstyle + "'")) << (fontsize > 0 ? (string) (" -fs " + to_string(fontsize)) : "")
 			<< (title.empty() ? "" : (string) (" -T '" + title + "'")) << (label.empty() ? "" : (string) (" -n '" + label + "'"))
 			<< (geomopts.empty() ? "" : (string) (" -geometry '" + geomopts + "'")) << " -S" << (ptname_str.find_last_of("/") + 1) << "/" << pt << " &";

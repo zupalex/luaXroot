@@ -7,6 +7,8 @@
 #include "TUnixSystem.h"
 #include "TSysEvtHandler.h"
 
+string sharedBuffer;
+
 map<string, string> rootObjectAliases;
 
 map<TObject*, LuaCanvas*> canvasTracker;
@@ -320,6 +322,41 @@ int luaExt_GetTaskName(lua_State* L)
 {
 	lua_pushstring(L, tasksNames[L].c_str());
 
+	return 1;
+}
+
+int luaExt_SendCmdToMaster(lua_State* L)
+{
+	string cmd = lua_tostring(L, 1);
+
+	int success = luaL_loadstring(lua, cmd.c_str());
+
+	if (success != 0)
+	{
+		const char* errmsg = lua_tostring(lua, -1);
+		cerr << "error loading the master cmd: " << errmsg << endl;
+	}
+
+	success = lua_pcall(lua, 0, LUA_MULTRET, 0);
+
+	if (success != 0)
+	{
+		const char* errmsg = lua_tostring(lua, -1);
+		cerr << "error executing the master cmd: " << errmsg << endl;
+	}
+
+	return 0;
+}
+
+int luaExt_SetSharedBuffer(lua_State* L)
+{
+	sharedBuffer = lua_tostring(L, 1);
+	return 0;
+}
+
+int luaExt_GetSharedBuffer(lua_State* L)
+{
+	lua_pushstring(L, sharedBuffer.c_str());
 	return 1;
 }
 

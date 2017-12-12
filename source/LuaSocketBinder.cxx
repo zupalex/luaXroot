@@ -142,6 +142,9 @@ int LuaSocketBind(lua_State* L)
 
 	open(address.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0777);
 
+	int nret = 1;
+	int autoport = 0;
+
 	if (sock_domain == AF_UNIX)
 	{
 		sockaddr_un addr;
@@ -161,6 +164,7 @@ int LuaSocketBind(lua_State* L)
 
 		if (bind(sockfd, (sockaddr*) &addr, sizeof(addr)) < 0)
 		{
+			cerr << "Failed to bind socket " << sockfd << " : errno = " << errno << endl;
 			lua_pushboolean(L, 0);
 			return 1;
 		}
@@ -190,8 +194,27 @@ int LuaSocketBind(lua_State* L)
 
 		if (bind(sockfd, res->ai_addr, res->ai_addrlen) < 0)
 		{
+			cerr << "Failed to bind socket " << sockfd << " : errno = " << errno << endl;
 			lua_pushboolean(L, 0);
 			return 1;
+		}
+
+		if (stoi(portno) == 0)
+		{
+			sockaddr_in host_address;
+			socklen_t addrlen = sizeof(sockaddr_in);
+
+			if (getsockname(sockfd, (sockaddr*) &host_address, &addrlen) < 0)
+			{
+				cout << "failed to get hostname for " << sockfd << " : errno " << errno << endl;
+				lua_pushboolean(L, 0);
+				return 1;
+			}
+
+			autoport = ntohs(host_address.sin_port);
+			portno = to_string(autoport).c_str();
+
+			nret = 2;
 		}
 
 		socketsList[sockfd].address = address;
@@ -206,7 +229,10 @@ int LuaSocketBind(lua_State* L)
 	}
 
 	lua_pushboolean(L, 1);
-	return 1;
+
+	if (autoport > 0) lua_pushinteger(L, autoport);
+
+	return nret;
 }
 
 int LuaSocketConnect(lua_State* L)

@@ -16,7 +16,7 @@ end
 local SocketObject = LuaClass("SocketObject", "PipeObject", function(self, data)
     self.type = data and data.type or "client"
     self.sockfd = data and data.sockfd or nil
-    self.clientsfd = data and data.clientsfd or nil
+    self.clientsfd = data and data.clientsfd or {}
     self.address = data and data.address or nil
     self.port = data and data.port or nil
 
@@ -30,7 +30,8 @@ local SocketObject = LuaClass("SocketObject", "PipeObject", function(self, data)
         return nil
       end
 
-      table.insert(sockobj.clientsfd, dfd)
+      table.insert(self.clientsfd, dfd)
+      return dfd
     end
 
     function self:Send(data, size, listeners)
@@ -108,7 +109,7 @@ end
 
 function PrintSocketHelp()
   print("To create a socket connection:")
-  print("The host should invoke socket.CreateHost(type, address, [maxqueue])")
+  print("The host should invoke socket.CreateHost(type, address, [maxqueue], [flags], [bindonly], [verbose])")
   print("The client should invoke socket.CreateClient(type, address)")
   print("")
   print("  -> type : a string giving the type of connection")
@@ -122,6 +123,13 @@ function PrintSocketHelp()
   print("")
   print("  -> maxqueue (optional) : a number stating how many connection the host may accept")
   print("")
+  print("  -> flags (optional) : flags used to create the socket")
+  print("")
+  print("  -> bindonly (optional) : specify that the socket should only be created and bound to an address.")
+  print("                           The user will have to call AcceptConnection() manually.")
+  print("")
+  print("  -> verbose (optional) : specify the verbose level")
+  print("")
   print("These function will return an object that can then be use to send and receive data")
   print("Example:")
   print("On the host machine: sender = socket.CreateHost(\"local\", \"/tmp/mysocket\", 1)")
@@ -130,7 +138,7 @@ function PrintSocketHelp()
   print("On the client machine: receiver:Receive() => will print \"Hello Client\"")
 end
 
-function socket.CreateHost(type, address, maxqueue, flags)
+function socket.CreateHost(type, address, maxqueue, flags, bindonly, verbose)
   if type == nil then
     return PrintSocketHelp()
   end
@@ -147,37 +155,55 @@ function socket.CreateHost(type, address, maxqueue, flags)
     hfd = NewSocket({domain=AF_INET6, type=SOCK_STREAM, protocol=0})
     address, port = SeparateAddressAndPort(address)
   else
-    print("Invalid socket type", type)
-    print("Type socket.CreateHost() to get detailed help")
-    return nil, nil
+    if verbose ~= "Q" then
+      print("Invalid socket type", type)
+      print("Type socket.CreateHost() to get detailed help")
+      return nil, nil
+    end
   end
 
   sockobj = SocketObject({type="host", sockfd=hfd, address=address, port=port})
 
   socket._activesockets[address] = sockobj
 
-  print("Socket ("..hfd..") connection created at "..address..(port ~= nil and (":"..port) or "").." ... Waiting for connection(s) ...")
+  local success, auto_port = SocketBind({sockfd=hfd, address=address, port=port})
 
-  if not SocketBind({sockfd=hfd, address=address, port=port}) then
-    print("Socket binding failed...")
+  if not success or (port=="0" and not auto_port) then
+    if verbose ~= "Q" then
+      print("Socket binding failed...")
+    end
     return
+  end
+
+  if port == "0" then
+    sockobj.port = tostring(auto_port)
   end
 
   if SocketListen({sockfd=hfd, maxqueue=maxqueue}) ~= 0 then
-    print("Socket listen failed...")
+    if verbose ~= "Q" then
+      print("Socket listen failed...")
+    end
     return
   end
 
-  if flags == nil then flags = "" end
+  if not bindonly then
+    if flags == nil then flags = "" end
 
-  local dfd, errno = SocketAccept({sockfd=hfd, flags=flags})
+    local dfd, errno = SocketAccept({sockfd=hfd, flags=flags})
 
-  if dfd == nil then
-    print("There was an issue while accepting the socket connection:", errno)
-    return nil
+    if verbose == "M" then 
+      print("Socket ("..hfd..") connection created at "..address..(port ~= nil and (":"..port) or "").." ... Waiting for connection(s) ...")
+    end
+
+    if dfd == nil then
+      if verbose ~= "Q" then
+        print("There was an issue while accepting the socket connection:", errno)
+      end
+      return nil
+    end
+
+    sockobj.clientsfd = {dfd}
   end
-
-  sockobj.clientsfd = {dfd}
 
   return sockobj
 end
