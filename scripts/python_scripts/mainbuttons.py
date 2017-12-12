@@ -55,18 +55,32 @@ class E16025MacrosBox:
     
     if selected_macro == "Attach to ORNL DAQ Output":
       self.appProps.socket.send("require(\"ldf_unpacker/ldf_onlinereader\"); StartNewTask(\"ornlmonitor\", \"AttachToORNLSender\", \"192.168.31.10:51031\");") 
-      self.histPanel = Toplevel(self.master)
-      HistogramPanel(self.histPanel, self.appProps)
+      
+      if hasattr(self, "histPanel"):
+        self.histPanel.destroy()
+        
+      self.histPanel = Frame(self.master)
+      HistogramPanel(self.histPanel, self.appProps, "ornlmonitor")
+      self.histPanel.pack()
       
     if selected_macro == "Listen to Ringselector":
-      pass
+      self.appProps.socket.send("require(\"nscl_unpacker/se84_scripts\"); sleep(1); StartNewTask(\"rslistener\", \"StartListeningRingSelector\");") 
+      
+      if hasattr(self, "histPanel"):
+        self.histPanel.destroy()
+        
+      self.histPanel = Frame(self.master)
+      HistogramPanel(self.histPanel, self.appProps, "rslistener")
+      self.histPanel.pack()
 
 
 class HistogramPanel:
-  def __init__(self, master, appProps):
+  def __init__(self, master, appProps, taskname):
     self.master = master
     self.appProps = appProps
     self.appProps.add_window("HistogramPanel", self)
+    self.taskname = taskname
+    
     self.frame = Frame(self.master)
     self.title = Label(self.frame, text= 'Histogram Pannel')
     
@@ -156,16 +170,19 @@ class HistogramPanel:
   
   def process_filter(self):
     hist_filter = self.filterIF.get()
-    self.appProps.socket.send("_pyguifns.GetHMonitors(\""+hist_filter+"\")")
+    self.appProps.socket.send("_pyguifns.GetHMonitors(\""+self.taskname+"\",\""+hist_filter+"\")")
     rready = select.select((self.appProps.lua_to_py_sock.fileno(),), (), ())
     if len(rready[0]) > 0:
       data_length = array.array('i', [0])
       fcntl.ioctl(rready[0][0], termios.FIONREAD, data_length, True)
       cmd = self.appProps.lua_to_py_sock.recv(data_length[0])
-      hist_list = cmd.split("\\li")
-      self.listBox.delete(0, END)
-      for hist in hist_list:
-        self.listBox.insert(END, hist)
+      if cmd == "no results":
+        self.listBox.delete(0, END)
+      else:
+        hist_list = cmd.split("\\li")
+        self.listBox.delete(0, END)
+        for hist in hist_list:
+          self.listBox.insert(END, hist)
         
   def draw_selection(self):
     selected_hists = self.listBox.curselection()
@@ -175,14 +192,14 @@ class HistogramPanel:
     cmd = ""
     
     if nhx > 1 or nhy > 1:
-      cmd = "SendSignal(\"ornlmonitor\",\"display_multi\","+str(nhx)+","+str(nhy)+",{"
+      cmd = "SendSignal(\""+self.taskname+"\",\"display_multi\","+str(nhx)+","+str(nhy)+",{"
       
       for sel in selected_hists:
         cmd = cmd + "{hname="+"\""+self.listBox.get(sel)+"\", opts=\"\"},"
       
       cmd = cmd + "})"
     else:
-      cmd = "SendSignal(\"ornlmonitor\",\"display\",\""+self.listBox.get(selected_hists[0])
+      cmd = "SendSignal(\""+self.taskname+"\",\"display\",\""+self.listBox.get(selected_hists[0])
       if self.doColz.get() == 1:
         cmd = cmd+"\", \"colz"
       cmd = cmd+"\")"

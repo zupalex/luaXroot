@@ -26,9 +26,9 @@ if IsMasterState then
     __master_gui_socket:Send(list_of_keys)
   end
 
-  function _pyguifns.GetHMonitors(filter)
+  function _pyguifns.GetHMonitors(taskname, filter)
     SetSharedBuffer("")
-    SendSignal("ornlmonitor", "ls", true, {filter}, true)
+    SendSignal(taskname, "ls", true, {filter}, true)
 
     local list_of_keys = GetSharedBuffer()
 

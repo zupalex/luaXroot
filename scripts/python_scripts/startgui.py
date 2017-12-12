@@ -44,12 +44,20 @@ class WelcomeBox:
     self.frame.pack()
     
   def open_common_modules_list(self):
-    self.listBox = Toplevel(self.master)
-    CommonModulesBox(self.listBox, self.appProps)
+    if hasattr(self, "submenu"):
+      self.submenu.destroy()
+    
+    self.submenu = Frame(self.master)
+    CommonModulesBox(self.submenu, self.appProps)
+    self.submenu.pack()
 
   def open_e16025_macros_list(self):
-    self.listBox = Toplevel(self.master)
-    E16025MacrosBox(self.listBox, self.appProps) 
+    if hasattr(self, "submenu"):
+      self.submenu.destroy()
+      
+    self.submenu = Frame(self.master)
+    E16025MacrosBox(self.submenu, self.appProps)
+    self.submenu.pack()
   
 def listen_for_messages(tkroot, appProps):
   data_length = array.array('i', [0])

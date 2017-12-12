@@ -34,8 +34,7 @@ class LuaCanvas;
 
 extern map<TObject*, LuaCanvas*> canvasTracker;
 
-extern mutex rootProcessLoopLock;
-extern mutex syncSafeGuard;
+extern mutex rootProcessLoopLock, syncSafeGuard, sharedBufferAccess;
 extern int updateRequestPending;
 
 extern string sharedBuffer;

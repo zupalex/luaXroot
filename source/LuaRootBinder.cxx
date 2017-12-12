@@ -13,6 +13,7 @@ map<string, string> rootObjectAliases;
 
 map<TObject*, LuaCanvas*> canvasTracker;
 mutex syncSafeGuard;
+mutex sharedBufferAccess;
 int updateRequestPending;
 
 void SetROOTDrawableClasses()
@@ -350,13 +351,17 @@ int luaExt_SendCmdToMaster(lua_State* L)
 
 int luaExt_SetSharedBuffer(lua_State* L)
 {
+	sharedBufferAccess.lock();
 	sharedBuffer = lua_tostring(L, 1);
+	sharedBufferAccess.unlock();
 	return 0;
 }
 
 int luaExt_GetSharedBuffer(lua_State* L)
 {
+	sharedBufferAccess.lock();
 	lua_pushstring(L, sharedBuffer.c_str());
+	sharedBufferAccess.unlock();
 	return 1;
 }
 
@@ -438,24 +443,32 @@ void* NewTaskFn(void* arg)
 
 		luaL_loadstring(L, (args->packages).c_str());
 
-		lua_pcall(L, 0, LUA_MULTRET, 0);
+		int success = lua_pcall(L, 0, LUA_MULTRET, 0);
 
-		if (!CheckLuaArgs(L, -1, true, "NewTaskFn packages table:", LUA_TTABLE))
+		if (success != 0)
 		{
+			cerr << "Error unpacking the packages string: errno" << errno << endl;
 			return 0;
 		}
 
-		lua_pcall(L, 1, LUA_MULTRET, 0);
+		success = lua_pcall(L, 1, LUA_MULTRET, 0);
+
+		if (success != 0)
+		{
+			cerr << "Error while loading the packages: errno" << errno << endl;
+			return 0;
+		}
 	}
 
 	//     cout << "Will retrieve arguments..." << endl;
 
 	luaL_loadstring(L, (args->task).c_str());
 
-	lua_pcall(L, 0, LUA_MULTRET, 0);
+	int success = lua_pcall(L, 0, LUA_MULTRET, 0);
 
-	if (!CheckLuaArgs(L, -1, true, "NewTaskFn", LUA_TTABLE))
+	if (success != 0)
 	{
+		cerr << "Error while starting the task: errno" << errno << endl;
 		return 0;
 	}
 
@@ -509,7 +522,7 @@ void* NewTaskFn(void* arg)
 
 	tasksStatus[taskname] = "running";
 
-	int success = lua_pcall(L, nargs, LUA_MULTRET, 0);
+	success = lua_pcall(L, nargs, LUA_MULTRET, 0);
 
 	if (success != 0)
 	{
