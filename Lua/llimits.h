@@ -211,8 +211,8 @@ typedef unsigned long Instruction;
 ** ('lua_lock') and leaves the core ('lua_unlock')
 */
 #if !defined(lua_lock)
-#define lua_lock(L)	((void) 0)
-#define lua_unlock(L)	((void) 0)
+#define lua_lock(L)	luaLockState(L)
+#define lua_unlock(L)	luaUnlockState(L)
 #endif
 
 /*

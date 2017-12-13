@@ -101,6 +101,8 @@ static const char *progname = LUA_PROGNAME;
 char* homeDir = new char[1024];
 char* histPath = new char[1024];
 
+std::mutex lua_master_mutex;
+
 void sigint_handler_terminate( int i)
 {
     if(i == SIGINT)

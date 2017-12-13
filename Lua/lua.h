@@ -488,4 +488,18 @@ extern char* histPath;
 
 void sigint_handler_terminate( int i);
 
+#include <mutex>
+
+extern std::mutex lua_master_mutex;
+
+inline void luaLockState(lua_State* L)
+{
+	lua_master_mutex.lock();
+}
+
+inline void luaUnlockState(lua_State* L)
+{
+	lua_master_mutex.unlock();
+}
+
 #endif

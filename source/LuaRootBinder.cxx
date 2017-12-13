@@ -331,9 +331,9 @@ int luaExt_GetTaskName(lua_State* L)
 
 int luaExt_SendCmdToMaster(lua_State* L)
 {
-	string cmd = lua_tostring(L, 1);
+	lua_lock(lua);
 
-	lua_xmove(L, lua, 1);
+	string cmd = lua_tostring(L, 1);
 
 	int success = luaL_loadstring(lua, cmd.c_str());
 
@@ -343,15 +343,18 @@ int luaExt_SendCmdToMaster(lua_State* L)
 		cerr << "error loading the master cmd: " << errmsg << endl;
 	}
 
-	int stack_before = lua_gettop(lua);
+	int stack_before = lua_gettop(lua) - 1;
 	success = lua_pcall(lua, 0, LUA_MULTRET, 0);
-	lua_pop(lua, lua_gettop(lua) - stack_before);
 
 	if (success != 0)
 	{
 		const char* errmsg = lua_tostring(lua, -1);
 		cerr << "error executing the master cmd: " << errmsg << endl;
 	}
+
+	lua_pop(lua, lua_gettop(lua) - stack_before);
+
+	lua_unlock(lua);
 
 	return 0;
 }
@@ -926,7 +929,9 @@ int luaExt_TApplication_Terminate(lua_State* L)
 		}
 
 		for (auto itr = tasksNames.begin(); itr != tasksNames.end(); itr++)
+		{
 			PushSignal(itr->second, "stop");
+		}
 
 //		remove(theApp->msgq_address.c_str());
 //
@@ -941,6 +946,12 @@ int luaExt_TApplication_Terminate(lua_State* L)
 	}
 
 	gSystem->ProcessEvents();
+
+	lua_getglobal(L, "__pygui_pid");
+	int pygui_pid = stoi(lua_tostring(L, -1));
+	kill(pygui_pid, SIGKILL);
+
+	lua_close(L);
 
 	theApp->Terminate();
 

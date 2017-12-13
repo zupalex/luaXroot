@@ -63,20 +63,13 @@ def listen_for_messages(tkroot, appProps):
   data_length = array.array('i', [0])
 
   while not appProps._stopExec:
-    rready = select.select((appProps.master_socket.fileno(),), (), (), 1)
+    rready = select.select((appProps.master_socket.fileno(),), (), ())
     if len(rready[0]) > 0:
       fcntl.ioctl(rready[0][0], termios.FIONREAD, data_length, True)
       host_msg = appProps.master_socket.recv(data_length[0])
       
       if host_msg == "terminate process":
         appProps._stopExec = True
-    else:
-      appProps.socket.send("a")
-      rready = select.select((appProps.socket.fileno(),), (), (), 1)
-      if not len(rready[0]) > 0:
-        appProps._stopExec = True
-      else:
-        appProps.socket.recv(1)
 
 def main_loop(tkroot):
   tkroot.mainloop()
@@ -105,6 +98,7 @@ def main():
           globProperties.socket.connect(("127.0.0.1", int(sys.argv[idx+1])))
           globProperties.master_socket.connect(("127.0.0.1", int(sys.argv[idx+2])))
           globProperties.lua_to_py_sock.connect(("127.0.0.1", int(sys.argv[idx+2])))
+          globProperties.master_socket.send(str(os.getpid()))
   
   root = Tk()
   app = WelcomeBox(root, globProperties)
@@ -118,7 +112,6 @@ def main():
   p1.join()
   
   globProperties.socket.close()
-    
   p2.terminate()
 
 if __name__ == '__main__':

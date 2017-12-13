@@ -55,6 +55,8 @@ if IsMasterState then
 
     __master_gui_socket:Send("terminate process")
 
+    sleep(0.5)
+
     theApp:Terminate() 
   end
 
@@ -110,14 +112,10 @@ if IsMasterState then
         while CheckSignals() do
           local cmd = gui_socket:WaitAndReadResponse(guifd)
 
-          if cmd then
-            if cmd == "a" then
-              gui_socket:Send("y")
-            else
-              local cmd_formatted = cmd
+          if cmd and cmd:len() > 0 then
+            local cmd_formatted = cmd
 --            local cmd_formatted = serpent.dump(cmd)
-              SendMasterCmd(cmd_formatted)
-            end
+            SendMasterCmd(cmd_formatted)
           end
         end
       end
@@ -125,4 +123,12 @@ if IsMasterState then
 
   __master_gui_socket:AcceptConnection()
   __master_gui_socket:AcceptConnection()
+
+  readfds = SysSelect({read=__master_gui_socket.clientsfd})
+
+  if #readfds ~= 1 then
+    print("ERROR setting up the python GUI")
+  end
+
+  __pygui_pid = __master_gui_socket:ReadResponse(readfds[1])
 end
