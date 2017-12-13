@@ -331,10 +331,7 @@ int luaExt_GetTaskName(lua_State* L)
 
 int luaExt_SendCmdToMaster(lua_State* L)
 {
-	lua_lock(lua);
-
 	string cmd = lua_tostring(L, 1);
-
 	int success = luaL_loadstring(lua, cmd.c_str());
 
 	if (success != 0)
@@ -353,8 +350,6 @@ int luaExt_SendCmdToMaster(lua_State* L)
 	}
 
 	lua_pop(lua, lua_gettop(lua) - stack_before);
-
-	lua_unlock(lua);
 
 	return 0;
 }
