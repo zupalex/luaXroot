@@ -167,11 +167,6 @@ class RootAppManager : public TApplication {
 			rootProcessLoopLock.unlock();
 		}
 
-		void CanvasClosed()
-		{
-			cout << "canvas closed" << endl;
-		}
-
 		bool shouldStop = false;
 		bool safeSync = false;
 
@@ -231,6 +226,11 @@ class LuaCanvas : public TCanvas {
 		void RequestMasterUpdate()
 		{
 			Emit("RequestMasterUpdate()");
+		}
+
+		void CanvasClosed()
+		{
+			delete this;
 		}
 
 		void HandleInput(EEventType event, int px, int py);

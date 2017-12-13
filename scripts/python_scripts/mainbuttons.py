@@ -169,6 +169,9 @@ class HistogramPanel:
     self.previous_selection = self.listBox.curselection()
   
   def process_filter(self):
+    if hasattr(self, "previous_selection"):
+      del self.previous_selection
+      
     hist_filter = self.filterIF.get()
     self.appProps.socket.send("_pyguifns.GetHMonitors(\""+self.taskname+"\",\""+hist_filter+"\")")
     rready = select.select((self.appProps.lua_to_py_sock.fileno(),), (), ())

@@ -6,6 +6,7 @@
 
 #include "TUnixSystem.h"
 #include "TSysEvtHandler.h"
+#include "TRootCanvas.h"
 
 string sharedBuffer;
 
@@ -197,6 +198,8 @@ ClassImp(RootAppManager)
 LuaCanvas::LuaCanvas()
 		: TCanvas()
 {
+	TRootCanvas *rc = (TRootCanvas *)fCanvas->GetCanvasImp();
+	rc->Connect("CloseWindow()", "LuaCanvas", this, "CanvasClosed()");
 }
 
 void LuaCanvas::HandleInput(EEventType event, int px, int py)
@@ -330,6 +333,8 @@ int luaExt_SendCmdToMaster(lua_State* L)
 {
 	string cmd = lua_tostring(L, 1);
 
+	lua_xmove(L, lua, 1);
+
 	int success = luaL_loadstring(lua, cmd.c_str());
 
 	if (success != 0)
@@ -441,13 +446,21 @@ void* NewTaskFn(void* arg)
 	{
 		lua_getglobal(L, "LoadAdditionnalPackages");
 
-		luaL_loadstring(L, (args->packages).c_str());
-
-		int success = lua_pcall(L, 0, LUA_MULTRET, 0);
+		int success = luaL_loadstring(L, (args->packages).c_str());
 
 		if (success != 0)
 		{
-			cerr << "Error unpacking the packages string: errno" << errno << endl;
+			cerr << "Error loading the the packages chunk: errno " << errno << endl;
+			cerr << lua_tostring(L, -1) << endl;
+			return 0;
+		}
+
+		success = lua_pcall(L, 0, LUA_MULTRET, 0);
+
+		if (success != 0)
+		{
+			cerr << "Error unpacking the packages string: errno " << errno << endl;
+			cerr << lua_tostring(L, -1) << endl;
 			return 0;
 		}
 
@@ -455,7 +468,8 @@ void* NewTaskFn(void* arg)
 
 		if (success != 0)
 		{
-			cerr << "Error while loading the packages: errno" << errno << endl;
+			cerr << "Error while loading the packages: errno " << errno << endl;
+			cerr << lua_tostring(L, -1) << endl;
 			return 0;
 		}
 	}
@@ -469,6 +483,7 @@ void* NewTaskFn(void* arg)
 	if (success != 0)
 	{
 		cerr << "Error while starting the task: errno" << errno << endl;
+		cerr << lua_tostring(L, -1) << endl;
 		return 0;
 	}
 
