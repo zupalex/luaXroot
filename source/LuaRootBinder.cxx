@@ -198,7 +198,7 @@ ClassImp(RootAppManager)
 LuaCanvas::LuaCanvas()
 		: TCanvas()
 {
-	TRootCanvas *rc = (TRootCanvas *)fCanvas->GetCanvasImp();
+	TRootCanvas *rc = (TRootCanvas *) fCanvas->GetCanvasImp();
 	rc->Connect("CloseWindow()", "LuaCanvas", this, "CanvasClosed()");
 }
 
@@ -343,7 +343,9 @@ int luaExt_SendCmdToMaster(lua_State* L)
 		cerr << "error loading the master cmd: " << errmsg << endl;
 	}
 
+	int stack_before = lua_gettop(lua);
 	success = lua_pcall(lua, 0, LUA_MULTRET, 0);
+	lua_pop(lua, lua_gettop(lua) - stack_before);
 
 	if (success != 0)
 	{
