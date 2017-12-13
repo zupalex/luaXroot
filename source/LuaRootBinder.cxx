@@ -206,9 +206,9 @@ void LuaCanvas::HandleInput(EEventType event, int px, int py)
 {
 	if (event == kButton1Double)
 	{
-		TPad* clone = (TPad*) this->GetClickSelectedPad()->Clone();
+		TPad* target = (TPad*) this->GetClickSelectedPad();
 
-		string clonename = clone->GetName();
+		string clonename = target->GetName();
 		clonename += "_clone";
 
 		LuaCanvas* prev_clone = (LuaCanvas*) gDirectory->FindObjectAny(clonename.c_str());
@@ -220,12 +220,12 @@ void LuaCanvas::HandleInput(EEventType event, int px, int py)
 			prev_clone = nullptr;
 		}
 
-		TList* prims = clone->GetListOfPrimitives();
+		TList* prims = target->GetListOfPrimitives();
 
 		vector<TObject*> drawables;
 		vector<string> drawopts;
 
-		clone->cd();
+		target->cd();
 
 		for (int i = 0; i < prims->GetSize(); i++)
 		{
@@ -940,13 +940,9 @@ int luaExt_TApplication_Terminate(lua_State* L)
 //		}
 	}
 
-	TApplication* tApp = *(reinterpret_cast<TApplication**>(lua_touserdata(L, 1)));
-
-	theApp->NotifyUpdatePending();
-
 	gSystem->ProcessEvents();
 
-	tApp->Terminate();
+	theApp->Terminate();
 
 	return 0;
 }

@@ -111,9 +111,13 @@ if IsMasterState then
           local cmd = gui_socket:WaitAndReadResponse(guifd)
 
           if cmd then
-            local cmd_formatted = cmd
+            if cmd == "a" then
+              gui_socket:Send("y")
+            else
+              local cmd_formatted = cmd
 --            local cmd_formatted = serpent.dump(cmd)
-            SendMasterCmd(cmd_formatted)
+              SendMasterCmd(cmd_formatted)
+            end
           end
         end
       end

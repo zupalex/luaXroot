@@ -63,13 +63,20 @@ def listen_for_messages(tkroot, appProps):
   data_length = array.array('i', [0])
 
   while not appProps._stopExec:
-    rready = select.select((appProps.master_socket.fileno(),), (), ())
+    rready = select.select((appProps.master_socket.fileno(),), (), (), 1)
     if len(rready[0]) > 0:
       fcntl.ioctl(rready[0][0], termios.FIONREAD, data_length, True)
       host_msg = appProps.master_socket.recv(data_length[0])
       
       if host_msg == "terminate process":
         appProps._stopExec = True
+    else:
+      appProps.socket.send("a")
+      rready = select.select((appProps.socket.fileno(),), (), (), 1)
+      if not len(rready[0]) > 0:
+        appProps._stopExec = True
+      else:
+        appProps.socket.recv(1)
 
 def main_loop(tkroot):
   tkroot.mainloop()
