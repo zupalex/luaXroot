@@ -37,6 +37,15 @@ void LuaTCanvas::Divide(int nrow_, int ncol_)
 
 	nrow = nrow_;
 	ncol = ncol_;
+
+	auto subpads = ((LuaCanvas*) rootObj)->GetListOfPrimitives();
+
+	((LuaCanvas*) rootObj)->subcanvases.clear();
+
+	for (int i = 0; i < subpads->GetSize(); i++)
+	{
+		if (dynamic_cast<TPad*>(subpads->At(i))) ((LuaCanvas*) rootObj)->subcanvases.push_back((TPad*) subpads->At(i));
+	}
 }
 
 void LuaTCanvas::Draw(LuaROOTBase* obj, int row, int col)

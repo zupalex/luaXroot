@@ -200,6 +200,7 @@ LuaCanvas::LuaCanvas()
 {
 	TRootCanvas *rc = (TRootCanvas *) fCanvas->GetCanvasImp();
 	rc->Connect("CloseWindow()", "LuaCanvas", this, "CanvasClosed()");
+	this->Connect("CanvasClosed()", "RootAppManager", theApp, "DeleteCanvas(TCanvas*)");
 }
 
 void LuaCanvas::HandleInput(EEventType event, int px, int py)

@@ -169,8 +169,8 @@ class RootAppManager : public TApplication {
 
 		void DeleteCanvas(TCanvas* can)
 		{
-			can->Close();
 			delete can;
+			can = nullptr;
 		}
 
 		bool shouldStop = false;
@@ -211,8 +211,6 @@ class LuaCanvas : public TCanvas {
 
 		virtual ~LuaCanvas()
 		{
-			HasBeenKilled();
-
 			for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
 			{
 				if (itr->second == this)
@@ -221,25 +219,33 @@ class LuaCanvas : public TCanvas {
 					break;
 				}
 			}
-		}
 
-		void HasBeenKilled()
-		{
-//         cout << "Emitting signal to kill the app" << endl;
-			Emit("HasBeenKilled()");
-		}
+			for (unsigned int i = 0; i < subcanvases.size(); i++)
+			{
+				for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
+				{
+					if (itr->second == subcanvases.at(i))
+					{
+						canvasTracker.erase(itr);
+						break;
+					}
+				}
 
-		void RequestMasterUpdate()
-		{
-			Emit("RequestMasterUpdate()");
+				delete subcanvases.at(i);
+				subcanvases.at(i) = nullptr;
+			}
+
+			this->Close();
 		}
 
 		void CanvasClosed()
 		{
-			Emit("DeleteCanvas(TCanvas*)", (TCanvas*) this);
+			Emit("CanvasClosed()", (TCanvas*) this);
 		}
 
 		void HandleInput(EEventType event, int px, int py);
+
+		vector<TPad*> subcanvases;
 
 	ClassDef(LuaCanvas, 1)
 };

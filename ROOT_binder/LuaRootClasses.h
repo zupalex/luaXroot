@@ -193,6 +193,7 @@ class LuaTCanvas : public LuaROOTSpec<LuaCanvas> {
 
 		~LuaTCanvas()
 		{
+			delete rootObj;
 		}
 
 		int nrow = 0;
@@ -483,6 +484,8 @@ class LuaTH1 : public LuaROOTSpec<TH1D> {
 		void SetRangeUserX(double xmin, double xmax);
 		void SetRangeUserY(double ymin, double ymax);
 
+		void Rebin(int factor, string newname);
+
 		void SetXProperties(int nbinsx, double xmin, double xmax);
 		tuple<int, double, double> GetXProperties();
 
@@ -526,6 +529,9 @@ class LuaTH2 : public LuaROOTSpec<TH2D> {
 		void Scale(double s);
 		void SetRangeUserX(double xmin, double xmax);
 		void SetRangeUserY(double ymin, double ymax);
+
+		void RebinX(int factor, string newname);
+		void RebinY(int factor, string newname);
 
 		void SetXProperties(int nbinsx, double xmin, double xmax);
 		void SetYProperties(int nbinsy, double ymin, double ymax);

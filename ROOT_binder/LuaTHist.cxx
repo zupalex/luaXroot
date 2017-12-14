@@ -136,6 +136,11 @@ void LuaTH1::SetContent(vector<double> content)
 	((TH1D*) rootObj)->SetContent(&content[0]);
 }
 
+void LuaTH1::Rebin(int factor, string newname)
+{
+	((TH1D*) rootObj)->Rebin(factor, newname.c_str());
+}
+
 void LuaTH1::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTH1::SetTitle, "SetTitle");
@@ -161,6 +166,8 @@ void LuaTH1::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTH1::SetLogScale, "SetLogScale");
 
 	AddClassMethod(L, &LuaTH1::Integral, "Integral");
+
+	AddClassMethod(L, &LuaTH1::Rebin, "Rebin");
 
 	AddClassMethod(L, &LuaTH1::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTH1::DoUpdate, "Update");
@@ -355,6 +362,16 @@ void LuaTH2::SetContent(vector<double> content)
 	((TH2D*) rootObj)->SetContent(&content[0]);
 }
 
+void LuaTH2::RebinX(int factor, string newname)
+{
+	((TH2D*) rootObj)->RebinX(factor, newname.c_str());
+}
+
+void LuaTH2::RebinY(int factor, string newname)
+{
+	((TH2D*) rootObj)->RebinY(factor, newname.c_str());
+}
+
 void LuaTH2::MakeAccessors(lua_State* L)
 {
 	AddClassMethod(L, &LuaTH2::SetTitle, "SetTitle");
@@ -384,6 +401,9 @@ void LuaTH2::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTH2::SetLogScale, "SetLogScale");
 
 	AddClassMethod(L, &LuaTH2::Integral, "Integral");
+
+	AddClassMethod(L, &LuaTH2::RebinX, "RebinX");
+	AddClassMethod(L, &LuaTH2::RebinY, "RebinY");
 
 	AddClassMethod(L, &LuaTH2::DoDraw, "Draw");
 	AddClassMethod(L, &LuaTH2::DoUpdate, "Update");
