@@ -193,7 +193,6 @@ class LuaTCanvas : public LuaROOTSpec<LuaCanvas> {
 
 		~LuaTCanvas()
 		{
-			delete rootObj;
 		}
 
 		int nrow = 0;

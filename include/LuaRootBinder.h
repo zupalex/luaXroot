@@ -167,12 +167,6 @@ class RootAppManager : public TApplication {
 			rootProcessLoopLock.unlock();
 		}
 
-		void DeleteCanvas(TCanvas* can)
-		{
-			delete can;
-			can = nullptr;
-		}
-
 		bool shouldStop = false;
 		bool safeSync = false;
 
@@ -220,27 +214,26 @@ class LuaCanvas : public TCanvas {
 				}
 			}
 
-			for (unsigned int i = 0; i < subcanvases.size(); i++)
+			this->Close();
+		}
+
+		void CanvasClosed()
+		{
+      for (unsigned int i = 0; i < subcanvases.size(); i++)
 			{
 				for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
 				{
 					if (itr->second == subcanvases.at(i))
 					{
 						canvasTracker.erase(itr);
-						break;
 					}
+          
+          else if (itr->second == this)
+          {
+            canvasTracker.erase(itr);
+          }
 				}
-
-				delete subcanvases.at(i);
-				subcanvases.at(i) = nullptr;
 			}
-
-			this->Close();
-		}
-
-		void CanvasClosed()
-		{
-			Emit("CanvasClosed()", (TCanvas*) this);
 		}
 
 		void HandleInput(EEventType event, int px, int py);

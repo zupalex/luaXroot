@@ -27,7 +27,7 @@ class CommonModulesBox:
     self.sendCommand.pack()
     
     self.frame.pack(fill=BOTH, expand=1)
-    self.listBox.insert(END, "ldf_unpacker/ldf_onlinereader", "nscl_unpacker/nscl_unpacker")
+    self.listBox.insert(END, "ldf_unpacker/ldf_onlinereader", "nscl_unpacker/nscl_unpacker", "nscl_unpacker/se84_scripts")
 
   def send_command(self):
     self.appProps.socket.send("require(\""+self.listBox.get(self.listBox.curselection())+"\")")
@@ -64,14 +64,78 @@ class E16025MacrosBox:
       self.histPanel.pack()
       
     if selected_macro == "Listen to Ringselector":
-      self.appProps.socket.send("require(\"nscl_unpacker/se84_scripts\"); sleep(1); StartNewTask(\"rslistener\", \"StartListeningRingSelector\");") 
+      self.rsprompt = Toplevel(self.master)
+      Label(self.rsprompt, text="Select Source").pack()
       
-      if hasattr(self, "histPanel"):
-        self.histPanel.destroy()
-        
-      self.histPanel = Frame(self.master)
-      HistogramPanel(self.histPanel, self.appProps, "rslistener")
-      self.histPanel.pack()
+      self.sourceList = Listbox(self.rsprompt, width=25, exportselection=0)
+      self.sourceList.insert(END, "masterevb", "s800filter", "orruba")
+      self.sourceList.pack()
+      
+      Label(self.rsprompt, text="Accept Items").pack()
+      
+      self.acceptList = Listbox(self.rsprompt, width=25, selectmode=MULTIPLE, exportselection=0)
+      self.acceptList.insert(END, "PHYSICS_EVENT", "PHYSICS_EVENT_COUNT")
+      self.acceptList.pack()
+      
+      Button(self.rsprompt, text = 'Validate', width = 10, command = self.start_listening_ringselector).pack(side=LEFT)
+      
+      cbframe = Frame(self.rsprompt)
+      
+      self.dumpCbVal = IntVar()
+      self.dumpCb = Checkbutton(cbframe, text="Raw Dump", variable=self.dumpCbVal)
+      self.dumpCb.grid(row=0, column=0, sticky=W)
+      
+      self.calibrateCbVal = IntVar()
+      self.calibrateCb = Checkbutton(cbframe, text="Calibrate", variable=self.calibrateCbVal)
+      self.calibrateCb.grid(row=1, column=0, sticky=W)
+      
+      cbframe.pack(side=RIGHT)
+      
+  def start_listening_ringselector(self):
+    if len(self.sourceList.curselection()) == 0:
+      return
+      
+    if len(self.acceptList.curselection()) == 0:
+      return
+    
+    cmd = "require(\"nscl_unpacker/se84_scripts\"); sleep(1); StartNewTask(\"rslistener\", \"StartListeningRingSelector\""
+    if self.dumpCbVal.get() == 1:
+      cmd = cmd + ",true,"
+    else:
+      cmd = cmd + ",false,"
+    
+    source = self.sourceList.get(self.sourceList.curselection()[0])
+    cmd = cmd + "\"" + source + "\","
+    
+    accept = self.acceptList.curselection()
+    
+    cmd = cmd + "\""
+    
+    for idx, sel in enumerate(accept):
+      cmd = cmd + self.acceptList.get(sel)
+      if idx < len(accept):
+        cmd = cmd+","
+    
+    cmd = cmd + "\","
+    
+    if self.calibrateCbVal.get() == 1:
+      cmd = cmd + "true)"
+    else:
+      cmd = cmd + "false)"
+    
+    self.appProps.socket.send(cmd) 
+      
+    if hasattr(self, "histPanel"):
+      self.histPanel.destroy()
+
+    self.histPanel = Frame(self.master)
+    HistogramPanel(self.histPanel, self.appProps, "rslistener")
+    self.histPanel.pack()
+    self.rsprompt.destroy()
+    
+    self.additionalControls = Frame(self.master)
+    Se84AdditionalControls(self.additionalControls, self.appProps, "rslistener")
+    self.additionalControls.pack()
 
 
 class HistogramPanel:
@@ -100,9 +164,13 @@ class HistogramPanel:
     self.drawButton = Button(self.frame, text = 'Draw', width = 10, command = self.draw_selection)
     self.drawButton.grid(row=3, column=2, rowspan=2, pady=5)
     
+    self.doSame = IntVar()
+    self.sameButton = Checkbutton(self.frame, text = 'same', var=self.doSame)
+    self.sameButton.grid(row=3, column=3, sticky=W, pady=5)
+    
     self.doColz = IntVar()
     self.colzButton = Checkbutton(self.frame, text = 'colz', var=self.doColz)
-    self.colzButton.grid(row=3, column=3, rowspan=2, pady=5)
+    self.colzButton.grid(row=4, column=3, sticky=W, pady=5)
     
     self.gridXVal = StringVar()
     self.gridYVal = StringVar()
@@ -126,6 +194,9 @@ class HistogramPanel:
     self.frame.pack()
     
   def adjust_max_selection(self, xif, yif):
+    if hasattr(self, "previous_selection"):
+      del self.previous_selection
+      
     gridxval = 1
     gridyval = 1
     
@@ -194,17 +265,117 @@ class HistogramPanel:
     
     cmd = ""
     
-    if nhx > 1 or nhy > 1:
+    doColz = self.doColz.get() == 1
+    doSame = self.doSame.get() == 1
+    
+    if doSame:
+      cmd = ""
+      for sel in selected_hists:
+        cmd = cmd+"SendSignal(\""+self.taskname+"\",\"display\",\""+self.listBox.get(sel)+"\",\"same\");"
+    elif nhx > 1 or nhy > 1:
       cmd = "SendSignal(\""+self.taskname+"\",\"display_multi\","+str(nhx)+","+str(nhy)+",{"
       
       for sel in selected_hists:
-        cmd = cmd + "{hname="+"\""+self.listBox.get(sel)+"\", opts=\"\"},"
+        cmd = cmd + "{hname="+"\""+self.listBox.get(sel)+"\", opts="
+        if doColz:
+          cmd = cmd + "\"colz\""
+        else:
+          cmd = cmd + "\"\""
+          
+        cmd = cmd + "},"
       
       cmd = cmd + "})"
     else:
       cmd = "SendSignal(\""+self.taskname+"\",\"display\",\""+self.listBox.get(selected_hists[0])
-      if self.doColz.get() == 1:
+      if doColz:
         cmd = cmd+"\", \"colz"
       cmd = cmd+"\")"
 
     self.appProps.socket.send(cmd)
+    
+
+class Se84AdditionalControls:
+  def __init__(self, master, appProps, taskname):
+    self.master = master
+    self.appProps = appProps
+    self.appProps.add_window("Se84AdditionalControls", self)
+    self.taskname = taskname
+    
+    self.frame = Frame(self.master, borderwidth=4, relief=GROOVE)
+    self.title = Label(self.frame, text= 'Se84 Monitor Contols')
+    self.title.grid(row=0, column=0, columnspan=5, padx=5, pady=5)
+    
+    self.coinWinLabel = Label(self.frame, text = 'Coincidence Window')
+    self.coinWinLabel.grid(row=1, column=0, columnspan=2, padx=5, pady=5)
+    
+    self.coinWinLowLabel = Label(self.frame, text = 'Low')
+    self.coinWinLow = Entry(self.frame, width = 5)
+    self.coinWinLow.insert(0, "-5")
+    
+    self.coinWinLowLabel.grid(row=2, column=0, sticky=W, padx=5, pady=5)
+    self.coinWinLow.grid(row=2, column=1, padx=5, pady=5)
+    
+    self.coinWinHighLabel = Label(self.frame, text = 'High')
+    self.coinWinHigh = Entry(self.frame, width = 5)
+    self.coinWinHigh.insert(0, "5")
+    
+    self.coinWinHighLabel.grid(row=3, column=0, sticky=W, padx=5, pady=5)
+    self.coinWinHigh.grid(row=3, column=1, padx=5, pady=5)
+    
+    self.setCoincWinButton = Button(self.frame, text = 'Set', width = 5, command = self.set_coincwin)
+    
+    self.setCoincWinButton.grid(row=2, column=2, rowspan=2, padx=5, pady=5)
+    
+    self.zeroHistsButton = Button(self.frame, text = 'Zero Hists', width = 5, command = self.zero_hists)
+    
+    self.zeroHistsButton.grid(row=2, column=4, columnspan=2, sticky=E, padx=5, pady=5)
+    
+    self.frame.pack()
+    
+  def set_coincwin(self):     
+    low_bound = -5
+    high_bound = 5
+    
+    if len(self.coinWinLow.get()) > 0:
+      try:
+        low_bound = int(self.coinWinLow.get())
+      except ValueError:
+        self.coinWinLow.delete(0, END)
+        self.coinWinLow.insert(0, "-5")
+    else:
+      self.coinWinLow.delete(0, END)
+      self.coinWinLow.insert(0, "-5")
+  
+    if len(self.coinWinHigh.get()) > 0:
+      try:
+        high_bound = int(self.coinWinHigh.get())
+      except ValueError:
+        self.coinWinHigh.delete(0, END)
+        self.coinWinHigh.insert(0, "5")
+    else:
+      self.coinWinHigh.delete(0, END)
+      self.coinWinHigh.insert(0, "5")
+    
+    cmd = "SendSignal(\"rslistener\", \"setcoincwindow\","
+    cmd = cmd + str(low_bound) + "," + str(high_bound) + ")"
+
+    self.appProps.socket.send(cmd)
+    
+  
+  def zero_hists(self):
+    self.confirmZero = Toplevel(self.master)
+    self.confirmZero.label = Label(self.confirmZero, text="Confirm Zeroing ALL\nthe histograms?", padx=5, pady=5)
+    self.doZeroButton = Button(self.confirmZero, text="Confirm", width = 5, command = self.do_zero_all_hists, padx=5, pady=5)
+    self.cancelZeroButton = Button(self.confirmZero, text="Cancel", width = 5, command = self.cancel_zero_all_hists, padx=5, pady=5)
+    self.confirmZero.label.pack()
+    self.doZeroButton.pack(side=LEFT)
+    self.cancelZeroButton.pack(side=RIGHT)
+    
+  def do_zero_all_hists(self):
+    cmd = "SendSignal(\"rslistener\", \"zeroallhists\")"
+    self.appProps.socket.send(cmd)
+    self.confirmZero.destroy()
+    
+  def cancel_zero_all_hists(self):
+    self.confirmZero.destroy()
+    
