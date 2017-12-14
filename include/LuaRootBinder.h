@@ -167,6 +167,12 @@ class RootAppManager : public TApplication {
 			rootProcessLoopLock.unlock();
 		}
 
+		void DeleteCanvas(TCanvas* can)
+		{
+			can->Close();
+			delete can;
+		}
+
 		bool shouldStop = false;
 		bool safeSync = false;
 
@@ -230,7 +236,7 @@ class LuaCanvas : public TCanvas {
 
 		void CanvasClosed()
 		{
-			delete this;
+			Emit("DeleteCanvas(TCanvas*)", (TCanvas*) this);
 		}
 
 		void HandleInput(EEventType event, int px, int py);

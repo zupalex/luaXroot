@@ -204,7 +204,7 @@ LuaCanvas::LuaCanvas()
 
 void LuaCanvas::HandleInput(EEventType event, int px, int py)
 {
-	if (event == kButton1Double)
+	if (event == kButton1Double && gROOT->GetEditorMode()== 0)
 	{
 		TPad* target = (TPad*) this->GetClickSelectedPad();
 
