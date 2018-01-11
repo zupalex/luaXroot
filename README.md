@@ -39,3 +39,7 @@ To install it:
 "source [path/to/luaXroot]/scripts/thisluaXroot.sh"  
 If you are using a different shell use the appropriate command to source the aforementioned file.
 - You should be able to start the program from anywhere using "./luaXroot"
+
+# Known Issues/Awaiting fix:
+
+- Drawing more than 4 histograms/graphs on the same canvas might cause a crash when closing it.
