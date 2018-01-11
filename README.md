@@ -1,6 +1,8 @@
 # luaXroot
 A binder to use ROOT classes in Lua and merging ROOT TApplication with the Lua interpreter (unix only).
 
+**A basic GUI using Python has been introduced as an experimental feature recently (tested with Python 2.7). This feature will be extended in the future but might be buggy and create issues. The next update will disable this feature by default and add a way to explicitely enable it.**
+
 What it does:  
 - Start a "standard" lua interpreter and run a derived version of the ROOT TApplication in the background.  
       -> This allows to use the ROOT display classes to plot graphs, histograms, functions, ...
@@ -22,6 +24,7 @@ What it can do:
     
 REQUIREMENTS:
 CMake and Readline development libraries are required.
+Python and Tkinter module (experimental).
 
 example for Ubuntu:  
 sudo apt-get install cmake libreadline6 libreadline6-dev
