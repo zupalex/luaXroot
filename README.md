@@ -24,7 +24,7 @@ What it can do:
     
 REQUIREMENTS:
 CMake and Readline development libraries are required.
-Python and Tkinter module (experimental).
+Python and Tkinter module if the GUID feature is enabled.
 
 example for Ubuntu:  
 sudo apt-get install cmake libreadline6 libreadline6-dev
