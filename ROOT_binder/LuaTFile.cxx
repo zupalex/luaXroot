@@ -42,8 +42,10 @@ void LuaTFile::ReadKeys()
 
 void LuaTFile::Refresh(string name, LuaROOTBase* dest)
 {
+	theApp->NotifyUpdatePending();
 	delete ((TFile*) rootObj)->FindObject(name.c_str());
 	((TFile*) rootObj)->GetObject(name.c_str(), dest->rootObj);
+	theApp->NotifyUpdateDone();
 }
 
 void LuaTFile::MakeAccessors(lua_State* L)

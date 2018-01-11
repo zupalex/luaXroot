@@ -77,14 +77,11 @@ template<typename T> class LuaROOTSpec : public LuaROOTBase {
 			((T*) rootObj)->Add((T*) (h2->rootObj), s);
 		}
 
-		virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = numeric_limits<unsigned long long>::max(), unsigned long long firstentry =
-				0)
+		virtual void DoDraw(string opts = "")
 		{
 			if (rootObj == nullptr) return;
 
 			theApp->NotifyUpdatePending();
-
-			if (!is_same<T, TTree>::value) opts = varexp;
 
 			if (canvasTracker[rootObj] != nullptr && ((string) canvasTracker[rootObj]->GetName()).empty()) delete canvasTracker[rootObj];
 
@@ -102,14 +99,14 @@ template<typename T> class LuaROOTSpec : public LuaROOTBase {
 					canvasTracker[rootObj] = (LuaCanvas*) gPad->GetCanvas();
 				}
 
-				Draw(varexp, cond, opts, nentries, firstentry);
+				rootObj->Draw(opts.c_str());
 				canvasTracker[rootObj]->Update();
 			}
 			else
 			{
 				canvasTracker[rootObj]->cd();
 				canvasTracker[rootObj]->SetTitle(rootObj->GetName());
-				Draw(varexp, cond, opts, nentries, firstentry);
+				rootObj->Draw(opts.c_str());
 //			if (dynamic_cast<TH1*>(rootObj) != nullptr) ((TH1*) rootObj)->Rebuild();
 //			canvasTracker[rootObj]->Modified();
 				canvasTracker[rootObj]->Update();
@@ -247,8 +244,6 @@ class LuaTFile : public LuaROOTSpec<TFile> {
 
 		void Close();
 		void Open(string path, string opts);
-
-		void GetObject(string type, string name);
 
 		void Flush();
 		int Write(string name);

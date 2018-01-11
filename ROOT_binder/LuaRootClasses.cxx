@@ -11,6 +11,8 @@ int luaExt_GetGDirContent(lua_State* L)
 
 int LuaGetROOTObjectFromDir(lua_State* L)
 {
+	theApp->NotifyUpdatePending();
+
 	TDirectory* dir = gDirectory;
 
 	if (lua_type(L, 1) == LUA_TUSERDATA)
@@ -45,6 +47,8 @@ int LuaGetROOTObjectFromDir(lua_State* L)
 	LuaROOTBase* obj = GetUserData<LuaROOTBase>(L, -1);
 
 	obj->rootObj = ret;
+
+	theApp->NotifyUpdateDone();
 
 	return 1;
 }

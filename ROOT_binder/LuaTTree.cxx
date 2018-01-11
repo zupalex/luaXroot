@@ -18,8 +18,10 @@ void LuaTTree::GetEntry(unsigned long long entry)
 
 void LuaTTree::Draw(string varexp, string cond, string opts, unsigned long long nentries, unsigned long long firstentry)
 {
-	if(nentries == 0) nentries = numeric_limits<unsigned long long>::max();
+	theApp->NotifyUpdatePending();
+	if (nentries == 0) nentries = numeric_limits<unsigned long long>::max();
 	((TTree*) rootObj)->Draw(varexp.c_str(), cond.c_str(), opts.c_str(), nentries, firstentry);
+	theApp->NotifyUpdateDone();
 }
 
 void LuaTTree::MakeAccessors(lua_State* L)
@@ -28,7 +30,7 @@ void LuaTTree::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTTree::Fill, "Fill");
 
 	AddClassMethod(L, &LuaTTree::GetEntry, "GetEntry");
-	AddClassMethod(L, &LuaTTree::DoDraw, "Draw");
+	AddClassMethod(L, &LuaTTree::Draw, "Draw");
 
 	AddClassMethod(L, &LuaTTree::DoWrite, "Write");
 }

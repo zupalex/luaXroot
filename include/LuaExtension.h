@@ -85,25 +85,25 @@ string GetLuaTypename(int type_);
 
 void DumpLuaStack(lua_State* L);
 
-template<typename T> void LuaPopValue(lua_State* L, T* dest, int index = -1)
+template<class T> void LuaPopValue(lua_State* L, T& dest, int index = -1)
 {
-	*dest = **(static_cast<T**>(lua_touserdata(L, index)));
+	dest = **(static_cast<T**>(lua_touserdata(L, index)));
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<bool>(lua_State* L, bool* dest, int index);
-template<> void LuaPopValue<char>(lua_State* L, char* dest, int index);
-template<> void LuaPopValue<short>(lua_State* L, short* dest, int index);
-template<> void LuaPopValue<unsigned short>(lua_State* L, unsigned short* dest, int index);
-template<> void LuaPopValue<int>(lua_State* L, int* dest, int index);
-template<> void LuaPopValue<unsigned int>(lua_State* L, unsigned int* dest, int index);
-template<> void LuaPopValue<long>(lua_State* L, long* dest, int index);
-template<> void LuaPopValue<unsigned long>(lua_State* L, unsigned long* dest, int index);
-template<> void LuaPopValue<long long>(lua_State* L, long long* dest, int index);
-template<> void LuaPopValue<unsigned long long>(lua_State* L, unsigned long long* dest, int index);
-template<> void LuaPopValue<float>(lua_State* L, float* dest, int index);
-template<> void LuaPopValue<double>(lua_State* L, double* dest, int index);
-template<> void LuaPopValue<string>(lua_State* L, string* dest, int index);
+template<> void LuaPopValue<bool>(lua_State* L, bool& dest, int index);
+template<> void LuaPopValue<char>(lua_State* L, char& dest, int index);
+template<> void LuaPopValue<short>(lua_State* L, short& dest, int index);
+template<> void LuaPopValue<unsigned short>(lua_State* L, unsigned short& dest, int index);
+template<> void LuaPopValue<int>(lua_State* L, int& dest, int index);
+template<> void LuaPopValue<unsigned int>(lua_State* L, unsigned int& dest, int index);
+template<> void LuaPopValue<long>(lua_State* L, long& dest, int index);
+template<> void LuaPopValue<unsigned long>(lua_State* L, unsigned long& dest, int index);
+template<> void LuaPopValue<long long>(lua_State* L, long long& dest, int index);
+template<> void LuaPopValue<unsigned long long>(lua_State* L, unsigned long long& dest, int index);
+template<> void LuaPopValue<float>(lua_State* L, float& dest, int index);
+template<> void LuaPopValue<double>(lua_State* L, double& dest, int index);
+template<> void LuaPopValue<string>(lua_State* L, string& dest, int index);
 
 void MakeMetatable(lua_State* L);
 void AddMethod(lua_State* L, lua_CFunction func, const char* funcname);
@@ -345,7 +345,7 @@ template<typename R, typename ... Args> int lua_autosetvalue(lua_State* L, funct
 			lua_pcall(L, sizeof...(Args), LUA_MULTRET, 0);
 
 			R res;
-			LuaPopValue<R>(L, &res);
+			LuaPopValue<R>(L, res);
 
 			return res;
 		};
@@ -364,7 +364,7 @@ template<typename T> int lua_autopushback(lua_State* L, T* dest, int type = -1, 
 template<typename T> int lua_autopushback(lua_State* L, vector<T>* dest, int type = -1, int index = -1, string errmsg = "Bad setter push_back vector")
 {
 	T new_elem = T();
-	LuaPopValue<T>(L, &new_elem);
+	LuaPopValue<T>(L, new_elem);
 
 	dest->push_back(new_elem);
 
@@ -379,7 +379,7 @@ template<typename T> int lua_autopushback(lua_State* L, vector<vector<T>>* dest,
 		if (dest->size() <= pushat) return 0;
 
 		T new_elem;
-		LuaPopValue<T>(L, &new_elem);
+		LuaPopValue<T>(L, new_elem);
 		dest->at(pushat).push_back(new_elem);
 		return 0;
 	}
@@ -406,7 +406,7 @@ template<typename T> int lua_autosetvector(lua_State* L, vector<T>* dest, int ty
 		if (dest->size() <= setat) return 0;
 
 		T new_elem = T();
-		LuaPopValue<T>(L, &new_elem);
+		LuaPopValue<T>(L, new_elem);
 		dest->at(setat) = new_elem;
 		return 0;
 	}
@@ -420,7 +420,7 @@ template<typename T> int lua_autosetvector(lua_State* L, vector<T>* dest, int ty
 	for (unsigned int i = 0; i < length; i++)
 	{
 		lua_geti(L, index, i + 1);
-		LuaPopValue<T>(L, &new_elem);
+		LuaPopValue<T>(L, new_elem);
 		dest->push_back(new_elem);
 	}
 
@@ -442,7 +442,7 @@ template<typename T> int lua_autosetvector(lua_State* L, vector<vector<T>>* dest
 		if (setelem->size() <= setat) return 0;
 
 		T new_elem;
-		LuaPopValue<T>(L, &new_elem);
+		LuaPopValue<T>(L, new_elem);
 
 		setelem->at(setat) = new_elem;
 
@@ -501,7 +501,7 @@ template<typename T> int lua_autosetarray(lua_State* L, T* dest, unsigned int si
 		}
 
 		T new_elem = T();
-		LuaPopValue<T>(L, &new_elem);
+		LuaPopValue<T>(L, new_elem);
 		dest[add_at] = new_elem;
 	}
 	else
@@ -512,14 +512,14 @@ template<typename T> int lua_autosetarray(lua_State* L, T* dest, unsigned int si
 		for (unsigned int i = 0; i < min(length, size); i++)
 		{
 			lua_geti(L, index, i + 1);
-			LuaPopValue<T>(L, &new_elem);
+			LuaPopValue<T>(L, new_elem);
 			dest[i] = new_elem;
 		}
 
 		for (unsigned int i = min(length, size); i < size; i++)
 		{
 			lua_pushinteger(L, 0);
-			LuaPopValue<T>(L, &new_elem);
+			LuaPopValue<T>(L, new_elem);
 			dest[i] = new_elem;
 		}
 
@@ -872,7 +872,7 @@ struct LuaPopHelper {
 			if (lua_type(L, index) != LUA_TNIL)
 			{
 				if (is_std_vector<T>::value) lua_autosetvector(L, &stack_element, -1, index);
-				else LuaPopValue<T>(L, &stack_element, index);
+				else LuaPopValue<T>(L, stack_element, index);
 			}
 			return make_tuple(stack_element);
 		}
@@ -897,7 +897,7 @@ struct LuaPopHelper {
 			if (lua_type(L, index) != LUA_TNIL)
 			{
 				if (is_std_vector<T1>::value) lua_autosetvector(L, &stack_element, -1, index);
-				else LuaPopValue<T1>(L, &stack_element, index);
+				else LuaPopValue<T1>(L, stack_element, index);
 			}
 			tuple<T1> head = make_tuple(stack_element);
 			return tuple_cat(head, LuaStackToTuple<T2, Rest...>(L, index));
@@ -1066,8 +1066,7 @@ int luaExt_GetUserDataSize(lua_State* L);
 template<typename T> int StandardSetterFn(lua_State* L)
 {
 	T* ud = GetUserData<T>(L, 1, "setUserDataFns");
-	if (lua_type(L, 2) == LUA_TNIL) *ud = T();
-	else LuaPopValue<T>(L, ud);
+	LuaPopValue<T>(L, *ud);
 	return 0;
 }
 
@@ -1078,13 +1077,23 @@ template<typename T> int StandardGetterFn(lua_State* L)
 	return 1;
 }
 
+//template<typename T> int VectorSetterFn(lua_State* L)
+//{
+//	vector<T>* ud = GetUserData<vector<T>>(L, 1, "getUserDataFns");
+//	if (lua_type(L, 2) == LUA_TNIL) ud->clear();
+//	else lua_autosetvector(L, ud);
+//	return 0;
+//}
+
 template<typename T> int VectorSetterFn(lua_State* L)
 {
 	vector<T>* ud = GetUserData<vector<T>>(L, 1, "getUserDataFns");
-	if (lua_type(L, 2) == LUA_TNIL) ud->clear();
-	else lua_autosetvector(L, ud);
+	unsigned int idx = lua_tointeger(L, 2);
+	LuaPopValue<T>(L, ud->at(idx));
 	return 0;
 }
+
+template<> int VectorSetterFn<bool>(lua_State* L);
 
 template<typename T> int VectorPushBackFn(lua_State* L)
 {
@@ -1093,13 +1102,30 @@ template<typename T> int VectorPushBackFn(lua_State* L)
 	return 0;
 }
 
+template<typename T> int VectorClearFn(lua_State* L)
+{
+	vector<T>* ud = GetUserData<vector<T>>(L, 1, "getUserDataFns");
+	ud->clear();
+	return 0;
+}
+
+//template<typename T> int VectorGetterFn(lua_State* L)
+//{
+//	vector<T>* ud = GetUserData<vector<T>>(L, 1, "getUserDataFns");
+//	int index = lua_tointegerx(L, 2, nullptr);
+//
+//	if (index >= 1) LuaPushValue<T>(L, ud->at(index - 1));
+//	else lua_autogetvector(L, *ud);
+//
+//	return 1;
+//}
+
 template<typename T> int VectorGetterFn(lua_State* L)
 {
 	vector<T>* ud = GetUserData<vector<T>>(L, 1, "getUserDataFns");
-	int index = lua_tointegerx(L, 2, nullptr);
+	int index = lua_tointeger(L, 2);
 
 	if (index >= 1) LuaPushValue<T>(L, ud->at(index - 1));
-	else lua_autogetvector(L, *ud);
 
 	return 1;
 }
@@ -1107,7 +1133,6 @@ template<typename T> int VectorGetterFn(lua_State* L)
 template<typename T> int DoubleVectorSetterFn(lua_State* L)
 {
 	vector<vector<T>>* ud = GetUserData<vector<vector<T>>>(L, 1, "getUserDataFns");
-	if (lua_type(L, 2) == LUA_TNIL) ud->clear();
 	if (lua_type(L, 2) == LUA_TNUMBER && lua_type(L, 3) == LUA_TNIL) ud->at(lua_tointeger(L, 2)).clear();
 	else lua_autosetvector(L, ud);
 	return 0;
@@ -1194,7 +1219,7 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 		T* ud;
 		if(address == nullptr) ud = GetUserData<T> ( L, 1, "setUserDataFns" );
 		else ud = (T*) address;
-		LuaPopValue<T>(L, ud);
+		LuaPopValue<T>(L, *ud);
 	};
 
 	RegisterMethodInTable(_lstate, StandardSetterFn<T>, finalType.c_str(), "_setterfns");
@@ -1233,6 +1258,7 @@ template<typename T> void MakeAccessorsUserDataFuncs(lua_State* _lstate, string 
 
 	RegisterMethodInTable(_lstate, VectorSetterFn<T>, finalType.c_str(), "_setterfns");
 	RegisterMethodInTable(_lstate, VectorPushBackFn<T>, finalType.c_str(), "_pushbackfns");
+	RegisterMethodInTable(_lstate, VectorClearFn<T>, finalType.c_str(), "_clearfns");
 
 	// Vector Getters ----------------------------------------------------------------
 	getUserDataFns[finalType] = [=] ( lua_State* L, char* address )

@@ -162,8 +162,18 @@ function SetupCommonMetatable(obj)
   obj.Set = _setterfns[obj.type]
   obj.Get = _getterfns[obj.type]
 
-  function obj:Reset() 
-    obj:Set(nil)
+  if obj.type ~= "string" then
+    function obj:Reset() 
+      obj:Set(0)
+    end
+  elseif obj.type:find("[]") then
+    function obj:Reset() 
+
+    end
+  else
+    function obj:Reset() 
+      obj:Set("")
+    end
   end
 end
 
@@ -174,10 +184,44 @@ end
 function SetupVectorMetatable(obj)
   SetupCommonMetatable(obj)
 
-  obj.PushBack = _pushbackfns[obj.type]
+  function obj:Reset() 
+    _clearfns[obj.type](self)
+    obj.elements = {}
+  end
+
+  obj.elements = {}
+
+  function obj:PushBack(newelem)
+    obj.elements[obj.elements] = newelem
+    _pushbackfns[obj.type](self, newelem)
+  end
+
+  local _Get = obj.Get
+  function obj:Get(index)
+    if index == nil then
+      return _Get(self)
+    else
+      return obj.elements[index]
+    end
+  end
+
+  local _Set = obj.Set
+  function obj:Set(index, value)
+    if index == nil then
+      return obj:Reset()
+    elseif type(index) == "table" then
+      obj:Reset()
+      for _, v in ipairs(index) do
+        self:PushBack(v)
+      end
+    else
+      self.elements[index] = value
+      _Set(self, index, value)
+    end
+  end
 
   function obj:GetSize(index)
-    return #(obj:Get(index))
+    return #self.elements
   end
 end
 

@@ -89,7 +89,7 @@ int luaExt_nanosleep(lua_State* L)
 	double timer = lua_tonumber(L, 1);
 
 	ts.tv_sec = floor(timer);
-	ts.tv_nsec = (timer-ts.tv_sec)*1e9;
+	ts.tv_nsec = (timer - ts.tv_sec) * 1e9;
 
 	nanosleep(&ts, nullptr);
 
@@ -724,82 +724,96 @@ int luaExt_GetMemryBlock(lua_State* L)
 	return 1;
 }
 
-template<> void LuaPopValue<bool>(lua_State* L, bool* dest, int index)
+template<> void LuaPopValue<bool>(lua_State* L, bool& dest, int index)
 {
-	*dest = lua_toboolean(L, index);
+	dest = lua_toboolean(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<char>(lua_State* L, char* dest, int index)
+template<> void LuaPopValue<char>(lua_State* L, char& dest, int index)
 {
-	*dest = lua_tostring(L, index)[0];
+	dest = lua_tostring(L, index)[0];
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<short>(lua_State* L, short* dest, int index)
+template<> void LuaPopValue<short>(lua_State* L, short& dest, int index)
 {
-	*dest = lua_tointeger(L, index);
+	dest = lua_tointeger(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<unsigned short>(lua_State* L, unsigned short* dest, int index)
+template<> void LuaPopValue<unsigned short>(lua_State* L, unsigned short& dest, int index)
 {
-	*dest = lua_tointeger(L, index);
+	dest = lua_tointeger(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<int>(lua_State* L, int* dest, int index)
+template<> void LuaPopValue<int>(lua_State* L, int& dest, int index)
 {
-	*dest = lua_tointeger(L, index);
+	dest = lua_tointeger(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<unsigned int>(lua_State* L, unsigned int* dest, int index)
+template<> void LuaPopValue<unsigned int>(lua_State* L, unsigned int& dest, int index)
 {
-	*dest = lua_tointeger(L, index);
+	dest = lua_tointeger(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<long>(lua_State* L, long* dest, int index)
+template<> void LuaPopValue<long>(lua_State* L, long& dest, int index)
 {
-	*dest = lua_tointeger(L, index);
+	dest = lua_tointeger(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<unsigned long>(lua_State* L, unsigned long* dest, int index)
+template<> void LuaPopValue<unsigned long>(lua_State* L, unsigned long& dest, int index)
 {
-	*dest = lua_tointeger(L, index);
+	dest = lua_tointeger(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<long long>(lua_State* L, long long* dest, int index)
+template<> void LuaPopValue<long long>(lua_State* L, long long& dest, int index)
 {
-	*dest = lua_tointeger(L, index);
+	dest = lua_tointeger(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<unsigned long long>(lua_State* L, unsigned long long* dest, int index)
+template<> void LuaPopValue<unsigned long long>(lua_State* L, unsigned long long& dest, int index)
 {
-	*dest = lua_tointeger(L, index);
+	dest = lua_tointeger(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<float>(lua_State* L, float* dest, int index)
+template<> void LuaPopValue<float>(lua_State* L, float& dest, int index)
 {
-	*dest = lua_tonumber(L, index);
+	dest = lua_tonumber(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<double>(lua_State* L, double* dest, int index)
+template<> void LuaPopValue<double>(lua_State* L, double& dest, int index)
 {
-	*dest = lua_tonumber(L, index);
+	dest = lua_tonumber(L, index);
 	lua_remove(L, index);
 }
 
-template<> void LuaPopValue<string>(lua_State* L, string* dest, int index)
+template<> void LuaPopValue<string>(lua_State* L, string& dest, int index)
 {
-	*dest = lua_tostringx(L, index);
+	dest = lua_tostringx(L, index);
 	lua_remove(L, index);
+}
+
+template<> int VectorSetterFn<bool>(lua_State* L)
+{
+	vector<bool>* ud = GetUserData<vector<bool>>(L, 1, "getUserDataFns");
+	if (lua_type(L, 2) == LUA_TNIL) ud->clear();
+	else
+	{
+		bool res = false;
+		unsigned int idx = lua_tointeger(L, 2);
+		LuaPopValue<bool>(L, res);
+		ud->at(idx) = res;
+	}
+	return 0;
 }
 
 template<> void LuaPushValue<bool>(lua_State* L, bool src)

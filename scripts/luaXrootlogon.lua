@@ -3,6 +3,7 @@
 _setterfns = {}
 _getterfns = {}
 _pushbackfns = {}
+_clearfns = {}
 
 luaXrootParams = {}
 luaXrootParams.max_history_length = 500
@@ -53,7 +54,7 @@ if IsMasterState then
       for i, v in ipairs(shmem._activeshmems) do if v.owner then ShmCtl({v.id, IPC_RMID}) end end
     end
 
-    __master_gui_socket:Send("terminate process")
+    if luaXrootParams.usepygui then __master_gui_socket:Send("terminate process") end
 
     sleep(0.5)
 
@@ -73,6 +74,8 @@ serpent = require("serpent")
 
 local defaultPackages = require("lua_tasks")
 
+defaultPackages = shallowcopy(package.loaded)
+
 local userlog_loaded, errmsg = pcall(require, 'userlogon') -- this line attempt to load additional user/userlogon.lua. If it doesnt't exist it does nothing. 
 -- If the user wants to load additional modules, it should be done in this file. Create it if needed. The directory user might need to be created as well.
 
@@ -90,9 +93,7 @@ if not userlog_loaded then
   end
 end
 
-defaultPackages = shallowcopy(package.loaded)
-
-if IsMasterState then
+if IsMasterState and luaXrootParams.usepygui then
   require("lua_pygui_ipc")
 
   __master_gui_socket = socket.CreateHost("net", "127.0.0.1:0", nil, nil, true)

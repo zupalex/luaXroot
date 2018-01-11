@@ -85,19 +85,25 @@ function GoToByte(file, b)
   end
 end
 
-function DecodeBytes(str, fmt, first, tohexa)
-  if not str or not fmt then return end
-
-  local status, decoded, offset = pcall(string.unpack, fmt, str, first)
-
-  if not status then
-    print("ERROR in DecodeBytes:", decoded)
-    return nil, first
-  end
-
-  if tohexa then 
-    return PrintHexa(decoded, offset-first), offset
-  end
+function DecodeBytes(str, fmt, first)
+  local decoded, offset = string.unpack(fmt, str, first)
 
   return decoded, offset
 end
+
+--function DecodeBytes(str, fmt, first, tohexa)
+--  if not str or not fmt then return end
+
+--  local status, decoded, offset = pcall(string.unpack, fmt, str, first)
+
+--  if not status then
+--    print("ERROR in DecodeBytes:", decoded)
+--    return nil, first
+--  end
+
+--  if tohexa then 
+--    return PrintHexa(decoded, offset-first), offset
+--  end
+
+--  return decoded, offset
+--end

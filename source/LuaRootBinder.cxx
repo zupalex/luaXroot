@@ -204,7 +204,7 @@ LuaCanvas::LuaCanvas()
 
 void LuaCanvas::HandleInput(EEventType event, int px, int py)
 {
-	if (event == kButton1Double && gROOT->GetEditorMode()== 0)
+	if (event == kButton1Double && gROOT->GetEditorMode() == 0)
 	{
 		TPad* target = (TPad*) this->GetClickSelectedPad();
 
@@ -942,9 +942,19 @@ int luaExt_TApplication_Terminate(lua_State* L)
 
 	gSystem->ProcessEvents();
 
-	lua_getglobal(L, "__pygui_pid");
-	int pygui_pid = stoi(lua_tostring(L, -1));
-	kill(pygui_pid, SIGKILL);
+	lua_getglobal(L, "luaXrootParams");
+	lua_getfield(L, -1, "usepygui");
+
+	if (lua_type(L, -1) == LUA_TBOOLEAN)
+	{
+		bool usepygui = lua_toboolean(L, -1);
+		if (usepygui)
+		{
+			lua_getglobal(L, "__pygui_pid");
+			int pygui_pid = stoi(lua_tostring(L, -1));
+			kill(pygui_pid, SIGKILL);
+		}
+	}
 
 	lua_close(L);
 
