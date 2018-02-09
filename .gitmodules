@@ -3,4 +3,3 @@
 	url = http://github.com/zupalex/ldf_unpacker
 [submodule "user/nscl_unpacker"]
 	path = user/nscl_unpacker
-	url = http://github.com/zupalex/nscl_unpacker
