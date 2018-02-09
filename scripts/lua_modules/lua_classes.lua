@@ -186,12 +186,22 @@ function SetupArrayMetatable(obj)
 end
 
 function SetupMetatable(obj)  
-  if obj.type:find("vector") then
+  if obj.type:sub(1, 6) =="vector" then
     SetupVectorMetatable(obj)
-  elseif obj.type:find("%[%]") then
-    SetupArrayMetatable(obj)
+
+    obj._iscollection = true
+    obj._elem_type = obj.type:sub(8, obj.type:len()-1)
   else
-    SetupStandardMetatable(obj)
+    local array_pos = obj.type:find("%[")
+
+    if array_pos then
+      SetupArrayMetatable(obj)
+
+      obj._iscollection = true
+      obj._elem_type = obj.type:sub(1, array_pos-1)
+    else
+      SetupStandardMetatable(obj)
+    end
   end
 end
 

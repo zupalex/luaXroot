@@ -34,6 +34,8 @@ class LuaCanvas;
 
 extern map<TObject*, LuaCanvas*> canvasTracker;
 
+extern map<string, double> luaXrootParams;
+
 extern mutex rootProcessLoopLock, syncSafeGuard, sharedBufferAccess;
 extern int updateRequestPending;
 
@@ -41,6 +43,10 @@ extern string sharedBuffer;
 
 void sigtstp_handler_stop(int signal);
 void sigtstp_handler_pause(int signal);
+void sigsegv_handler(int signal);
+
+int luaExt_SetLuaXRootParam(lua_State* L);
+int luaExt_GetLuaXRootParam(lua_State* L);
 
 // ------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------ //
@@ -342,6 +348,8 @@ static const luaL_Reg luaXroot_lib[] =
 		{ "clearprompthistory", clearprompthistory },
 
 		{ "_ctor", luaExt_Ctor },
+		{ "_setluaxrootparam", luaExt_SetLuaXRootParam },
+		{ "_getluaxrootparam", luaExt_GetLuaXRootParam },
 
 		{ "SetSharedBuffer", luaExt_SetSharedBuffer },
 		{ "GetSharedBuffer", luaExt_GetSharedBuffer },

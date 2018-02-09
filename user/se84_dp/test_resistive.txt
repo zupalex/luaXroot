@@ -1,0 +1,13 @@
+Columns are: "Strip #"     "Offset X"     "Offset Y"     "Slope (gain match)"    "Slope (energy calibration)"     "Left Edge Relative Pos."     "Right edge Relative Pos."
+
+SuperX3 U1 Energy Left vs. Right - Resistive Strip 1
+Res. Strip #1   32.5211   -57.2949   1.02494   0.00286695   -100   -100
+
+SuperX3 U1 Energy Left vs. Right - Resistive Strip 2
+Res. Strip #2   45.1883   -28.6612   0.930801   0.00309447   -100   -100
+
+SuperX3 U1 Energy Left vs. Right - Resistive Strip 3
+Res. Strip #3   49.0088   5.10455   1.03814   0.00292629   -100   -100
+
+SuperX3 U1 Energy Left vs. Right - Resistive Strip 4
+Res. Strip #4   55.1115   27.923   1.01716   0.00296959   -100   -100

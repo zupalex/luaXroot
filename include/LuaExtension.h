@@ -39,24 +39,28 @@
 
 #include <readline/history.h>
 
+class LuaUserClass;
+
 using namespace std;
 
 namespace LuaExt
 {
-	template<typename T> string to_string(const T& x)
+	template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value, string>::type to_string(const T& x)
 	{
 		return "to_string not implemented";
+	}
+	template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value, string>::type to_string(const T& x)
+	{
+		return x.to_string();
 	}
 }
 
 using namespace LuaExt;
 
-class LuaUserClass;
-
 extern lua_State* lua;
 
 template<typename >
-struct is_std_vector : std::false_type {
+struct is_std_vector: std::false_type {
 };
 
 template<typename T, typename A>
@@ -64,7 +68,7 @@ struct is_std_vector<vector<T, A>> : std::true_type {
 };
 
 template<typename >
-struct is_std_tuple : std::false_type {
+struct is_std_tuple: std::false_type {
 };
 
 template<typename ... Args>
@@ -89,6 +93,7 @@ template<typename T> void LuaPopValue(lua_State* L, T* dest, int index = -1)
 {
 	*dest = **(static_cast<T**>(lua_touserdata(L, index)));
 	lua_remove(L, index);
+//	cout << to_string(*dest) << endl;
 }
 
 template<> void LuaPopValue<bool>(lua_State* L, bool* dest, int index);
@@ -368,6 +373,8 @@ template<typename T> int lua_autopushback(lua_State* L, vector<T>* dest, int typ
 
 	dest->push_back(new_elem);
 
+//	cout << "Pushed back new element " << to_string(new_elem) << endl;
+
 	return 0;
 }
 
@@ -602,17 +609,26 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::typ
 	lua_pushvalue(L, -2);
 	lua_pcall(L, 1, 0, 0);
 
+//	cout << "basic metatable setup done..." << endl;
+
 	T* obj = *(static_cast<T**>(lua_touserdata(L, -1)));
 	AddMethod(L, luaExt_ShiftUDAddress<T>, "ShiftAddress");
 	AddMethod(L, luaExt_SetUDAddress<T>, "SetAddress");
 	AddMethod(L, luaExt_AllocateUD<T>, "Allocate");
 	AddMethod(L, luaExt_DeleteUD<T>, "Delete");
 
-	lua_getfield(L, -1, "type");
-	string type = lua_tostring(L, -1);
+//	cout << "=============obj in SetupMetatable=========== " << obj << endl;
+//	to_string(*obj);
+//
+//	cout << "address manipulation functions added..." << endl;
+
+	lua_getfield(L, -1, "_iscollection");
+	bool iscollection = lua_toboolean(L, -1);
 	lua_pop(L, 1);
 
-	if (type.find("vector") == string::npos && type.find("[") == string::npos) obj->SetupMetatable(L);
+//	cout << iscollection << "   /   " << obj << endl;
+
+	if (!iscollection) obj->SetupLuaUserClassMetatable(L);
 }
 
 template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::type SetupMetatable(lua_State* L)
@@ -621,28 +637,37 @@ template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::ty
 	lua_pushvalue(L, -2);
 	lua_pcall(L, 1, 0, 0);
 
+//	cout << "basic metatable setup done..." << endl;
+
 	AddMethod(L, luaExt_ShiftUDAddress<T>, "ShiftAddress");
 	AddMethod(L, luaExt_SetUDAddress<T>, "SetAddress");
 	AddMethod(L, luaExt_AllocateUD<T>, "Allocate");
 	AddMethod(L, luaExt_DeleteUD<T>, "Delete");
+
+//	T* obj = *(static_cast<T**>(lua_touserdata(L, -1)));
+//	cout << "=============obj in SetupMetatable=========== " << obj << endl;
+//	to_string(*obj);
 }
 
 template<typename T> typename enable_if<!is_std_tuple<T>::value && !is_std_vector<T>::value>::type LuaPushValue(lua_State* L, T src)
 {
-	T* obj = *(reinterpret_cast<T**>(lua_newuserdata(L, sizeof(T*))));
-	obj = new T();
-	*obj = src;
+	T** obj = reinterpret_cast<T**>(lua_newuserdata(L, sizeof(T*)));
+
+	*obj = new T();
+	**obj = src;
 	MakeMetatable(L);
 
-	lua_getfield(L, 1, "type");
+	lua_getfield(L, 1, "_iscollection");
+	bool iscollection = lua_toboolean(L, -1);
+	lua_pop(L, 1);
 
-	string type = lua_tostring(L, -1);
-	if (type.find("[") != string::npos)
-	{
-		type = type.substr(0, type.find("[") - 1);
-		lua_pop(L, 1);
-		lua_pushstring(L, type.c_str());
-	}
+	if (iscollection) lua_getfield(L, 1, "_elem_type");
+	else lua_getfield(L, 1, "type");
+
+//	cout << "=============src=========== " << &src << endl;
+//	to_string(src);
+//	cout << "=============obj=========== " << *obj << endl;
+//	to_string(**obj);
 
 	lua_setfield(L, -2, "type");
 
@@ -731,7 +756,7 @@ extern map<string, map<int, function<int(lua_State*, int, int)>>> constructorLis
 template<int...> struct seq
 {};
 
-template<int N, int ...S> struct gens : gens<N - 1, N - 1, S...> {
+template<int N, int ...S> struct gens: gens<N - 1, N - 1, S...> {
 };
 
 template<int ...S> struct gens<0, S...> {
@@ -796,7 +821,7 @@ template<typename ... Ts> void LuaPushTuple(lua_State* L, tuple<Ts...> src)
 	lua_newtable(L);
 	int table_pos = lua_gettop(L);
 	StoreArgsAndCallFn<nargs, void, lua_State*, Ts...> retrieved = // LuaMultPush takes as first argument a lua_State* so we need to insert it between void and Ts...
-				{ LuaMultPush, tuple_cat(make_tuple(L), src) }; // But then it tries to unpack src as tuple<lua_State*, Ts...> so we artificially add one at the beginning...
+			{ LuaMultPush, tuple_cat(make_tuple(L), src) }; // But then it tries to unpack src as tuple<lua_State*, Ts...> so we artificially add one at the beginning...
 	retrieved.DoCallFn();
 
 	for (int i = 0; i < nargs; i++)
@@ -948,8 +973,7 @@ template<typename T, typename R, typename ... Args> R CallFuncsWithArgs(lua_Stat
 {
 	auto args = LuaPopHelper<sizeof...(Args), Args...>::DoPop(L, index);
 
-	StoreArgsAndCallFn<sizeof...(Args), R, Args...> retrieved =
-		{ func, args };
+	StoreArgsAndCallFn<sizeof...(Args), R, Args...> retrieved = { func, args };
 	return retrieved.DoCallFn();
 }
 
@@ -965,10 +989,12 @@ template<typename T, typename ... Args> void MakeDefaultConstructor(lua_State* L
 		lua_pushstring(L_, name.c_str());
 		lua_setfield(L_, -2, "type");
 
-		SetupMetatable<T> ( L_ );
+//		cout << "Object of type " << name << " created..." << endl;
 
-		return sizeof(T);
-	};
+			SetupMetatable<T> ( L_ );
+
+			return sizeof(T);
+		};
 
 	constructorList[name][0] = ctor;
 
@@ -1000,6 +1026,8 @@ template<typename T, typename ... Args> void AddObjectConstructor(lua_State* L, 
 
 		lua_pushstring(L_, name.c_str());
 		lua_setfield(L_, -2, "type");
+
+//		cout << "Object of type " << name << " created..." << endl;
 
 		SetupMetatable<T> ( L_ );
 
@@ -1089,17 +1117,33 @@ template<typename T> int VectorSetterFn(lua_State* L)
 template<typename T> int VectorPushBackFn(lua_State* L)
 {
 	vector<T>* ud = GetUserData<vector<T>>(L, 1, "getUserDataFns");
+
+//	cout << "Calling VectorPushBackFn on " << ud << " (vector size: " << ud->size() << ")" << endl;
+
 	lua_autopushback(L, ud);
 	return 0;
 }
 
 template<typename T> int VectorGetterFn(lua_State* L)
 {
-	vector<T>* ud = GetUserData<vector<T>>(L, 1, "getUserDataFns");
+//	vector<T>* ud = GetUserData<vector<T>>(L, 1, "getUserDataFns");
+	vector<T>* ud = *(static_cast<vector<T>**>(lua_touserdata(L, 1)));
 	int index = lua_tointegerx(L, 2, nullptr);
 
-	if (index >= 1) LuaPushValue<T>(L, ud->at(index - 1));
-	else lua_autogetvector(L, *ud);
+//	cout << "Calling VectorGetterFn on " << ud << " with index " << index << " (vector size: " << ud->size() << ")" << endl;
+
+	if (index >= 1)
+	{
+//		cout << to_string(ud->at(index - 1)) << endl;
+		LuaPushValue<T>(L, ud->at(index - 1));
+	}
+	else
+	{
+//		cout << to_string(*ud) << endl;
+		lua_autogetvector(L, *ud);
+	}
+
+//	cout << "Returning VectorGetterFn result..." << endl;
 
 	return 1;
 }

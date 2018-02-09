@@ -1,0 +1,34 @@
+Columns are: "Strip #"     "Offset X"     "Offset Y"     "Slope (gain match)"    "Slope (energy calibration)"     "Left Edge Relative Pos."     "Right edge Relative Pos."
+
+Elastics BOTTOM_LEFT Energy Left vs. Right - Resistive Strip 2
+Res. Strip #2   35.4385   95.0373   0.849283   0.00404731   -100   -100
+
+Elastics BOTTOM_LEFT Energy Left vs. Right - Resistive Strip 3
+Res. Strip #3   3.76937   93.934   0.930253   0.00363952   -100   -100
+
+Elastics BOTTOM_LEFT Energy Left vs. Right - Resistive Strip 4
+Res. Strip #4   66.7674   125.823   0.924569   0.0035179   -100   -100
+
+Elastics BOTTOM_RIGHT Energy Left vs. Right - Resistive Strip 1
+Res. Strip #1   53.5144   90.0277   0.88145   0.00409262   -100   -100
+
+Elastics BOTTOM_RIGHT Energy Left vs. Right - Resistive Strip 2
+Res. Strip #2   24.7335   100.036   1.02519   0.00365953   -100   -100
+
+Elastics BOTTOM_RIGHT Energy Left vs. Right - Resistive Strip 3
+Res. Strip #3   60.8698   128.226   1.09562   0.00329513   -100   -100
+
+Elastics BOTTOM_RIGHT Energy Left vs. Right - Resistive Strip 4
+Res. Strip #4   -4.48027   138.831   1.09864   0.0037323   -100   -100
+
+Elastics TOP_RIGHT Energy Left vs. Right - Resistive Strip 1
+Res. Strip #1   -42.2433   115.116   0.96408   0.00344993   -100   -100
+
+Elastics TOP_RIGHT Energy Left vs. Right - Resistive Strip 2
+Res. Strip #2   37.2046   89.9214   1.07066   0.00325698   -100   -100
+
+Elastics TOP_RIGHT Energy Left vs. Right - Resistive Strip 3
+Res. Strip #3   79.429   130.448   0.970606   0.00340075   -100   -100
+
+Elastics TOP_RIGHT Energy Left vs. Right - Resistive Strip 4
+Res. Strip #4   49.3153   107.226   1.07538   0.00372584   -100   -100

@@ -5,9 +5,44 @@
 
 using namespace std;
 
-void LuaGraphError::SetGraphStyle()
+void LuaGraphError::SetPointColor(int colorid)
 {
-	((TGraphErrors*) rootObj)->SetMarkerStyle(3);
+	((TGraphErrors*) rootObj)->SetMarkerColor(colorid);
+}
+
+void LuaGraphError::SetPointSize(int size)
+{
+	((TGraphErrors*) rootObj)->SetMarkerSize(size);
+}
+
+void LuaGraphError::SetPointStyle(int styleid)
+{
+	((TGraphErrors*) rootObj)->SetMarkerStyle(styleid);
+}
+
+void LuaGraphError::SetPointColorAlpha(int colorid, float alpha)
+{
+	((TGraphErrors*) rootObj)->SetMarkerColorAlpha(colorid, alpha);
+}
+
+void LuaGraphError::SetLineColor(int colorid)
+{
+	((TGraphErrors*) rootObj)->SetLineColor(colorid);
+}
+
+void LuaGraphError::SetLineWidth(int width)
+{
+	((TGraphErrors*) rootObj)->SetLineWidth(width);
+}
+
+void LuaGraphError::SetLineStyle(int styleid)
+{
+	((TGraphErrors*) rootObj)->SetLineStyle(styleid);
+}
+
+void LuaGraphError::SetLineColorAlpha(int colorid, float alpha)
+{
+	((TGraphErrors*) rootObj)->SetLineColorAlpha(colorid, alpha);
 }
 
 void LuaGraphError::Set(int n)
@@ -65,6 +100,16 @@ void LuaGraphError::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaGraphError::Set, "SetNPoint");
 	AddClassMethod(L, &LuaGraphError::SetPointVals, "SetPoint");
 	AddClassMethod(L, &LuaGraphError::SetPointErrors, "SetPointError");
+
+	AddClassMethod(L, &LuaGraphError::SetPointColor, "SetPointColor");
+	AddClassMethod(L, &LuaGraphError::SetPointSize, "SetPointSize");
+	AddClassMethod(L, &LuaGraphError::SetPointStyle, "SetPointStyle");
+	AddClassMethod(L, &LuaGraphError::SetPointColorAlpha, "SetPointColorAlpha");
+
+	AddClassMethod(L, &LuaGraphError::SetLineColor, "SetLineColor");
+	AddClassMethod(L, &LuaGraphError::SetLineWidth, "SetLineWidth");
+	AddClassMethod(L, &LuaGraphError::SetLineStyle, "SetLineStyle");
+	AddClassMethod(L, &LuaGraphError::SetLineColorAlpha, "SetLineColorAlpha");
 
 	AddClassMethod(L, &LuaGraphError::RemovePoint, "RemovePoint");
 	AddClassMethod(L, &LuaGraphError::Eval, "Eval");

@@ -577,33 +577,33 @@ end
 AddPostInit("TTree", function(self)
     self.branches_list = {}
 
-    local _Draw = self.Draw
-    function self:Draw(exp, hist_props, cond, opts, nentries, firstentry)
-      if type(exp) == "table" then
-        local cond = exp.cond or ""
-        local opts = exp.opts or ""
-        local nentries = exp.nentries or 0
-        local firstentry = exp.firstentry or 0
-        local exp = exp.exp
-        local tot_entries = _Draw(self, exp..">>h_tree_temp()", cond, opts, nentries, firstentry)
+--    local _Draw = self.Draw
+--    function self:Draw(exp, hist_props, cond, opts, nentries, firstentry)
+--      if type(exp) == "table" then
+--        local cond = exp.cond or ""
+--        local opts = exp.opts or ""
+--        local nentries = exp.nentries or 0
+--        local firstentry = exp.firstentry or 0
+--        local exp = exp.exp
+--        local tot_entries = _Draw(self, exp..">>h_tree_temp()", cond, opts, nentries, firstentry)
 
-      else
-        local hist_str = ""
-        if hist_props then
-          hist_str = ">>"..hist_props.name.."("..hist_props.nbinsx..","..hist_props.xmin..","..hist_props.xmax
-          if hist_props.nbinsy then
-            hist_str = hist_str..","..hist_props.nbinsy..","..hist_props.ymin..","..hist_props.ymax
-          end
-          hist_str = hist_str..")"
-        end
+--      else
+--        local hist_str = ""
+--        if hist_props then
+--          hist_str = ">>"..hist_props.name.."("..hist_props.nbinsx..","..hist_props.xmin..","..hist_props.xmax
+--          if hist_props.nbinsy then
+--            hist_str = hist_str..","..hist_props.nbinsy..","..hist_props.ymin..","..hist_props.ymax
+--          end
+--          hist_str = hist_str..")"
+--        end
 
-        if cond == nil then cond = "" end
-        if opts == nil then opts = "" end
-        if nentries == nil then nentries = 0 end
-        if firstentry == nil then firstentry = 0 end
-        local tot_entries = _Draw(self, exp..hist_str, cond, opts, nentries, firstentry)
-      end
-    end
+--        if cond == nil then cond = "" end
+--        if opts == nil then opts = "" end
+--        if nentries == nil then nentries = 0 end
+--        if firstentry == nil then firstentry = 0 end
+--        local tot_entries = _Draw(self, exp..hist_str, cond, opts, nentries, firstentry)
+--      end
+--    end
 
     local _NewBranch = self.NewBranch
     function self:NewBranch(name, var_type)
