@@ -3,6 +3,7 @@
 #include <llimits.h>
 #include <csignal>
 #include <readline/readline.h>
+#include <execinfo.h>
 
 #include "TUnixSystem.h"
 #include "TSysEvtHandler.h"
@@ -11,6 +12,27 @@
 string sharedBuffer;
 
 map<string, string> rootObjectAliases;
+
+map<string, double> luaXrootParams;
+
+int luaExt_SetLuaXRootParam(lua_State* L)
+{
+	string param = lua_tostring(L, 1);
+	double value = lua_tonumber(L, 2);
+
+	luaXrootParams[param] = value;
+
+	return 0;
+}
+
+int luaExt_GetLuaXRootParam(lua_State* L)
+{
+	string param = lua_tostring(L, 1);
+
+	lua_pushnumber(L, luaXrootParams[param]);
+
+	return 1;
+}
 
 map<TObject*, LuaCanvas*> canvasTracker;
 mutex syncSafeGuard;
@@ -62,6 +84,58 @@ void sigtstp_handler_pause(int i)
 		}
 
 		cout << endl;
+	}
+}
+
+void sigsegv_handler(int i)
+{
+	if (i == SIGSEGV)
+	{
+		Break("TUnixSystem::DispatchSignals", "%s", "segmentation violation");
+		gSystem->StackTrace();
+
+		signal( SIGSEGV, SIG_DFL);
+
+		cerr << "Yieks! Seg Fault!" << endl;
+
+		for (auto itr = socketsList.begin(); itr != socketsList.end(); itr++)
+		{
+			unlink(itr->second.address.c_str());
+			close(itr->first);
+		}
+
+		for (auto itr = tasksNames.begin(); itr != tasksNames.end(); itr++)
+		{
+			PushSignal(itr->second, "stop");
+		}
+
+		//		remove(theApp->msgq_address.c_str());
+		//
+		//		for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
+		//		{
+		//			if (itr->second != nullptr)
+		//			{
+		//				itr->second->Close();
+		//				delete itr->second;
+		//			}
+		//		}
+
+		gSystem->ProcessEvents();
+
+		if ((int) luaXrootParams["pygui_id"] != -1)
+		{
+			cerr << "python gui pid: " << (int) luaXrootParams["pygui_id"] << endl;
+			kill((int) luaXrootParams["pygui_id"], SIGKILL);
+		}
+
+		lua_close(lua);
+
+		cerr << "Lua state has been closed..." << endl;
+
+		cerr << "Error: signal " << i << endl;
+
+		gSystem->Exit(i);
+		theApp->Terminate();
 	}
 }
 
@@ -188,15 +262,15 @@ mutex rootProcessLoopLock;
 
 RootAppManager* theApp = 0;
 
-RootAppManager::RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options, Int_t numOptions)
-		: TApplication(appClassName, argc, argv, options, numOptions)
+RootAppManager::RootAppManager(const char *appClassName, Int_t *argc, char **argv, void *options, Int_t numOptions) :
+		TApplication(appClassName, argc, argv, options, numOptions)
 {
 }
 
 ClassImp(RootAppManager)
 
-LuaCanvas::LuaCanvas()
-		: TCanvas()
+LuaCanvas::LuaCanvas() :
+		TCanvas()
 {
 	TRootCanvas *rc = (TRootCanvas *) fCanvas->GetCanvasImp();
 	rc->Connect("CloseWindow()", "LuaCanvas", this, "CanvasClosed()");
@@ -331,6 +405,12 @@ int luaExt_GetTaskName(lua_State* L)
 
 int luaExt_SendCmdToMaster(lua_State* L)
 {
+	lua_getglobal(lua, "debug");
+	lua_getfield(lua, -1, "traceback");
+	lua_remove(lua, -2);
+
+	int traceback_stack_pos = lua_gettop(lua);
+
 	string cmd = lua_tostring(L, 1);
 	int success = luaL_loadstring(lua, cmd.c_str());
 
@@ -341,7 +421,8 @@ int luaExt_SendCmdToMaster(lua_State* L)
 	}
 
 	int stack_before = lua_gettop(lua) - 1;
-	success = lua_pcall(lua, 0, LUA_MULTRET, 0);
+
+	success = lua_pcall(lua, 0, LUA_MULTRET, traceback_stack_pos);
 
 	if (success != 0)
 	{
@@ -793,6 +874,7 @@ int luaExt_NewTApplication(lua_State* L)
 //         cout << "theApp == nullptr, initializing it..." << endl;
 
 		signal( SIGTSTP, sigtstp_handler_pause);
+		signal( SIGSEGV, sigsegv_handler);
 
 		SetROOTDrawableClasses();
 
@@ -942,19 +1024,7 @@ int luaExt_TApplication_Terminate(lua_State* L)
 
 	gSystem->ProcessEvents();
 
-	lua_getglobal(L, "luaXrootParams");
-	lua_getfield(L, -1, "usepygui");
-
-	if (lua_type(L, -1) == LUA_TBOOLEAN)
-	{
-		bool usepygui = lua_toboolean(L, -1);
-		if (usepygui)
-		{
-			lua_getglobal(L, "__pygui_pid");
-			int pygui_pid = stoi(lua_tostring(L, -1));
-			kill(pygui_pid, SIGKILL);
-		}
-	}
+	if ((int) luaXrootParams["pygui_id"] != -1) kill((int) luaXrootParams["pygui_id"], SIGKILL);
 
 	lua_close(L);
 

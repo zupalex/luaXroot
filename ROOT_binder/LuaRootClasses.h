@@ -391,32 +391,40 @@ class LuaGraphError : public LuaROOTSpec<TGraphErrors> {
 		LuaGraphError()
 		{
 			rootObj = new TGraphErrors();
-			SetGraphStyle();
+			SetPointStyle(3);
 		}
 
 		LuaGraphError(int i)
 		{
 			rootObj = new TGraphErrors(i);
-			SetGraphStyle();
+			SetPointStyle(3);
 		}
 
 		LuaGraphError(int i, vector<double> xs, vector<double> ys)
 		{
 			rootObj = new TGraphErrors(i, &xs[0], &ys[0]);
-			SetGraphStyle();
+			SetPointStyle(3);
 		}
 
 		LuaGraphError(int i, vector<double> xs, vector<double> ys, vector<double> errxs, vector<double> errys)
 		{
 			rootObj = new TGraphErrors(i, &xs[0], &ys[0], &errxs[0], &errys[0]);
-			SetGraphStyle();
+			SetPointStyle(3);
 		}
 
 		~LuaGraphError()
 		{
 		}
 
-		void SetGraphStyle();
+		void SetPointColor(int colorid);
+		void SetPointSize(int size);
+		void SetPointStyle(int styleid);
+		void SetPointColorAlpha(int colorid, float alpha);
+
+		void SetLineColor(int colorid);
+		void SetLineWidth(int width);
+		void SetLineStyle(int styleid);
+		void SetLineColorAlpha(int colorid, float alpha);
 
 		virtual void Set(int n);
 		int GetMaxSize();

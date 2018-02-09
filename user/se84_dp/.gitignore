@@ -1,0 +1,7 @@
+*.root
+*.pyc
+*.d
+*.pcm
+*.so
+*.log
+*.fuse*

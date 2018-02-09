@@ -1,6 +1,6 @@
 #include "UserClassBase.h"
 
-void LuaUserClass::SetupMetatable(lua_State* L)
+void LuaUserClass::SetupLuaUserClassMetatable(lua_State* L)
 {
 	TryGetGlobalField(L, "_LuaRootObj.Set");
 	lua_setfield(L, -2, "Set");
