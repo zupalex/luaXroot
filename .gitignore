@@ -9,3 +9,4 @@ exec/
 *.pyc
 userlogon.lua
 *.root
+user/userpyscripts.py
