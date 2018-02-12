@@ -1,8 +1,0 @@
-[submodule "user/ldf_unpacker"]
-	path = user/ldf_unpacker
-	url = http://github.com/zupalex/ldf_unpacker
-[submodule "user/nscl_unpacker"]
-	path = user/nscl_unpacker
-[submodule "user/se84_dp"]
-	path = user/se84_dp
-	url = http://github.com/zupalex/se84_dp

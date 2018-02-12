@@ -10,3 +10,5 @@ exec/
 userlogon.lua
 *.root
 user/userpyscripts.py
+user/*
+!user/Examples/*
