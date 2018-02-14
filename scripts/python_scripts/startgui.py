@@ -113,6 +113,7 @@ def main():
           globProperties.lua_to_py_sock.connect(("127.0.0.1", int(sys.argv[idx + 2])))
   
   root = Tk()
+  root.title("luaXroot")
   
   root.appProps = globProperties
   
