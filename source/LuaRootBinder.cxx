@@ -91,7 +91,7 @@ void sigsegv_handler(int i)
 {
 	if (i == SIGSEGV)
 	{
-		Break("TUnixSystem::DispatchSignals", "%s", "segmentation violation");
+		//Break("TUnixSystem::DispatchSignals", "%s", "segmentation violation");
 		gSystem->StackTrace();
 
 		signal( SIGSEGV, SIG_DFL);
