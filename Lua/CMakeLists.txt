@@ -9,7 +9,7 @@ set(LUA_LIB_SOURCES lauxlib.c lbaselib.c ldblib.c liolib.c lmathlib.c loslib.c l
 
 set_source_files_properties(${LUA_CORE_SOURCES} ${LUA_LIB_SOURCES} lua.c PROPERTIES LANGUAGE CXX)
 
-add_library(LUALIB_OBJECTS OBJECT ${LUA_CORE_SOURCES} ${LUA_LIB_SOURCES})
+add_library(LUALIB_OBJECTS OBJECT ${LUA_CORE_SOURCES} ${LUA_LIB_SOURCES} lua.c)
 target_compile_options(LUALIB_OBJECTS PUBLIC -DLUA_COMPAT_5_2 -DLUA_USE_LINUX)
 add_library(lualib SHARED $<TARGET_OBJECTS:LUALIB_OBJECTS>)
 target_link_libraries(lualib ${ROOT_LIBRARIES})
