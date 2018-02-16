@@ -39,6 +39,8 @@ if IsMasterState then
     end
 
     CompilePostInit_C({script=args.script, target=args.target})
+    
+    print("Compilation complete...")
 
     if args.libname ~= nil and args.libname ~= "*" then
       if args.openfn == nil then
@@ -56,6 +58,7 @@ if IsMasterState then
         end
 
         LoadLib(scriptBase.."_"..scriptExt..".so", args.libname, true)
+        print("Library loaded...")
       end
     end
   end
