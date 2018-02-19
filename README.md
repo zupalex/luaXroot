@@ -3,7 +3,7 @@ A binder to use ROOT classes in Lua and merging ROOT TApplication with the Lua i
 
 For a more detailed documentation (WIP): [wiki page](https://zupalex.github.io/)
 
-**A basic GUI using Python has been introduced as an experimental feature (December 2017, using Tkinter with Python 2.7). User can customize the GUI via python scripts (adding buttons, fields, ...) using the file user/userscripts.py. An example of user modified GUI will be added soon. It is disabled by default. To enable it, add the following to your userlogon.lua: SetUsePYGui(true)**
+**A basic GUI using Python has been introduced as an experimental feature (December 2017, using Tkinter with Python 2.7). User can customize the GUI via python scripts (adding buttons, fields, ...) using the file user/userscripts.py. An example of user modified GUI will be added soon. It is disabled by default. To enable it, add the following to your userlogon.lua: SetUsePYGui(true). You can alternatively start it by hand after launching luaXroot by typing StartPYGUI()**
 
 What it does:  
 - Start a "standard" lua interpreter and run a derived version of the ROOT TApplication in the background.  
