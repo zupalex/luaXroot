@@ -234,6 +234,52 @@ function string.find_last_occurence(str, pattern)
   return prev_s, prev_e
 end
 
+function ls(nameFilter, typeOpt, printFormat)
+  if nameFilter == nil then nameFilter = "*" end
+
+  local lsCmd = "ls "
+  local printCmd = lsCmd
+  local optsCmd = ""
+
+  local origDirIdx = string.find(nameFilter, "/[^/]*$")
+  if origDirIdx then
+    lsCmd = "cd "..(nameFilter:sub(1,origDirIdx)).."; "..lsCmd
+    printCmd = "cd "..(nameFilter:sub(1,origDirIdx)).."; "..printCmd
+
+    nameFilter = nameFilter:sub(origDirIdx+1)
+  end
+
+  if printFormat then
+    printCmd = printCmd..printFormat.." "
+  end
+
+  if typeOpt == "file" or typeOpt == "files" or typeOpt == "f" then
+    optsCmd = optsCmd.."-p -d "..nameFilter.." | grep -v /"
+  elseif typeOpt == "dir" or typeOpt == "directory" or typeOpt == "directories" or typeOpt == "d" then
+    optsCmd = optsCmd.."-d "..nameFilter.."/"
+  elseif typeOpt == "all" or typeOpt == "*" then
+    optsCmd = optsCmd.." -p"
+  end
+
+  if printFormat then
+    os.execute(printCmd..optsCmd)
+  end
+
+  local fhandle = io.popen(lsCmd..optsCmd)
+  local res = {}
+
+  local entry = fhandle:read()
+
+  while entry do
+    table.insert(res, entry)
+    entry = fhandle:read()
+  end
+
+  io.close(fhandle)
+
+  return #res > 0 and res or nil
+end
+
 _utilities = {}
 
 function _utilities.roundnumber(num)

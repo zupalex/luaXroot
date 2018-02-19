@@ -104,7 +104,7 @@ end
 defaultPackages = shallowcopy(package.loaded)
 
 if IsMasterState then
-  if _getluaxrootparam("usepygui") == 1 then
+  function StartPYGUI()
     require("lua_pygui_ipc")
 
     __master_gui_socket = socket.CreateHost("net", "127.0.0.1:0", nil, nil, true)
@@ -146,6 +146,10 @@ if IsMasterState then
 
     __pygui_pid = __master_gui_socket:ReadResponse(readfds[1])
     _setluaxrootparam("pygui_id", __pygui_pid)
+  end
+
+  if _getluaxrootparam("usepygui") == 1 then
+    StartPYGUI()
   else
     _setluaxrootparam("pygui_id", -1)
   end

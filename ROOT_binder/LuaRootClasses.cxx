@@ -90,7 +90,7 @@ void LuaDrawTObject(TObject* obj, string opts)
 extern "C" int openlib_lua_root_classes(lua_State* L)
 {
 	lua_register(L, "GetObject", LuaGetROOTObjectFromDir);
-	lua_register(L, "ListCurrentDir", luaExt_GetGDirContent);
+	lua_register(L, "ListCurrentROOTDir", luaExt_GetGDirContent);
 
 	LoadLuaTCanvasLib(L);
 	LoadLuaTFileLib(L);
