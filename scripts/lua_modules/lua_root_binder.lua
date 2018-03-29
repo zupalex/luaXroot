@@ -14,7 +14,66 @@ function _LuaRootObj.Value(self, member, value)
 end
 
 ---------------------------------------------------------------------
-------------------------------- TCanvas -------------------------------
+------------------------------- TVector3 -----------------------------
+---------------------------------------------------------------------
+
+AddPostInit("TVector3", function(self)
+    self.__index.__add = function(lhs, rhs)
+      if rhs.type ~= "TVector3" or lhs.type ~= "TVector3"then 
+        print("Can only add 2 TVector3 together...")
+        return
+      end
+
+      local res = TVector3()
+      res:SetXYZ(lhs:X()+rhs:X(), lhs:Y()+rhs:Y(), lhs:Z()+rhs:Z())
+      return res
+    end
+
+    self.__index.__sub = function(lhs, rhs)
+      if rhs.type ~= "TVector3" or lhs.type ~= "TVector3"then 
+        print("Can only subtract 2 TVector3 together...")
+        return
+      end
+
+      local res = TVector3()
+      res:SetXYZ(lhs:X()-rhs:X(), lhs:Y()-rhs:Y(), lhs:Z()-rhs:Z())
+      return res
+    end
+
+    self.__index.__mul = function(lhs, rhs)
+      if type(lhs) == "number" then
+        local res = TVector3()
+        res:SetXYZ(lhs*rhs:X(), lhs*rhs:Y(), lhs*rhs:Z())
+        return res
+      elseif type(rhs) == "number" then
+        local res = TVector3()
+        res:SetXYZ(rhs*lhs:X(), rhs*lhs:Y(), rhs*lhs:Z())
+        return res
+      elseif rhs.type == "TVector3" and lhs.type == "TVector3"then 
+        local res = TVector3()
+        res:SetXYZ(lhs:X()*rhs:X(), lhs:Y()*rhs:Y(), lhs:Z()*rhs:Z())
+        return res
+      end
+    end
+
+    self.__index.__div = function(lhs, rhs)
+      if type(rhs) == "number" then
+        local res = TVector3()
+        res:SetXYZ(lhs:X()/rhs, lhs:Y()/rhs, lhs:Z()/rhs)
+        return res
+      elseif rhs.type == "TVector3" and lhs.type == "TVector3"then 
+        local res = TVector3()
+        res:SetXYZ(lhs:X()/rhs:X(), lhs:Y()/rhs:Y(), lhs:Z()/rhs:Z())
+        return res
+      else
+        print("Cannot divide a number by a TVEctor3...")
+        return
+      end
+    end
+  end)
+
+---------------------------------------------------------------------
+------------------------------- TCanvas -----------------------------
 ---------------------------------------------------------------------
 
 AddPostInit("TCanvas", function(self)
