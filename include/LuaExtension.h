@@ -763,6 +763,15 @@ template<int ...S> struct gens<0, S...> {
 		typedef seq<S...> type;
 };
 
+// What it does is generate a type seq<0, 1, .., N-1>.
+//
+// How it works: gens<5>: gens<4, 4>
+// gens<4, 4>: gens<3, 3, 4>
+// gens<3, 3, 4>: gens<2, 2, 3, 4>
+// gens<2, 2, 3, 4>: gens<1, 1, 2, 3, 4>
+// gens<1, 1, 2, 3, 4>: gens<0, 0, 1, 2, 3, 4>
+// The last type is specialized, creating seq<0, 1, 2, 3, 4>
+
 template<size_t, typename R, typename ... Args>
 struct StoreArgsAndCallFn {
 		R (*fptr)(Args...);

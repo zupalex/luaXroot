@@ -5,7 +5,7 @@
 
 void LuaDrawTObject(TObject* obj, string opts = "");
 
-class LuaROOTBase : public LuaUserClass {
+class LuaROOTBase: public LuaUserClass {
 	private:
 
 	public:
@@ -38,7 +38,7 @@ class LuaROOTBase : public LuaUserClass {
 		}
 };
 
-template<typename T> class LuaROOTSpec : public LuaROOTBase {
+template<typename T> class LuaROOTSpec: public LuaROOTBase {
 	private:
 
 	public:
@@ -77,8 +77,8 @@ template<typename T> class LuaROOTSpec : public LuaROOTBase {
 			((T*) rootObj)->Add((T*) (h2->rootObj), s);
 		}
 
-		virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = numeric_limits<unsigned long long>::max(), unsigned long long firstentry =
-				0)
+		virtual void DoDraw(string varexp, string cond = "", string opts = "", unsigned long long nentries = numeric_limits<unsigned long long>::max(),
+				unsigned long long firstentry = 0)
 		{
 			if (rootObj == nullptr) return;
 
@@ -175,12 +175,89 @@ int luaExt_GetGDirContent(lua_State* L);
 
 // _____________________________________________________________________________ //
 //                                                                               //
+// --------------------------------- TVector3 ------------------------------------- //
+// _____________________________________________________________________________ //
+
+extern "C" void LoadLuaTVector3Lib(lua_State* L);
+
+class LuaTVector3: public LuaROOTSpec<TVector3> {
+	private:
+
+	public:
+		LuaTVector3()
+		{
+			rootObj = new TVector3();
+		}
+
+		~LuaTVector3()
+		{
+		}
+
+		double X();
+		double Y();
+		double Z();
+
+		double Px();
+		double Py();
+		double Pz();
+
+		double Theta();
+		double Phi();
+
+		double Perp();
+		double Perp2();
+
+		double Mag();
+		double Mag2();
+
+		double CosTheta();
+		double Eta();
+
+		void RotateX(double angle);
+		void RotateY(double angle);
+		void RotateZ(double angle);
+
+		void Rotate(double angle, LuaTVector3* axis);
+
+		double Angle(LuaTVector3* vec);
+		double Dot(LuaTVector3* vec);
+		LuaTVector3 Cross(LuaTVector3* vec);
+
+		void SetMag(double mag);
+		void SetMagThetaPhi(double mag, double theta, double phi);
+
+		void SetPerp(double perp);
+
+		void SetPhi(double phi);
+
+		void SetPtEtaPhi(double pt, double eta, double phi);
+
+		void SetPtThetaPhi(double pt, double theta, double phi);
+
+		void SetTheta(double theta);
+
+		void SetX(double x);
+
+		void SetXYZ(double x, double y, double z);
+
+		void SetY(double y);
+
+		void SetZ(double z);
+
+		LuaTVector3 Unit();
+
+		virtual void MakeAccessors(lua_State* L);
+		virtual void AddNonClassMethods(lua_State* L);
+};
+
+// _____________________________________________________________________________ //
+//                                                                               //
 // -------------------------------- TCanvas ------------------------------------ //
 // _____________________________________________________________________________ //
 
 extern "C" void LoadLuaTCanvasLib(lua_State* L);
 
-class LuaTCanvas : public LuaROOTSpec<LuaCanvas> {
+class LuaTCanvas: public LuaROOTSpec<LuaCanvas> {
 	private:
 
 	public:
@@ -224,7 +301,7 @@ class LuaTCanvas : public LuaROOTSpec<LuaCanvas> {
 
 extern "C" void LoadLuaTFileLib(lua_State* L);
 
-class LuaTFile : public LuaROOTSpec<TFile> {
+class LuaTFile: public LuaROOTSpec<TFile> {
 	private:
 
 	public:
@@ -268,7 +345,7 @@ class LuaTFile : public LuaROOTSpec<TFile> {
 
 extern "C" void LoadLuaTF1Lib(lua_State* L);
 
-class LuaTF1 : public LuaROOTSpec<TF1> {
+class LuaTF1: public LuaROOTSpec<TF1> {
 	private:
 
 	public:
@@ -384,7 +461,7 @@ template<typename T> int LuaTFit(lua_State* L)
 
 extern "C" void LoadLuaTGraphLib(lua_State* L);
 
-class LuaGraphError : public LuaROOTSpec<TGraphErrors> {
+class LuaGraphError: public LuaROOTSpec<TGraphErrors> {
 	private:
 
 	public:
@@ -463,7 +540,7 @@ template<typename T> int LuaAddHist(lua_State* L)
 
 extern "C" void LoadLuaTHistLib(lua_State* L);
 
-class LuaTH1 : public LuaROOTSpec<TH1D> {
+class LuaTH1: public LuaROOTSpec<TH1D> {
 	private:
 
 	public:
@@ -506,7 +583,7 @@ class LuaTH1 : public LuaROOTSpec<TH1D> {
 		virtual void AddNonClassMethods(lua_State* L);
 };
 
-class LuaTH2 : public LuaROOTSpec<TH2D> {
+class LuaTH2: public LuaROOTSpec<TH2D> {
 	private:
 
 	public:
@@ -564,7 +641,7 @@ class LuaTH2 : public LuaROOTSpec<TH2D> {
 
 extern "C" void LoadLuaTSpectrumLib(lua_State* L);
 
-class LuaTSpectrum : public LuaROOTSpec<TSpectrum> {
+class LuaTSpectrum: public LuaROOTSpec<TSpectrum> {
 	private:
 
 	public:
@@ -604,7 +681,7 @@ class LuaTSpectrum : public LuaROOTSpec<TSpectrum> {
 
 extern "C" void LoadLuaTCutGLib(lua_State* L);
 
-class LuaTCutG : public LuaROOTSpec<TCutG> {
+class LuaTCutG: public LuaROOTSpec<TCutG> {
 	private:
 
 	public:
@@ -640,7 +717,7 @@ extern "C" void LoadLuaTTreeLib(lua_State* L);
 int luaExt_TTree_NewBranch_Interface(lua_State* L);
 int luaExt_TTree_GetBranch_Interface(lua_State* L);
 
-class LuaTTree : public LuaROOTSpec<TTree> {
+class LuaTTree: public LuaROOTSpec<TTree> {
 	private:
 
 	public:

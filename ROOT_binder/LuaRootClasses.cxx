@@ -92,6 +92,7 @@ extern "C" int openlib_lua_root_classes(lua_State* L)
 	lua_register(L, "GetObject", LuaGetROOTObjectFromDir);
 	lua_register(L, "ListCurrentROOTDir", luaExt_GetGDirContent);
 
+	LoadLuaTVector3Lib(L);
 	LoadLuaTCanvasLib(L);
 	LoadLuaTFileLib(L);
 	LoadLuaTGraphLib(L);

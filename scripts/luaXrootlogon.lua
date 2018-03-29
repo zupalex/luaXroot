@@ -34,6 +34,8 @@ require("lua_tree")
 
 require("lua_root_binder")
 
+Preprocess = require("lua_preprocessor")
+
 _require = _G.require
 function require(pckg)
   local luaExt = pckg:find(".lua")
@@ -48,6 +50,30 @@ function require(pckg)
   end
 
   return _require(pckg)
+end
+
+function requirep(pckg)
+  local pckgname = pckg:sub(1, pckg:find(".lua"))
+
+  if package.loaded.pckgname then return end
+
+  local pckg_path = package.searchpath(pckgname, package.path)
+
+  if not pckg_path then
+    print(pckgname, "not found in the search paths")
+    return
+  end
+
+  package.loaded[pckgname] = true
+
+  local pckg_fn = Preprocess(pckg_path)
+
+  if not pckg_fn then 
+    package.loaded[pckgname] = nil 
+    return
+  end
+
+  return load(pckg_fn)()
 end
 
 if IsMasterState then 

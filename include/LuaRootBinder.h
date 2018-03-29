@@ -13,6 +13,7 @@
 #include "TApplication.h"
 #include "TCanvas.h"
 #include "TQObject.h"
+#include "TVector3.h"
 #include "TF1.h"
 #include "TH2.h"
 #include "TH1.h"

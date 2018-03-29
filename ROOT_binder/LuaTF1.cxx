@@ -24,10 +24,10 @@ void LuaTF1::SetParameters(vector<double> params)
 {
 	theApp->NotifyUpdatePending();
 
-	for (unsigned int i = 0; i < params.size(); i++)
+	/*for (unsigned int i = 0; i < params.size(); i++)
 	{
 		cout << params[i] << endl;
-	}
+	}*/
 
 	((TF1*) rootObj)->SetParameters(&params[0]);
 
