@@ -19,7 +19,7 @@ function MakeCppClassCtor(classname)
 end
 
 luaClasses = {}
-classPostInits = {}
+luaClassesPostInits = {}
 
 function RegisterLuaClass(class)
 --	print("Registering " .. class.classname)
@@ -134,7 +134,15 @@ end
 
 function MakeEasyConstructors(classname)
   _G[classname] = function(...)
-    return _ctor(classname, ...)
+    local obj = _ctor(classname, ...)
+
+--    if classesPostInits[classname] then
+--      for i, pifn in ipairs(classesPostInits[classname]) do
+--        pifn(obj)
+--      end
+--    end
+
+    return obj
   end
 end
 
@@ -147,14 +155,37 @@ function New(classname, ...)
 end
 
 -- Use this function to add stuffs to the metatable of a C++ Class --
+classesPostInits = {}
+
 function AddPostInit(class, fn)
-  local constructor = _G[class]
-  _G[class] = function(...)
-    local obj = constructor(...)
+  if luaClasses[class] then
+    if not luaClassesPostInits[class] then luaClassesPostInits[class] = {} end
 
-    fn(obj)
+    table.insert(luaClassesPostInits[class], fn)
+  elseif _G[class] then
+    if not classesPostInits[class] then classesPostInits[class] = {} end
 
-    return obj
+    table.insert(classesPostInits[class], fn)
+
+--    local constructor = _G[class]
+
+--    _G[class] = function(...)
+--      local obj = constructor(...)
+
+--      fn(obj)
+
+--      return obj
+--    end
+  else
+    print("Attempt to add a postinit to a class which does not exists... =>", class)
+  end
+end
+
+function CallPostInits(obj)
+  if classesPostInits[obj.type] then
+    for i, pifn in ipairs(classesPostInits[obj.type]) do
+      pifn(obj)
+    end
   end
 end
 

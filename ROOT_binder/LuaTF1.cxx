@@ -25,9 +25,9 @@ void LuaTF1::SetParameters(vector<double> params)
 	theApp->NotifyUpdatePending();
 
 	/*for (unsigned int i = 0; i < params.size(); i++)
-	{
-		cout << params[i] << endl;
-	}*/
+	 {
+	 cout << params[i] << endl;
+	 }*/
 
 	((TF1*) rootObj)->SetParameters(&params[0]);
 
@@ -38,6 +38,31 @@ void LuaTF1::SetParameters(vector<double> params)
 	}
 
 	theApp->NotifyUpdateDone();
+}
+
+void LuaTF1::SetParLimits(int ipar, double parmin, double parmax)
+{
+	((TF1*) rootObj)->SetParLimits(ipar, parmin, parmax);
+}
+
+void LuaTF1::SetParError(int ipar, double error)
+{
+	((TF1*) rootObj)->SetParError(ipar, error);
+}
+
+void LuaTF1::SetParErrors(vector<double> errors)
+{
+	((TF1*) rootObj)->SetParErrors(&errors[0]);
+}
+
+void LuaTF1::SetParName(int ipar, string parname)
+{
+	((TF1*) rootObj)->SetParName(ipar, parname.c_str());
+}
+
+void LuaTF1::FixParameter(int ipar, double val)
+{
+	((TF1*) rootObj)->FixParameter(ipar, val);
 }
 
 double LuaTF1::GetParameter(int param)
@@ -55,6 +80,33 @@ vector<double> LuaTF1::GetParameters()
 		parsv.push_back(params[i]);
 
 	return parsv;
+}
+
+string LuaTF1::GetParName(int ipar)
+{
+	return (string) ((TF1*) rootObj)->GetParName(ipar);
+}
+
+int LuaTF1::GetParNumber(string parname)
+{
+	return ((TF1*) rootObj)->GetParNumber(parname.c_str());
+}
+
+double LuaTF1::GetParError(int i)
+{
+	return ((TF1*) rootObj)->GetParError(i);
+}
+
+vector<double> LuaTF1::GetParErrors()
+{
+	const double* errors = ((TF1*) rootObj)->GetParErrors();
+
+	vector<double> parserrs;
+
+	for (int i = 0; i < ((TF1*) rootObj)->GetNpar(); i++)
+		parserrs.push_back(errors[i]);
+
+	return parserrs;
 }
 
 double LuaTF1::GetChi2()
@@ -102,8 +154,23 @@ void LuaTF1::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaTF1::SetParameter, "SetParameter");
 	AddClassMethod(L, &LuaTF1::SetParameters, "SetParameters");
 
+	AddClassMethod(L, &LuaTF1::SetParLimits, "SetParLimits");
+
+	AddClassMethod(L, &LuaTF1::SetParError, "SetParError");
+	AddClassMethod(L, &LuaTF1::SetParErrors, "SetParErrors");
+
+	AddClassMethod(L, &LuaTF1::SetParName, "SetParName");
+
+	AddClassMethod(L, &LuaTF1::FixParameter, "FixParameter");
+
 	AddClassMethod(L, &LuaTF1::GetParameter, "GetParameter");
 	AddClassMethod(L, &LuaTF1::GetParameters, "GetParameters");
+
+	AddClassMethod(L, &LuaTF1::GetParName, "GetParName");
+	AddClassMethod(L, &LuaTF1::GetParNumber, "GetParNumber");
+
+	AddClassMethod(L, &LuaTF1::GetParError, "GetParError");
+	AddClassMethod(L, &LuaTF1::GetParErrors, "GetParErrors");
 
 	AddClassMethod(L, &LuaTF1::SetRange, "SetRange");
 	AddClassMethod(L, &LuaTF1::SetNpx, "SetNpx");

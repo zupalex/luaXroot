@@ -245,4 +245,6 @@ extern "C" void LoadLuaTVector3Lib(lua_State* L)
 {
 	MakeAccessFunctions<LuaTVector3>(L, "TVector3");
 	rootObjectAliases["TVector3"] = "TVector3";
+
+	AddObjectConstructor<LuaTVector3, double, double, double>(L, "TVector3");
 }

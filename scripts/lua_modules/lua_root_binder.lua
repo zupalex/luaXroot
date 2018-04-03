@@ -17,7 +17,7 @@ end
 ------------------------------- TVector3 -----------------------------
 ---------------------------------------------------------------------
 
-AddPostInit("TVector3", function(self)
+AddPostInit("TVector3", function(self)   
     self.__index.__add = function(lhs, rhs)
       if rhs.type ~= "TVector3" or lhs.type ~= "TVector3"then 
         print("Can only add 2 TVector3 together...")
@@ -245,6 +245,52 @@ AddPostInit("TF1", function(self)
       if xmax == nil then xmax = self.xmax end
 
       return _Integral(self, xmin, xmax)
+    end
+
+    local _SetParName = self.SetParName
+    function self:SetParName(param, name)
+      if type(param) == "table" then
+        for k, v in pairs(param) do
+          _SetParName(self, k, v)
+        end
+      else
+        _SetParName(self, param, name)
+      end
+    end
+
+    local _SetParameter = self.SetParameter
+    function self:SetParameter(param, value)
+      if type(param) == "string" then param = self:GetParNumber(param) end
+
+      _SetParameter(self, param, value)
+    end
+
+    local _SetParLimits = self.SetParLimits
+    function self:SetParLimits(param, parmin, parmax)
+      if type(param) == "string" then param = self:GetParNumber(param) end
+
+      _SetParLimits(self, param, parmin, parmax)
+    end
+
+    local _SetParError = self.SetParError
+    function self:SetParLimits(param, err)
+      if type(param) == "string" then param = self:GetParNumber(param) end
+
+      _SetParError(self, param, err)
+    end
+
+    local _GetParameter = self.GetParameter
+    function self:GetParameter(param)
+      if type(param) == "string" then param = self:GetParNumber(param) end
+
+      return _GetParameter(self, param)
+    end
+
+    local _GetParError = self.GetParError
+    function self:GetParError(param)
+      if type(param) == "string" then param = self:GetParNumber(param) end
+
+      return _GetParError(self, param)
     end
   end)
 

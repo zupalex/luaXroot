@@ -628,7 +628,14 @@ template<typename T> typename enable_if<is_base_of<LuaUserClass, T>::value>::typ
 
 //	cout << iscollection << "   /   " << obj << endl;
 
-	if (!iscollection) obj->SetupLuaUserClassMetatable(L);
+	if (!iscollection)
+	{
+		obj->SetupLuaUserClassMetatable(L);
+
+		lua_getglobal(L, "CallPostInits");
+		lua_pushvalue(L, -2);
+		lua_pcall(L, 1, 0, 0);
+	}
 }
 
 template<typename T> typename enable_if<!is_base_of<LuaUserClass, T>::value>::type SetupMetatable(lua_State* L)
@@ -1038,10 +1045,10 @@ template<typename T, typename ... Args> void AddObjectConstructor(lua_State* L, 
 
 //		cout << "Object of type " << name << " created..." << endl;
 
-		SetupMetatable<T> ( L_ );
+			SetupMetatable<T> ( L_ );
 
-		return sizeof(T);
-	};
+			return sizeof(T);
+		};
 
 	constructorList[name][sizeof...(Args)] = ctor;
 }

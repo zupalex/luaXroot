@@ -189,6 +189,12 @@ class LuaTVector3: public LuaROOTSpec<TVector3> {
 			rootObj = new TVector3();
 		}
 
+		LuaTVector3(double x, double y, double z)
+		{
+			rootObj = new TVector3();
+			((TVector3*) rootObj)->SetXYZ(x, y, z);
+		}
+
 		~LuaTVector3()
 		{
 		}
@@ -381,8 +387,24 @@ class LuaTF1: public LuaROOTSpec<TF1> {
 		virtual void SetParameter(int param, double value);
 		virtual void SetParameters(vector<double> params);
 
+		void SetParLimits(int ipar, double parmin, double parmax);
+
+		void SetParError(int ipar, double error);
+		void SetParErrors(vector<double> errors);
+
+		void SetParName(int ipar, string parname);
+
+		void FixParameter(int ipar, double val);
+
 		virtual double GetParameter(int param);
 		virtual vector<double> GetParameters();
+
+		string GetParName(int ipar);
+		int GetParNumber(string parname);
+
+		double GetParError(int i);
+		vector<double> GetParErrors();
+
 		double GetChi2();
 
 		virtual double Eval(double x);
