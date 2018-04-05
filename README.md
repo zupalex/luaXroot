@@ -43,7 +43,7 @@ To install it:
 - For a bash shell, add the following line to your .bashrc (without the quotes)  
 "source [path/to/luaXroot]/scripts/thisluaXroot.sh"  
 If you are using a different shell use the appropriate command to source the aforementioned file.
-- You should be able to start the program from anywhere using "./luaXroot"
+- You should be able to start the program from anywhere using "luaXroot"
 
 # Known Issues/Awaiting fix:
 
