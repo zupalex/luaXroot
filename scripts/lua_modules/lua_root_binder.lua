@@ -273,7 +273,7 @@ AddPostInit("TF1", function(self)
     end
 
     local _SetParError = self.SetParError
-    function self:SetParLimits(param, err)
+    function self:SetParError(param, err)
       if type(param) == "string" then param = self:GetParNumber(param) end
 
       _SetParError(self, param, err)

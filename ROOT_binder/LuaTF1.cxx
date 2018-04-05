@@ -109,6 +109,17 @@ vector<double> LuaTF1::GetParErrors()
 	return parserrs;
 }
 
+vector<double> LuaTF1::GetParLimits(int ipar)
+{
+	double pmin, pmax;
+
+	((TF1*) rootObj)->GetParLimits(ipar, pmin, pmax);
+
+	vector<double> parlimits = { pmin, pmax };
+
+	return parlimits;
+}
+
 double LuaTF1::GetChi2()
 {
 	return ((TF1*) rootObj)->GetChisquare();
@@ -171,6 +182,8 @@ void LuaTF1::MakeAccessors(lua_State* L)
 
 	AddClassMethod(L, &LuaTF1::GetParError, "GetParError");
 	AddClassMethod(L, &LuaTF1::GetParErrors, "GetParErrors");
+
+	AddClassMethod(L, &LuaTF1::GetParLimits, "GetParLimits");
 
 	AddClassMethod(L, &LuaTF1::SetRange, "SetRange");
 	AddClassMethod(L, &LuaTF1::SetNpx, "SetNpx");

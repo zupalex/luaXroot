@@ -405,6 +405,8 @@ class LuaTF1: public LuaROOTSpec<TF1> {
 		double GetParError(int i);
 		vector<double> GetParErrors();
 
+		vector<double> GetParLimits(int ipar);
+
 		double GetChi2();
 
 		virtual double Eval(double x);

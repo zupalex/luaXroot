@@ -72,9 +72,9 @@ function LuaClass(name, base, init, skipregister)
       init(self, data)
     end
 
-    if classPostInits[name] ~= nil then
+    if luaClassesPostInits[name] ~= nil then
       -- print("Post Init for "..name)
-      for k, v in pairs(classPostInits[name]) do
+      for k, v in pairs(luaClassesPostInits[name]) do
         v(self, data)
       end
     end
