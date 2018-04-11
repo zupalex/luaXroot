@@ -559,14 +559,14 @@ AddPostInit("TH2", function(self)
     end
 
     local _ProjectX = self.ProjectX
-    function self:ProjectX(ymin, ymax)
-      _ProjectX(self, ymin, ymax)
+    function self:ProjectX(ymin, ymax, doDraw)
+      _ProjectX(self, ymin, ymax, doDraw == nil and true or doDraw)
       return GetObject("TH1D", self:GetName().."_projX")
     end
 
     local _ProjectY = self.ProjectY
-    function self:ProjectY(xmin, xmax)
-      _ProjectY(self, xmin, xmax)
+    function self:ProjectY(xmin, xmax, doDraw)
+      _ProjectY(self, xmin, xmax, doDraw == nil and true or doDraw)
       return GetObject("TH1D", self:GetName().."_projY")
     end
 

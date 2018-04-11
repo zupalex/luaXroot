@@ -645,8 +645,8 @@ class LuaTH2: public LuaROOTSpec<TH2D> {
 		void SetXProperties(int nbinsx, double xmin, double xmax);
 		void SetYProperties(int nbinsy, double ymin, double ymax);
 
-		void ProjectX(double ymin, double ymax, bool doDraw = "true");
-		void ProjectY(double xmin, double xmax, bool doDraw = "true");
+		void ProjectX(double ymin, double ymax, bool doDraw);
+		void ProjectY(double xmin, double xmax, bool doDraw);
 
 		tuple<int, double, double> GetXProperties();
 		tuple<int, double, double> GetYProperties();
