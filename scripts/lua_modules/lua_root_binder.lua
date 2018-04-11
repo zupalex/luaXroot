@@ -344,6 +344,20 @@ function TGraph(args, ...)
   end
 end
 
+AddPostInit("TGraph", function(self)
+    function self:Scale(factor)
+      local npoints = self:GetNPoints()
+
+      for i=1,npoints do
+        local pvals = self:GetPoint(i)
+        local perrs = self:GetPointError(i)
+        
+        self:SetPoint(i, pvals[1], pvals[2]*factor)
+        self:SetPointError(i, perrs[1], perrs[2]*factor)
+      end
+    end
+  end)
+
 ---------------------------------------------------------------------
 -------------------------------- TH1 --------------------------------
 ---------------------------------------------------------------------

@@ -50,6 +50,11 @@ void LuaGraphError::Set(int n)
 	((TGraphErrors*) rootObj)->Set(n);
 }
 
+int LuaGraphError::GetNPoints()
+{
+	return ((TGraphErrors*) rootObj)->GetN();
+}
+
 int LuaGraphError::GetMaxSize()
 {
 	return ((TGraphErrors*) rootObj)->GetMaxSize();
@@ -92,6 +97,7 @@ void LuaGraphError::MakeAccessors(lua_State* L)
 	AddClassMethod(L, &LuaGraphError::SetTitle, "SetTitle");
 	AddClassMethod(L, &LuaGraphError::GetTitle, "GetTitle");
 
+	AddClassMethod(L, &LuaGraphError::GetNPoints, "GetNPoints");
 	AddClassMethod(L, &LuaGraphError::GetMaxSize, "GetMaxSize");
 
 	AddClassMethod(L, &LuaGraphError::GetPointVals, "GetPoint");

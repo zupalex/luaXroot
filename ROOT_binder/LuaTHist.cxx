@@ -213,20 +213,20 @@ void LuaTH2::SetRangeUserY(double ymin, double ymax)
 	((TH2D*) rootObj)->SetAxisRange(ymin, ymax, "Y");
 }
 
-void LuaTH2::ProjectX(double ymin, double ymax)
+void LuaTH2::ProjectX(double ymin, double ymax, bool doDraw)
 {
 	TAxis* yax = ((TH2D*) rootObj)->GetYaxis();
 	projX = ((TH2D*) rootObj)->ProjectionX(((string) rootObj->GetName() + (string) "_projX").c_str(), yax->FindBin(ymin), yax->FindBin(ymax));
 
-	LuaDrawTObject(projX);
+	if(doDraw) LuaDrawTObject(projX);
 }
 
-void LuaTH2::ProjectY(double xmin, double xmax)
+void LuaTH2::ProjectY(double xmin, double xmax, bool doDraw)
 {
 	TAxis* xax = ((TH2D*) rootObj)->GetXaxis();
 	projY = ((TH2D*) rootObj)->ProjectionY(((string) rootObj->GetName() + (string) "_projY").c_str(), xax->FindBin(xmin), xax->FindBin(xmax));
 
-	LuaDrawTObject(projY);
+	if(doDraw) LuaDrawTObject(projY);
 }
 
 void LuaTH2::SetXProperties(int nbinsx, double xmin, double xmax)
