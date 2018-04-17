@@ -128,10 +128,6 @@ void sigsegv_handler(int i)
 			kill((int) luaXrootParams["pygui_id"], SIGKILL);
 		}
 
-		lua_close(lua);
-
-		cerr << "Lua state has been closed..." << endl;
-
 		cerr << "Error: signal " << i << endl;
 
 		gSystem->Exit(i);
