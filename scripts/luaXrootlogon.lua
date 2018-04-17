@@ -1,12 +1,13 @@
 -- Do not touch this except if you exactly know what you are doing --
 
+LUAXROOTLIBPATH = LUAXROOTLIBPATH .. "/"
+
 _setterfns = {}
 _getterfns = {}
 _pushbackfns = {}
 
-require("lua_libraries_utils")
-
 -- Modules which will be loaded upon starting a session of luaXroot --
+require("lua_libraries_utils")
 require("lua_classes")
 
 -- Loading the wrapper between ROOT objects and lua
@@ -112,13 +113,20 @@ serpent = require("serpent")
 
 local defaultPackages = require("lua_tasks")
 
-local userlog_loaded, errmsg = pcall(require, 'userlogon') -- this line attempt to load additional user/userlogon.lua. If it doesnt't exist it does nothing. 
--- If the user wants to load additional modules, it should be done in this file. Create it if needed. The directory user might need to be created as well.
+if not file_exists(LUAXROOTLIBPATH .. "/../user/userlogon.lua") then
+  local fuserlogon = io.open(LUAXROOTLIBPATH .. "/../user/userlogon.lua", "w")
 
--- If you want to add modules which are not where you found built-in modules, you ----------------
--- will need to set the search path to include the location of such scripts ----------------------
--- To do this add "package.path = package.path .. ";<path/to/add>/?.lua"  in user/userlogon.lua --
--- e.g.: package.path = package.path .. ";/home/awesomescripts/?.lua;/home/awesomescripts/lua_scripts/?"
+  fuserlogon:write("-- If you want to add modules which are not where you found built-in modules, you ----------------\n")
+  fuserlogon:write("-- will need to set the search path to include the location of such scripts ----------------------\n")
+  fuserlogon:write("-- To do this add AddLibrariesPath(\"<path/to/add>\")  in user/userlogon.lua --\n")
+  fuserlogon:write("-- The full path to luaXroot/exec folder can be accessed using LUAXROOTLIBPATH --\n")  
+  fuserlogon:write("-- e.g.: AddLibrariesPath(\"/home/awesomescripts\") --\n")
+  fuserlogon:write("-- e.g.: AddLibrariesPath(LUAXROOTLIBPATH .. \"../user/awesomescripts\") --\n\n")
+  io.close(fuserlogon)
+end
+
+local userlog_loaded, errmsg = pcall(require, 'userlogon') -- this line attempt to load additional user/userlogon.lua.
+-- If the user wants to load additional modules, it should be done in this file.
 
 if not userlog_loaded then
   if errmsg:find("module 'userlogon' not found") == nil then
