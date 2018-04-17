@@ -135,7 +135,6 @@ if IsMasterState then
   function StartPYGUI()
     if _getluaxrootparam("pygui_id") == -1 then
       require("lua_pygui_ipc")
-
       __master_gui_socket = socket.CreateHost("net", "127.0.0.1:0", nil, nil, true)
       if __master_gui_socket == nil then
         print("Failed to connect master GUI socket")
@@ -178,9 +177,9 @@ if IsMasterState then
     end
   end
 
+  _setluaxrootparam("pygui_id", -1)
+
   if _getluaxrootparam("usepygui") == 1 then
     StartPYGUI()
-  else
-    _setluaxrootparam("pygui_id", -1)
   end
 end
