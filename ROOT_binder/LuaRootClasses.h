@@ -90,7 +90,7 @@ template<typename T> class LuaROOTSpec: public LuaROOTBase
 
 			if (canvasTracker[rootObj] != nullptr && ((string) canvasTracker[rootObj]->GetName()).empty()) delete canvasTracker[rootObj];
 
-			if (canvasTracker[rootObj] == nullptr || ((string) canvasTracker[rootObj]->GetName()).empty())
+			if (canvasTracker.find(rootObj) == canvasTracker.end() || canvasTracker[rootObj] == nullptr || ((string) canvasTracker[rootObj]->GetName()).empty())
 			{
 				if (opts.find("same") == string::npos && opts.find("SAME") == string::npos)
 				{
@@ -554,8 +554,8 @@ class LuaGraphError: public LuaROOTSpec<TGraphAsymmErrors>
 		void SetPointErrorsXLow(int i, double exl);
 		void SetPointErrorsYHigh(int i, double eyh);
 		void SetPointErrorsYLow(int i, double eyl);
-    void SetRangeUserX(double xmin, double xmax);
-    void SetRangeUserY(double ymin, double ymax);
+		void SetRangeUserX(double xmin, double xmax);
+		void SetRangeUserY(double ymin, double ymax);
 
 		int RemovePoint(int i);
 

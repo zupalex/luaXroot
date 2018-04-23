@@ -72,7 +72,8 @@ int luaExt_TApplication_Terminate(lua_State* L);
 
 // --------------------------------------------------------------------------------- //
 
-class RootAppManager : public TApplication {
+class RootAppManager: public TApplication
+{
 	private:
 
 	public:
@@ -205,7 +206,8 @@ inline int GetTheApp(lua_State* L)
 
 static map<string, bool> drawableROOTClasses;
 
-class LuaCanvas : public TCanvas {
+class LuaCanvas: public TCanvas
+{
 	private:
 
 	public:
@@ -227,7 +229,7 @@ class LuaCanvas : public TCanvas {
 
 		void CanvasClosed()
 		{
-      for (unsigned int i = 0; i < subcanvases.size(); i++)
+			for (unsigned int i = 0; i < subcanvases.size(); i++)
 			{
 				for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
 				{
@@ -235,11 +237,14 @@ class LuaCanvas : public TCanvas {
 					{
 						canvasTracker.erase(itr);
 					}
-          
-          else if (itr->second == this)
-          {
-            canvasTracker.erase(itr);
-          }
+				}
+			}
+
+			for (auto itr = canvasTracker.begin(); itr != canvasTracker.end(); itr++)
+			{
+				if (itr->second == this)
+				{
+					canvasTracker.erase(itr);
 				}
 			}
 		}
@@ -261,7 +266,8 @@ extern map<string, mutex> tasksMutexes;
 extern map<lua_State*, vector<string>> tasksControlSignals;
 extern map<lua_State*, vector<string>> tasksPendingSignals;
 
-struct NewTaskArgs {
+struct NewTaskArgs
+{
 		string task;
 		string packages;
 };
@@ -321,42 +327,24 @@ inline void SetupTObjectMetatable(lua_State* L)
 
 // --------------------------------------------------- Lua Library export -------------------------------------------------------- //
 
-static const luaL_Reg luaXroot_lib[] =
-	{
-		{ "GetClockTime", luaExt_gettime },
-		{ "sleep", luaExt_nanosleep },
-		{ "SizeOf", luaExt_GetUserDataSize },
+static const luaL_Reg luaXroot_lib[] = { { "GetClockTime", luaExt_gettime }, { "sleep", luaExt_nanosleep }, { "SizeOf", luaExt_GetUserDataSize },
 
-		{ "TasksList_C", TasksList_C },
-		{ "StartNewTask_C", StartNewTask_C },
-		{ "GetTaskName", luaExt_GetTaskName },
-		{ "SendMasterCmd", luaExt_SendCmdToMaster },
-		{ "MakeSyncSafe", LuaMakeSyncSafe },
-		{ "LockTaskMutex", LockTaskMutex },
-		{ "ReleaseTaskMutex", ReleaseTaskMutex },
-		{ "GetTaskStatus", GetTaskStatus },
-		{ "SendSignal_C", SendSignal_C },
-		{ "CheckSignals_C", CheckSignals_C },
-		{ "CompilePostInit_C", CompilePostInit_C },
+{ "TasksList_C", TasksList_C }, { "StartNewTask_C", StartNewTask_C }, { "GetTaskName", luaExt_GetTaskName }, { "SendMasterCmd", luaExt_SendCmdToMaster }, {
+		"MakeSyncSafe", LuaMakeSyncSafe }, { "LockTaskMutex", LockTaskMutex }, { "ReleaseTaskMutex", ReleaseTaskMutex }, { "GetTaskStatus", GetTaskStatus }, {
+		"SendSignal_C", SendSignal_C }, { "CheckSignals_C", CheckSignals_C }, { "CompilePostInit_C", CompilePostInit_C },
 
-		{ "TApplication", luaExt_NewTApplication },
-		{ "GetTheApp", GetTheApp },
+{ "TApplication", luaExt_NewTApplication }, { "GetTheApp", GetTheApp },
 
-		{ "RegisterTF1fn", RegisterTF1fn },
+{ "RegisterTF1fn", RegisterTF1fn },
 
-		{ "appendtohist", appendtohist },
-		{ "saveprompthistory", saveprompthistory },
-		{ "trunctehistoryfile", trunctehistoryfile },
-		{ "clearprompthistory", clearprompthistory },
+{ "appendtohist", appendtohist }, { "saveprompthistory", saveprompthistory }, { "trunctehistoryfile", trunctehistoryfile }, { "clearprompthistory",
+		clearprompthistory },
 
-		{ "_ctor", luaExt_Ctor },
-		{ "_setluaxrootparam", luaExt_SetLuaXRootParam },
-		{ "_getluaxrootparam", luaExt_GetLuaXRootParam },
+{ "_ctor", luaExt_Ctor }, { "_setluaxrootparam", luaExt_SetLuaXRootParam }, { "_getluaxrootparam", luaExt_GetLuaXRootParam },
 
-		{ "SetSharedBuffer", luaExt_SetSharedBuffer },
-		{ "GetSharedBuffer", luaExt_GetSharedBuffer },
+{ "SetSharedBuffer", luaExt_SetSharedBuffer }, { "GetSharedBuffer", luaExt_GetSharedBuffer },
 
-		{ NULL, NULL } };
+{ NULL, NULL } };
 
 extern "C" int luaopen_libLuaXRootlib(lua_State* L);
 
