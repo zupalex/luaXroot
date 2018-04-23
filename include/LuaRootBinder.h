@@ -19,6 +19,7 @@
 #include "TH1.h"
 #include "TSpectrum.h"
 #include "TGraphErrors.h"
+#include "TGraphAsymmErrors.h"
 #include "TCutG.h"
 #include "TFile.h"
 #include "TTree.h"

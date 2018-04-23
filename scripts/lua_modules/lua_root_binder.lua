@@ -295,7 +295,7 @@ AddPostInit("TF1", function(self)
   end)
 
 ---------------------------------------------------------------------
----------------------------- TGraphErrors ---------------------------
+---------------------------- TGraphAsymmErrors ---------------------------
 ---------------------------------------------------------------------
 
 local function PrintTGraphErrorsError()
@@ -351,9 +351,64 @@ AddPostInit("TGraph", function(self)
       for i=1,npoints do
         local pvals = self:GetPoint(i)
         local perrs = self:GetPointError(i)
-        
+
         self:SetPoint(i, pvals[1], pvals[2]*factor)
-        self:SetPointError(i, perrs[1], perrs[2]*factor)
+        self:SetPointErrors(i, perrs[1], perrs[2]*factor)
+      end
+    end
+
+    local _SetPointErrors = self.SetPointErrors
+    self.SetPointErrors = function(self, i, exl, exh, eyl, eyh)
+      if type(exl) == "table" then
+        args = exl
+
+        if args.ex then
+          if type(args.ex) == "table" then
+            exl = args.ex[1]
+            exh = args.ex[2]
+          else
+            exl = args.ex
+            exh = args.ex
+          end
+        else
+          print("Missing argument in table: ex = <number> or { <number> , <number> }")
+        end
+
+        if args.ey then
+          if type(args.ey) == "table" then
+            eyl = args.ey[1]
+            eyh = args.ey[2]
+          else
+            eyl = args.ey
+            eyh = args.ey
+          end
+        else
+          print("Missing argument in table: ey = <number> or { <number> , <number> }")
+        end
+      elseif eyl == nil then
+        eyl = exh
+        eyh = exh
+        exh = exl
+      end
+
+      _SetPointErrors(self, i, exl, exh, eyl, eyh)
+    end
+
+    local _SetPointErrorsX = self.SetPointErrorsX
+    self.SetPointErrorsX = function(self, i, exl, exh)
+      if exh == nil then
+        _SetPointErrorsX(self, i, exl, exl)
+      else
+        _SetPointErrorsX(self, i, exl, exh)
+      end
+    end
+
+    local _SetPointErrorsY = self.SetPointErrorsY
+    self.SetPointErrorsY = function(self, i, eyl, eyh)
+      if eyh == nil then
+        _SetPointErrorsY(self, i, eyl, eyl)
+      else
+        _SetPointErrorsY(self, i, eyl, eyh)
       end
     end
   end)

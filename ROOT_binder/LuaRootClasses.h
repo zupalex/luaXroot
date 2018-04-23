@@ -5,7 +5,8 @@
 
 void LuaDrawTObject(TObject* obj, string opts = "");
 
-class LuaROOTBase: public LuaUserClass {
+class LuaROOTBase: public LuaUserClass
+{
 	private:
 
 	public:
@@ -38,7 +39,8 @@ class LuaROOTBase: public LuaUserClass {
 		}
 };
 
-template<typename T> class LuaROOTSpec: public LuaROOTBase {
+template<typename T> class LuaROOTSpec: public LuaROOTBase
+{
 	private:
 
 	public:
@@ -180,7 +182,8 @@ int luaExt_GetGDirContent(lua_State* L);
 
 extern "C" void LoadLuaTVector3Lib(lua_State* L);
 
-class LuaTVector3: public LuaROOTSpec<TVector3> {
+class LuaTVector3: public LuaROOTSpec<TVector3>
+{
 	private:
 
 	public:
@@ -263,7 +266,8 @@ class LuaTVector3: public LuaROOTSpec<TVector3> {
 
 extern "C" void LoadLuaTCanvasLib(lua_State* L);
 
-class LuaTCanvas: public LuaROOTSpec<LuaCanvas> {
+class LuaTCanvas: public LuaROOTSpec<LuaCanvas>
+{
 	private:
 
 	public:
@@ -307,7 +311,8 @@ class LuaTCanvas: public LuaROOTSpec<LuaCanvas> {
 
 extern "C" void LoadLuaTFileLib(lua_State* L);
 
-class LuaTFile: public LuaROOTSpec<TFile> {
+class LuaTFile: public LuaROOTSpec<TFile>
+{
 	private:
 
 	public:
@@ -351,7 +356,8 @@ class LuaTFile: public LuaROOTSpec<TFile> {
 
 extern "C" void LoadLuaTF1Lib(lua_State* L);
 
-class LuaTF1: public LuaROOTSpec<TF1> {
+class LuaTF1: public LuaROOTSpec<TF1>
+{
 	private:
 
 	public:
@@ -485,31 +491,38 @@ template<typename T> int LuaTFit(lua_State* L)
 
 extern "C" void LoadLuaTGraphLib(lua_State* L);
 
-class LuaGraphError: public LuaROOTSpec<TGraphErrors> {
+class LuaGraphError: public LuaROOTSpec<TGraphAsymmErrors>
+{
 	private:
 
 	public:
 		LuaGraphError()
 		{
-			rootObj = new TGraphErrors();
+			rootObj = new TGraphAsymmErrors();
 			SetPointStyle(3);
 		}
 
 		LuaGraphError(int i)
 		{
-			rootObj = new TGraphErrors(i);
+			rootObj = new TGraphAsymmErrors(i);
 			SetPointStyle(3);
 		}
 
 		LuaGraphError(int i, vector<double> xs, vector<double> ys)
 		{
-			rootObj = new TGraphErrors(i, &xs[0], &ys[0]);
+			rootObj = new TGraphAsymmErrors(i, &xs[0], &ys[0]);
 			SetPointStyle(3);
 		}
 
 		LuaGraphError(int i, vector<double> xs, vector<double> ys, vector<double> errxs, vector<double> errys)
 		{
-			rootObj = new TGraphErrors(i, &xs[0], &ys[0], &errxs[0], &errys[0]);
+			rootObj = new TGraphAsymmErrors(i, &xs[0], &ys[0], &errxs[0], &errxs[0], &errys[0], &errys[0]);
+			SetPointStyle(3);
+		}
+
+		LuaGraphError(int i, vector<double> xs, vector<double> ys, vector<double> exl, vector<double> exh, vector<double> eyl, vector<double> eyh)
+		{
+			rootObj = new TGraphAsymmErrors(i, &xs[0], &ys[0], &exl[0], &exh[0], &eyl[0], &eyh[0]);
 			SetPointStyle(3);
 		}
 
@@ -528,13 +541,21 @@ class LuaGraphError: public LuaROOTSpec<TGraphErrors> {
 		void SetLineColorAlpha(int colorid, float alpha);
 
 		virtual void Set(int n);
-    int GetNPoints();
+		int GetNPoints();
 		int GetMaxSize();
 
 		tuple<double, double> GetPointVals(int i);
-		tuple<double, double> GetPointErrors(int i);
+		tuple<double, double, double, double> GetPointErrors(int i);
 		void SetPointVals(int i, double x, double y);
-		void SetPointErrors(int i, double errx, double erry);
+		void SetPointErrors(int i, double exl, double exh, double eyl, double eyh);
+		void SetPointErrorsX(int i, double exl, double exh);
+		void SetPointErrorsY(int i, double eyl, double eyh);
+		void SetPointErrorsXHigh(int i, double exh);
+		void SetPointErrorsXLow(int i, double exl);
+		void SetPointErrorsYHigh(int i, double eyh);
+		void SetPointErrorsYLow(int i, double eyl);
+    void SetRangeUserX(double xmin, double xmax);
+    void SetRangeUserY(double ymin, double ymax);
 
 		int RemovePoint(int i);
 
@@ -565,7 +586,8 @@ template<typename T> int LuaAddHist(lua_State* L)
 
 extern "C" void LoadLuaTHistLib(lua_State* L);
 
-class LuaTH1: public LuaROOTSpec<TH1D> {
+class LuaTH1: public LuaROOTSpec<TH1D>
+{
 	private:
 
 	public:
@@ -608,7 +630,8 @@ class LuaTH1: public LuaROOTSpec<TH1D> {
 		virtual void AddNonClassMethods(lua_State* L);
 };
 
-class LuaTH2: public LuaROOTSpec<TH2D> {
+class LuaTH2: public LuaROOTSpec<TH2D>
+{
 	private:
 
 	public:
@@ -666,7 +689,8 @@ class LuaTH2: public LuaROOTSpec<TH2D> {
 
 extern "C" void LoadLuaTSpectrumLib(lua_State* L);
 
-class LuaTSpectrum: public LuaROOTSpec<TSpectrum> {
+class LuaTSpectrum: public LuaROOTSpec<TSpectrum>
+{
 	private:
 
 	public:
@@ -706,7 +730,8 @@ class LuaTSpectrum: public LuaROOTSpec<TSpectrum> {
 
 extern "C" void LoadLuaTCutGLib(lua_State* L);
 
-class LuaTCutG: public LuaROOTSpec<TCutG> {
+class LuaTCutG: public LuaROOTSpec<TCutG>
+{
 	private:
 
 	public:
@@ -742,7 +767,8 @@ extern "C" void LoadLuaTTreeLib(lua_State* L);
 int luaExt_TTree_NewBranch_Interface(lua_State* L);
 int luaExt_TTree_GetBranch_Interface(lua_State* L);
 
-class LuaTTree: public LuaROOTSpec<TTree> {
+class LuaTTree: public LuaROOTSpec<TTree>
+{
 	private:
 
 	public:
